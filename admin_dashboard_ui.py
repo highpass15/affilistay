@@ -13,8 +13,7 @@ import streamlit as st
 +    page_icon="🏠",
 +    layout="wide",
 +    initial_sidebar_state="expanded"
- Sealed with high security.
-+10: )
++)
 +
 +# 데이터베이스 초기화
 +database.init_db()
