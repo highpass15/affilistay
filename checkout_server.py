@@ -14,9 +14,10 @@ if os.path.exists(static_dir):
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse(
-        name="landing.html", 
-        context={"request": request, "admin_url": ADMIN_URL}
-    )
+    request=request,
+    name="landing.html",
+    context={"admin_url": ADMIN_URL}
+)
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
