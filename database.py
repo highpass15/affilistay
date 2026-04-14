@@ -28,6 +28,10 @@ import sqlite3
 +            username TEXT UNIQUE NOT NULL,
 +            password TEXT NOT NULL,
 +            name TEXT,
++            entity_type TEXT DEFAULT 'Individual',
++            phone TEXT,
++            email TEXT,
++            signup_path TEXT,
 +            is_master BOOLEAN DEFAULT FALSE,
 +            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 +        )
@@ -57,12 +61,27 @@ import sqlite3
 +        )
 +        ''')
 +        
-+        # 기존 테이블에 컬럼 추가 시도
-+        try:
-+            cursor.execute('ALTER TABLE products ADD COLUMN owner_id INTEGER REFERENCES hosts(id)')
-+        except:
-+            conn.rollback()
-+            cursor = conn.cursor()
++        # 기존 테이블에 새 컬럼들 추가 시도
++        new_cols = [
++            ('entity_type', 'TEXT DEFAULT \'Individual\''),
++            ('phone', 'TEXT'),
++            ('email', 'TEXT'),
++            ('signup_path', 'TEXT'),
++            ('owner_id', 'INTEGER REFERENCES hosts(id)')
++        ]
++        for col_name, col_type in new_cols:
++            try:
++                cursor.execute(f'ALTER TABLE products ADD COLUMN IF NOT EXISTS {col_name} {col_type}')
++            except:
++                conn.rollback()
++                cursor = conn.cursor()
++            
++            try:
++                cursor.execute(f'ALTER TABLE hosts ADD COLUMN IF NOT EXISTS {col_name} {col_type}')
++            except:
++                conn.rollback()
++                cursor = conn.cursor()
++            
 +    else:
 +        # SQLite
 +        cursor.execute('''
@@ -71,6 +90,10 @@ import sqlite3
 +            username TEXT UNIQUE NOT NULL,
 +            password TEXT NOT NULL,
 +            name TEXT,
++            entity_type TEXT DEFAULT 'Individual',
++            phone TEXT,
++            email TEXT,
++            signup_path TEXT,
 +            is_master BOOLEAN DEFAULT FALSE,
 +            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 +        )
@@ -99,12 +122,17 @@ import sqlite3
 +            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 +        )
 +        ''')
-+        try:
-+            cursor.execute('ALTER TABLE products ADD COLUMN owner_id INTEGER REFERENCES hosts(id)')
-+        except:
-+            pass
++        
++        # SQLite 컬럼 추가 (ADD COLUMN IF NOT EXISTS가 없으므로 루프로 예외 처리)
++        for col_name, col_type in [('entity_type', 'TEXT'), ('phone', 'TEXT'), ('email', 'TEXT'), ('signup_path', 'TEXT'), ('owner_id', 'INTEGER')]:
++            try:
++                cursor.execute(f'ALTER TABLE products ADD COLUMN {col_name} {col_type}')
++            except: pass
++            try:
++                cursor.execute(f'ALTER TABLE hosts ADD COLUMN {col_name} {col_type}')
++            except: pass
 +    
-+    # 초기 마스터 계정 생성 로직 (없을 경우)
++    # 초기 마스터 계정 생성 로직
 +    try:
 +        master_id = 'jwchoi1207'
 +        master_pw = 'b3356choi!'
