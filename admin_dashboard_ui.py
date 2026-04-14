@@ -174,10 +174,18 @@ with tab1:
             if pname and price > 0:
                 conn = database.get_db_connection()
                 short_code = str(uuid.uuid4())[:6].upper()
-                conn.execute(
-                    'INSERT INTO products (brand_name, product_name, price, qr_code_id) VALUES (?, ?, ?, ?)',
-                    (brand, pname, price, short_code)
-                )
+                cursor = conn.cursor()
+                # PostgreSQL(%s)과 SQLite(?) 플레이스홀더 호환성 처리
+                if os.environ.get('DATABASE_URL'):
+                    cursor.execute(
+                        'INSERT INTO products (brand_name, product_name, price, qr_code_id) VALUES (%s, %s, %s, %s)',
+                        (brand, pname, price, short_code)
+                    )
+                else:
+                    cursor.execute(
+                        'INSERT INTO products (brand_name, product_name, price, qr_code_id) VALUES (?, ?, ?, ?)',
+                        (brand, pname, price, short_code)
+                    )
                 conn.commit()
                 conn.close()
                 st.toast("Experience created successfully.")
@@ -222,8 +230,10 @@ with tab2:
     st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
     st.subheader("전체 주문 내역")
     conn = database.get_db_connection()
-    df_orders = pd.read_sql_query('''
-        SELECT strftime('%m/%d', o.created_at) AS "주문일", p.brand_name AS "브랜드", p.product_name AS "상품명", o.total_amount AS "결제액", o.customer_name AS "구매자", o.shipping_address AS "배송지"
+    # PostgreSQL과 SQLite 날짜 함수 호환성 처리
+    date_func = "TO_CHAR(o.created_at, 'MM/DD')" if os.environ.get('DATABASE_URL') else "strftime('%m/%d', o.created_at)"
+    df_orders = pd.read_sql_query(f'''
+        SELECT {date_func} AS "주문일", p.brand_name AS "브랜드", p.product_name AS "상품명", o.total_amount AS "결제액", o.customer_name AS "구매자", o.shipping_address AS "배송지"
         FROM orders o JOIN products p ON o.product_id = p.id ORDER BY o.id DESC
     ''', conn)
     conn.close()
