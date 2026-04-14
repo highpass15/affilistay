@@ -55,12 +55,41 @@ import streamlit as st
 +                st.session_state['auth_mode'] = 'signup'
 +                st.rerun()
 +        else:
-+            # 회원가입 로직 (기존 구현 유지)
++            # 회원가입 로직
 +            st.markdown("#### 회원가입")
 +            role_choice = st.radio("유형", ["HOST", "GUEST"], horizontal=True)
-+            # ... (회원가입 필드들 생략 - 이전 턴의 완성본 유지)
++            
++            full_name = st.text_input("이름(법인명)")
++            phone = st.text_input("핸드폰 연락처")
++            email = st.text_input("이메일 주소")
++            signup_path = st.selectbox("가입 경로", ["네이버광고", "지인소개", "인스타", "메일광고", "기타"])
++            
++            new_username = st.text_input("사용할 아이디")
++            new_password = st.text_input("비밀번호", type="password")
++            
 +            if st.button("가입 신청", use_container_width=True, type="primary"):
-+                pass # 가입 로직
++                conn = database.get_db_connection()
++                cursor = conn.cursor()
++                try:
++                    if database.DATABASE_URL:
++                        cursor.execute(
++                            'INSERT INTO hosts (username, password, name, phone, email, signup_path, role, is_master) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
++                            (new_username, new_password, full_name, phone, email, signup_path, role_choice, False)
++                        )
++                    else:
++                        cursor.execute(
++                            'INSERT INTO hosts (username, password, name, phone, email, signup_path, role, is_master) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
++                            (new_username, new_password, full_name, phone, email, signup_path, role_choice, False)
++                        )
++                    conn.commit()
++                    st.success("가입 완료! 로그인 해주세요.")
++                    st.session_state['auth_mode'] = 'login'
++                    st.rerun()
++                except:
++                    st.error("아이디 중복 또는 가입 오류")
++                finally:
++                    conn.close()
++            
 +            if st.button("Back to Login", use_container_width=True):
 +                st.session_state['auth_mode'] = 'login'
 +                st.rerun()
@@ -85,9 +114,20 @@ import streamlit as st
 +
 +tab_list = st.tabs(tabs_list)
 +
-+# --------------------------------
-+# 정산 대시보드 (마스터 전용)
-+# --------------------------------
++# 🛍️ 상품 관리
++with tab_list[0]:
++    st.subheader("제품 및 쇼룸 관리")
++    conn = database.get_db_connection()
++    if st.session_state['is_master']:
++        df_p = pd.read_sql_query('SELECT id, brand_name, product_name, price, qr_code_id FROM products', conn)
++    else:
++        param = (st.session_state['host_id'],)
++        query = 'SELECT id, brand_name, product_name, price, qr_code_id FROM products WHERE owner_id = %s' if database.DATABASE_URL else 'SELECT id, brand_name, product_name, price, qr_code_id FROM products WHERE owner_id = ?'
++        df_p = pd.read_sql_query(query, conn, params=param)
++    st.dataframe(df_p, use_container_width=True)
++    conn.close()
++
++# 💰 정산 대시보드 (마스터 전용)
 +if st.session_state['is_master']:
 +    with tab_list[3]:
 +        st.title("💰 정산 관리 시스템")
@@ -103,12 +143,10 @@ import streamlit as st
 +        df_settle = pd.read_sql_query(query, conn)
 +        
 +        if not df_settle.empty:
-+            # 수익 계산
 +            df_settle["플랫폼(20%)"] = (df_settle["판매가"] * 0.20).astype(int)
 +            df_settle["호스트(10%)"] = (df_settle["판매가"] * 0.10).astype(int)
 +            df_settle["잔여(70%)"] = (df_settle["판매가"] * 0.70).astype(int)
 +            
-+            # 요약 통계
 +            c1, c2, c3 = st.columns(3)
 +            pending_sum = df_settle[df_settle["상태"] == "PENDING"]["판매가"].sum()
 +            c1.metric("정산 대기액", f"{pending_sum:,}원")
@@ -118,7 +156,6 @@ import streamlit as st
 +            st.markdown("---")
 +            st.dataframe(df_settle.drop(columns=["id"]), use_container_width=True, hide_index=True)
 +            
-+            # 상태 변경 기능
 +            st.subheader("정산 상태 업데이트")
 +            target_id = st.selectbox("업데이트할 주문 ID 선택", df_settle["id"].tolist())
 +            new_status = st.radio("변경할 상태", ["PENDING", "COMPLETED"], horizontal=True)
@@ -131,15 +168,13 @@ import streamlit as st
 +                    cursor.execute('UPDATE orders SET settlement_status = ? WHERE id = ?', (new_status, target_id))
 +                conn.commit()
 +                
-+                # Supabase 동기화 트리거
++                # Supabase 동기화
 +                database.sync_order_to_supabase(target_id)
 +                
-+                st.success(f"주문 #{target_id}의 정산 상태가 {new_status}로 변경되었습니다.")
++                st.success(f"주문 #{target_id} 상태 변경 완료")
 +                time.sleep(1)
 +                st.rerun()
 +        else:
-+            st.info("정산할 데이터가 아직 없습니다.")
++            st.info("정산할 데이터가 없습니다.")
 +        conn.close()
-+
-+# (나머지 탭 로직은 기존 기능 유지를 위해 생략 - 전체 파일 작성 시 포함됨)
 +
