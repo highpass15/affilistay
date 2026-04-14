@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+streamlit
+pandas
+qrcode
+httpx
+psycopg2-binary
+pillow

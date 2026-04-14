@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.product_name }} | 에디토리얼 쇼룸</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #FAF9F6; color: #1A1A1A; }
+        .serif { font-family: 'Playfair Display', serif; }
+        .input-minimal {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #E5E4E2;
+            padding: 12px 0;
+            border-radius: 0;
+            transition: border-color 0.3s;
+        }
+        .input-minimal:focus {
+            outline: none;
+            border-color: #1A1A1A;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+    <div class="max-w-screen-md mx-auto">
+        <!-- Product Hero Image -->
+        <div class="w-full h-[60vh] relative overflow-hidden">
+            <img src="/static/product.png" alt="{{ product.product_name }}" class="w-full h-full object-cover">
+            <div class="absolute bottom-12 left-8 md:left-12">
+                <span class="text-[10px] font-bold tracking-[0.4em] uppercase text-white/80 block mb-2">{{ product.brand_name }}</span>
+                <h1 class="text-4xl md:text-6xl text-white serif italic drop-shadow-lg">{{ product.product_name }}</h1>
+            </div>
+        </div>
+
+        <!-- Checkout Form Section -->
+        <div class="px-8 py-16 md:px-12 bg-white -mt-8 rounded-t-[3rem] shadow-sm relative z-10">
+            <div class="flex justify-between items-baseline mb-16">
+                <span class="text-[10px] font-bold text-gray-400 tracking-[0.2em] uppercase">Private Access Price</span>
+                <span class="text-3xl font-light tracking-tighter">{{ "{:,}".format(product.price) }} 원</span>
+            </div>
+
+            <form action="/pay/{{ product.qr_code_id }}" method="post" class="space-y-12">
+                <div class="space-y-2">
+                    <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-widest">Customer Name</label>
+                    <input name="customer_name" required type="text" class="input-minimal w-full text-lg" placeholder="성함을 입력하세요">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-widest">Mobile</label>
+                    <input name="phone_number" required type="tel" class="input-minimal w-full text-lg" placeholder="연락처 (010-0000-0000)">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-widest">Shipping Destination</label>
+                    <input name="shipping_address" required type="text" class="input-minimal w-full text-lg" placeholder="제품을 받으실 배송지 주소">
+                </div>
+
+                <div class="pt-8">
+                    <button type="submit" class="w-full bg-[#1A1A1A] text-white py-6 rounded-full font-bold text-sm tracking-[0.2em] hover:bg-black transition-all shadow-xl">
+                        네이버페이로 결제하기
+                    </button>
+                    <p class="text-center text-[8px] text-gray-300 mt-8 tracking-[0.3em] uppercase">The Platform Lifestyle Curation</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
