@@ -106,19 +106,21 @@ import sqlite3
 +    
 +    # 초기 마스터 계정 생성 로직 (없을 경우)
 +    try:
++        master_id = 'jwchoi1207'
++        master_pw = 'b3356choi!'
 +        if DATABASE_URL:
-+            cursor.execute('SELECT id FROM hosts WHERE username = %s', ('admin',))
++            cursor.execute('SELECT id FROM hosts WHERE username = %s', (master_id,))
 +            if not cursor.fetchone():
 +                cursor.execute(
 +                    'INSERT INTO hosts (username, password, name, is_master) VALUES (%s, %s, %s, %s)',
-+                    ('admin', 'master1234', 'Master Admin', True)
++                    (master_id, master_pw, 'Master Admin', True)
 +                )
 +        else:
-+            cursor.execute('SELECT id FROM hosts WHERE username = ?', ('admin',))
++            cursor.execute('SELECT id FROM hosts WHERE username = ?', (master_id,))
 +            if not cursor.fetchone():
 +                cursor.execute(
 +                    'INSERT INTO hosts (username, password, name, is_master) VALUES (?, ?, ?, ?)',
-+                    ('admin', 'master1234', 'Master Admin', True)
++                    (master_id, master_pw, 'Master Admin', True)
 +                )
 +    except:
 +        pass
