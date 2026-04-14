@@ -28,10 +28,12 @@ import sqlite3
 +            username TEXT UNIQUE NOT NULL,
 +            password TEXT NOT NULL,
 +            name TEXT,
++            role TEXT DEFAULT 'HOST',
 +            entity_type TEXT DEFAULT 'Individual',
 +            phone TEXT,
 +            email TEXT,
 +            signup_path TEXT,
++            desired_product_type TEXT,
 +            is_master BOOLEAN DEFAULT FALSE,
 +            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 +        )
@@ -63,10 +65,12 @@ import sqlite3
 +        
 +        # 기존 테이블에 새 컬럼들 추가 시도
 +        new_cols = [
++            ('role', 'TEXT DEFAULT \'HOST\''),
 +            ('entity_type', 'TEXT DEFAULT \'Individual\''),
 +            ('phone', 'TEXT'),
 +            ('email', 'TEXT'),
 +            ('signup_path', 'TEXT'),
++            ('desired_product_type', 'TEXT'),
 +            ('owner_id', 'INTEGER REFERENCES hosts(id)')
 +        ]
 +        for col_name, col_type in new_cols:
@@ -90,10 +94,12 @@ import sqlite3
 +            username TEXT UNIQUE NOT NULL,
 +            password TEXT NOT NULL,
 +            name TEXT,
++            role TEXT DEFAULT 'HOST',
 +            entity_type TEXT DEFAULT 'Individual',
 +            phone TEXT,
 +            email TEXT,
 +            signup_path TEXT,
++            desired_product_type TEXT,
 +            is_master BOOLEAN DEFAULT FALSE,
 +            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 +        )
@@ -123,8 +129,11 @@ import sqlite3
 +        )
 +        ''')
 +        
-+        # SQLite 컬럼 추가 (ADD COLUMN IF NOT EXISTS가 없으므로 루프로 예외 처리)
-+        for col_name, col_type in [('entity_type', 'TEXT'), ('phone', 'TEXT'), ('email', 'TEXT'), ('signup_path', 'TEXT'), ('owner_id', 'INTEGER')]:
++        for col_name, col_type in [
++            ('role', 'TEXT'), ('entity_type', 'TEXT'), ('phone', 'TEXT'), 
++            ('email', 'TEXT'), ('signup_path', 'TEXT'), ('desired_product_type', 'TEXT'), 
++            ('owner_id', 'INTEGER')
++        ]:
 +            try:
 +                cursor.execute(f'ALTER TABLE products ADD COLUMN {col_name} {col_type}')
 +            except: pass
@@ -132,7 +141,7 @@ import sqlite3
 +                cursor.execute(f'ALTER TABLE hosts ADD COLUMN {col_name} {col_type}')
 +            except: pass
 +    
-+    # 초기 마스터 계정 생성 로직
++    # 마스터 계정 초기화
 +    try:
 +        master_id = 'jwchoi1207'
 +        master_pw = 'b3356choi!'
@@ -140,15 +149,15 @@ import sqlite3
 +            cursor.execute('SELECT id FROM hosts WHERE username = %s', (master_id,))
 +            if not cursor.fetchone():
 +                cursor.execute(
-+                    'INSERT INTO hosts (username, password, name, is_master) VALUES (%s, %s, %s, %s)',
-+                    (master_id, master_pw, 'Master Admin', True)
++                    'INSERT INTO hosts (username, password, name, is_master, role) VALUES (%s, %s, %s, %s, %s)',
++                    (master_id, master_pw, 'Master Admin', True, 'HOST')
 +                )
 +        else:
 +            cursor.execute('SELECT id FROM hosts WHERE username = ?', (master_id,))
 +            if not cursor.fetchone():
 +                cursor.execute(
-+                    'INSERT INTO hosts (username, password, name, is_master) VALUES (?, ?, ?, ?)',
-+                    (master_id, master_pw, 'Master Admin', True)
++                    'INSERT INTO hosts (username, password, name, is_master, role) VALUES (?, ?, ?, ?, ?)',
++                    (master_id, master_pw, 'Master Admin', True, 'HOST')
 +                )
 +    except:
 +        pass
