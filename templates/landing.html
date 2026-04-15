@@ -92,81 +92,72 @@
 
     <!-- ② Concept Section -->
     <section id="concept" class="py-24 md:py-36 px-6 md:px-8 max-w-7xl mx-auto">
-        <!-- 3컬럼 균형 레이아웃: 텍스트 | 라이프스타일 + QR | 제품 + 카드 -->
-        <div class="grid md:grid-cols-3 gap-8 md:gap-10 items-start">
+        <!-- 2컬럼 균형 레이아웃: 텍스트+카드 | 욕실이미지+QR -->
+        <div class="grid md:grid-cols-2 gap-12 md:gap-16 items-stretch">
 
-            <!-- ① 왼쪽: 텍스트 -->
-            <div class="md:pt-6">
-                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.35em] uppercase mb-6 block">Our Concept</span>
-                <h2 class="text-4xl md:text-5xl font-light leading-[1.2] mb-7 text-[#2C2520]">
-                    모든 숙소는<br>하나의<br><span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
-                </h2>
-                <p class="text-[14px] text-[#6B6460] leading-[1.9] font-light mb-4">
-                    호스트는 엄선된 생활용품을<br>숙소에 배치하고,<br>
-                    게스트는 <strong class="text-[#2C2520] font-normal">QR 스캔 한 번</strong>으로<br>주문합니다.
-                </p>
-                <p class="text-[12px] text-[#9C9288] leading-relaxed font-light mb-8">
-                    주문 즉시 호스트 업체에서<br>게스트의 집으로 직배송.
-                </p>
-                <!-- 할인 혜택 카드 (왼쪽 하단) -->
-                <div class="bg-[#2C2520] p-5 rounded-2xl">
-                    <p class="text-[9px] text-white/40 tracking-widest uppercase mb-2 font-light">Guest Benefit</p>
-                    <h3 class="text-xl font-light text-white mb-1">게스트 전용 할인</h3>
-                    <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">쇼룸 체험 게스트<br>특별 할인가 적용</p>
+            <!-- ① 왼쪽: 텍스트 + 카드 2개 -->
+            <div class="flex flex-col justify-between">
+                <div>
+                    <span class="text-[10px] font-light text-[#9C9288] tracking-[0.35em] uppercase mb-6 block">Our Concept</span>
+                    <h2 class="text-4xl md:text-5xl font-light leading-[1.2] mb-8 text-[#2C2520]">
+                        모든 숙소는<br>하나의 <span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
+                    </h2>
+                    <p class="text-[15px] text-[#6B6460] leading-[1.9] font-light mb-4">
+                        호스트는 엄선된 생활용품을 숙소에 배치하고,<br>
+                        게스트는 직접 체험한 제품을 <strong class="text-[#2C2520] font-normal">QR 코드 스캔 한 번</strong>으로<br>주문합니다.
+                    </p>
+                    <p class="text-[13px] text-[#9C9288] leading-relaxed font-light mb-10">
+                        주문 즉시 협찬업체에서 게스트의 집으로 직배송.<br>
+                        재고 부담 없이, 전국 숙소가 가장 강력한 쇼룸이 됩니다.
+                    </p>
+                </div>
+                <!-- 하단 카드 2개 (균등 분할) -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-[#2C2520] p-6 rounded-2xl">
+                        <p class="text-[9px] text-white/40 tracking-widest uppercase mb-3 font-light">Guest Benefit</p>
+                        <h3 class="text-lg font-light text-white mb-1">게스트 전용 할인</h3>
+                        <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">쇼룸 체험 게스트<br>특별 할인가 적용</p>
+                    </div>
+                    <div class="bg-[#F0EBE3] border border-[#E8E2D9] p-6 rounded-2xl">
+                        <p class="text-[9px] text-[#9C9288] tracking-widest uppercase mb-3 font-light">Platform</p>
+                        <h3 class="text-lg font-light text-[#2C2520] mb-1">재고 부담 Zero</h3>
+                        <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">협찬업체가 배송·재고<br>관리를 직접 담당</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- ② 가운데: 한국인 여성 라이프스타일 + 대형 QR -->
+            <!-- ② 오른쪽: 욕실 + QR 스탠드 이미지 + QR 카드 -->
             <div class="flex flex-col gap-4">
-                <!-- 한국 여성 숙소 체험 이미지 -->
-                <div class="aspect-[3/4] rounded-3xl overflow-hidden bg-[#E8E2D9] relative">
+                <!-- 메인 이미지: 숙소 욕실 + 아크릴 QR 스탠드 + 헤어드라이어 -->
+                <div class="flex-1 rounded-3xl overflow-hidden bg-[#E8E2D9] relative min-h-[380px]">
                     <img
-                        src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&h=800&fit=crop&q=85&crop=faces"
-                        class="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
-                        alt="숙소에서 QR 체험 중인 게스트"
-                        onerror="this.src='https://images.unsplash.com/photo-1512100356356-de1b84283e18?w=600&h=800&fit=crop&q=85'"
+                        src="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=700&fit=crop&q=85"
+                        class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                        alt="숙소 욕실 QR 스탠드 체험"
+                        onerror="this.src='https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=800&h=700&fit=crop&q=85'"
                     >
-                    <!-- 오버레이 라벨 -->
-                    <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2">
-                        <p class="text-[10px] text-[#2C2520] font-light tracking-wider">📱 QR 스캔 중</p>
+                    <!-- QR 스탠드 오버레이 라벨 -->
+                    <div class="absolute bottom-5 left-5 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-sm">
+                        <p class="text-[10px] text-[#2C2520] font-light tracking-wider">📱 아크릴 QR 스탠드</p>
                     </div>
                 </div>
-                <!-- 대형 QR 코드 카드 -->
+                <!-- QR 코드 카드 (하단 고정) -->
                 <div class="bg-white rounded-2xl p-5 flex items-center gap-5 qr-glow">
                     <img
-                        src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=https://affilistay-showroom.onrender.com&margin=6&color=2C2520&bgcolor=ffffff"
+                        src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://affilistay-showroom.onrender.com&margin=6&color=2C2520&bgcolor=ffffff"
                         alt="AFFILISTAY QR 예시"
-                        class="w-24 h-24 rounded-xl flex-shrink-0"
+                        class="w-20 h-20 rounded-xl flex-shrink-0"
                     >
                     <div>
-                        <p class="text-[11px] font-medium text-[#2C2520] tracking-wider mb-1">체험 후 QR 스캔</p>
-                        <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">게스트 전용 할인가로<br>즉시 주문 · 집으로 직배송</p>
+                        <p class="text-[11px] font-semibold text-[#2C2520] tracking-wider mb-1">체험 후 QR 스캔</p>
+                        <p class="text-[12px] text-[#6B6460] font-light leading-relaxed">게스트 전용 할인가로<br>즉시 주문 · 집으로 직배송</p>
+                        <p class="text-[10px] text-[#9C9288] font-light mt-2">affilistay-showroom.onrender.com</p>
                     </div>
-                </div>
-            </div>
-
-            <!-- ③ 오른쪽: 제품 이미지 -->
-            <div class="flex flex-col gap-4 md:pt-12">
-                <!-- 제품 이미지 (세로) -->
-                <div class="aspect-[3/4] rounded-3xl overflow-hidden bg-[#E8E2D9]">
-                    <img
-                        src="/static/product.png"
-                        class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                        alt="협찬 제품"
-                        onerror="this.src='https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=500&h=680&fit=crop&q=85'"
-                    >
-                </div>
-                <!-- 재고 없음 카드 -->
-                <div class="bg-[#F0EBE3] border border-[#E8E2D9] p-5 rounded-2xl">
-                    <p class="text-[9px] text-[#9C9288] tracking-widest uppercase mb-2 font-light">Platform</p>
-                    <h3 class="text-lg font-light text-[#2C2520] mb-1">재고 부담 Zero</h3>
-                    <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">배송·재고 관리는<br>공급업체가 직접 담당</p>
                 </div>
             </div>
 
         </div>
     </section>
-
 
     <!-- ③ How It Works (따뜻한 베이지 배경) -->
     <section id="how" class="py-20 md:py-32" style="background-color: #F0EBE3;">
