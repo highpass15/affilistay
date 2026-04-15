@@ -134,7 +134,7 @@ with tab_list[0]:
     st.subheader("등록된 제품 리스트")
     conn = database.get_db_connection()
     if st.session_state['is_master']:
-        query = 'SELECT b.id, b.brand_name, b.product_name, b.price, b.qr_code_id, h.name as owner FROM products b JOIN hosts h ON b.owner_id = h.id'
+        query = 'SELECT p.id, p.brand_name, p.product_name, p.price, p.qr_code_id, h.name as owner FROM products p LEFT JOIN hosts h ON p.owner_id = h.id'
         df = pd.read_sql_query(query, conn)
     else:
         query = 'SELECT id, brand_name, product_name, price, qr_code_id FROM products WHERE owner_id = %s' if database.DATABASE_URL else 'SELECT id, brand_name, product_name, price, qr_code_id FROM products WHERE owner_id = ?'
