@@ -92,29 +92,51 @@
 
     <!-- ② Concept Section -->
     <section id="concept" class="py-24 md:py-36 px-6 md:px-8 max-w-7xl mx-auto">
-        <div class="grid md:grid-cols-2 gap-16 md:gap-28 items-center">
+        <!-- 3컬럼 균형 레이아웃: 텍스트 | 라이프스타일 + QR | 제품 + 카드 -->
+        <div class="grid md:grid-cols-3 gap-8 md:gap-10 items-start">
 
-            <!-- 왼쪽: 텍스트 (얇은 서체) -->
-            <div class="order-2 md:order-1">
-                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.35em] uppercase mb-5 block">Our Concept</span>
-                <h2 class="text-4xl md:text-6xl font-light leading-[1.15] mb-8 text-[#2C2520]">
-                    모든 숙소는<br>하나의 <span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
+            <!-- ① 왼쪽: 텍스트 -->
+            <div class="md:pt-6">
+                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.35em] uppercase mb-6 block">Our Concept</span>
+                <h2 class="text-4xl md:text-5xl font-light leading-[1.2] mb-7 text-[#2C2520]">
+                    모든 숙소는<br>하나의<br><span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
                 </h2>
-                <p class="text-[15px] text-[#6B6460] leading-[1.9] font-light mb-5">
-                    호스트는 엄선된 생활용품을 숙소에 배치하고,<br>
-                    게스트는 직접 체험한 제품을 <strong class="text-[#2C2520] font-normal">QR 코드 스캔 한 번</strong>으로 주문합니다.<br>
-                    주문 즉시 호스트 업체에서 게스트의 집으로 직배송.
+                <p class="text-[14px] text-[#6B6460] leading-[1.9] font-light mb-4">
+                    호스트는 엄선된 생활용품을<br>숙소에 배치하고,<br>
+                    게스트는 <strong class="text-[#2C2520] font-normal">QR 스캔 한 번</strong>으로<br>주문합니다.
                 </p>
-                <p class="text-[13px] text-[#9C9288] leading-relaxed font-light">
-                    재고 부담 없이, 전국 숙소가 가장 강력한 오프라인 쇼룸이 됩니다.
+                <p class="text-[12px] text-[#9C9288] leading-relaxed font-light mb-8">
+                    주문 즉시 호스트 업체에서<br>게스트의 집으로 직배송.
                 </p>
+                <!-- 할인 혜택 카드 (왼쪽 하단) -->
+                <div class="bg-[#2C2520] p-5 rounded-2xl">
+                    <p class="text-[9px] text-white/40 tracking-widest uppercase mb-2 font-light">Guest Benefit</p>
+                    <h3 class="text-xl font-light text-white mb-1">게스트 전용 할인</h3>
+                    <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">쇼룸 체험 게스트<br>특별 할인가 적용</p>
+                </div>
+            </div>
 
-                <!-- QR 예시 카드 (인라인) -->
-                <div class="mt-10 flex items-center gap-5 p-5 bg-white rounded-2xl qr-glow max-w-xs">
+            <!-- ② 가운데: 한국인 여성 라이프스타일 + 대형 QR -->
+            <div class="flex flex-col gap-4">
+                <!-- 한국 여성 숙소 체험 이미지 -->
+                <div class="aspect-[3/4] rounded-3xl overflow-hidden bg-[#E8E2D9] relative">
                     <img
-                        src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://affilistay-showroom.onrender.com&margin=4&color=2C2520&bgcolor=ffffff"
+                        src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&h=800&fit=crop&q=85&crop=faces"
+                        class="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700"
+                        alt="숙소에서 QR 체험 중인 게스트"
+                        onerror="this.src='https://images.unsplash.com/photo-1512100356356-de1b84283e18?w=600&h=800&fit=crop&q=85'"
+                    >
+                    <!-- 오버레이 라벨 -->
+                    <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2">
+                        <p class="text-[10px] text-[#2C2520] font-light tracking-wider">📱 QR 스캔 중</p>
+                    </div>
+                </div>
+                <!-- 대형 QR 코드 카드 -->
+                <div class="bg-white rounded-2xl p-5 flex items-center gap-5 qr-glow">
+                    <img
+                        src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=https://affilistay-showroom.onrender.com&margin=6&color=2C2520&bgcolor=ffffff"
                         alt="AFFILISTAY QR 예시"
-                        class="w-20 h-20 rounded-lg flex-shrink-0"
+                        class="w-24 h-24 rounded-xl flex-shrink-0"
                     >
                     <div>
                         <p class="text-[11px] font-medium text-[#2C2520] tracking-wider mb-1">체험 후 QR 스캔</p>
@@ -123,35 +145,28 @@
                 </div>
             </div>
 
-            <!-- 오른쪽: 이미지 그리드 -->
-            <div class="order-1 md:order-2 grid grid-cols-2 gap-4">
-                <!-- 메인 제품 이미지 -->
-                <div class="aspect-[3/4] rounded-3xl overflow-hidden shadow-sm bg-[#E8E2D9] col-span-1 row-span-2">
+            <!-- ③ 오른쪽: 제품 이미지 -->
+            <div class="flex flex-col gap-4 md:pt-12">
+                <!-- 제품 이미지 (세로) -->
+                <div class="aspect-[3/4] rounded-3xl overflow-hidden bg-[#E8E2D9]">
                     <img
                         src="/static/product.png"
                         class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                        alt="Product"
-                        onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-[#9C9288] text-xs font-light\'>product image</div>'"
+                        alt="협찬 제품"
+                        onerror="this.src='https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=500&h=680&fit=crop&q=85'"
                     >
                 </div>
-                <!-- QR 스캔 라이프스타일 이미지 (Unsplash 활용) -->
-                <div class="aspect-square rounded-3xl overflow-hidden shadow-sm bg-[#E8E2D9]">
-                    <img
-                        src="https://images.unsplash.com/photo-1596815064285-45ed8a9c0463?w=400&h=400&fit=crop&q=80"
-                        class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                        alt="QR 스캔 체험"
-                        onerror="this.style.display='none'"
-                    >
-                </div>
-                <!-- 할인 혜택 카드 -->
-                <div class="aspect-square bg-[#2C2520] p-6 rounded-3xl flex flex-col justify-end">
-                    <p class="text-[10px] text-white/40 tracking-widest uppercase mb-2 font-light">Guest Benefit</p>
-                    <h3 class="text-2xl font-light text-white mb-1">할인 혜택</h3>
-                    <p class="text-[10px] text-[#9C9288] font-light leading-relaxed">쇼룸 체험 게스트<br>전용 특별가 적용</p>
+                <!-- 재고 없음 카드 -->
+                <div class="bg-[#F0EBE3] border border-[#E8E2D9] p-5 rounded-2xl">
+                    <p class="text-[9px] text-[#9C9288] tracking-widest uppercase mb-2 font-light">Platform</p>
+                    <h3 class="text-lg font-light text-[#2C2520] mb-1">재고 부담 Zero</h3>
+                    <p class="text-[11px] text-[#9C9288] font-light leading-relaxed">배송·재고 관리는<br>공급업체가 직접 담당</p>
                 </div>
             </div>
+
         </div>
     </section>
+
 
     <!-- ③ How It Works (따뜻한 베이지 배경) -->
     <section id="how" class="py-20 md:py-32" style="background-color: #F0EBE3;">
@@ -199,35 +214,104 @@
         </div>
     </section>
 
-    <!-- ⑤ Host Benefits -->
+    <!-- ⑤ Host & Brand Benefits (탭 전환) -->
     <section id="host" class="py-24 md:py-36 px-6" style="background-color: var(--cream);">
-        <div class="max-w-5xl mx-auto text-center">
-            <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 block">For Hosts</span>
-            <h2 class="text-3xl md:text-5xl font-light text-[#2C2520] mb-5">호스트가 얻는 것</h2>
-            <p class="text-[#9C9288] text-sm font-light mb-3 max-w-md mx-auto leading-relaxed">숙소 운영만 해도, 커머스 수익이 자동으로 쌓입니다.</p>
-            <p class="text-[#8B6F5E] text-base font-light mb-16 max-w-md mx-auto leading-relaxed tracking-wide">제품을 협찬받아서 전시하고, 판매수익을 쉐어받으세요.</p>
-            <div class="grid md:grid-cols-3 gap-6 text-left">
-                <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                    <div class="text-2xl mb-5">💰</div>
-                    <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">판매 수익 발생</h3>
-                    <p class="text-[#9C9288] text-sm leading-relaxed font-light">게스트가 QR로 주문할 때마다 호스트에게 판매 수익 일부가 자동 정산됩니다.</p>
+        <div class="max-w-5xl mx-auto">
+
+            <!-- 상단 타이틀 -->
+            <div class="text-center mb-10">
+                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 block">Who Benefits</span>
+                <h2 class="text-3xl md:text-5xl font-light text-[#2C2520] mb-3">파트너가 얻는 것</h2>
+                <p class="text-[#9C9288] text-sm font-light max-w-md mx-auto leading-relaxed">
+                    숙소 호스트도, 협찬 브랜드도, 모두가 이기는 구조입니다.
+                </p>
+            </div>
+
+            <!-- 탭 버튼 -->
+            <div class="flex justify-center gap-3 mb-12">
+                <button id="tab-host-btn"
+                    onclick="switchTab('host')"
+                    class="tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all bg-[#2C2520] text-white">
+                    🏠 호스트 혜택
+                </button>
+                <button id="tab-brand-btn"
+                    onclick="switchTab('brand')"
+                    class="tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all border border-[#2C2520]/30 text-[#9C9288] hover:border-[#2C2520] hover:text-[#2C2520]">
+                    🎁 브랜드 혜택
+                </button>
+            </div>
+
+            <!-- 호스트 혜택 패널 -->
+            <div id="panel-host">
+                <p class="text-[#8B6F5E] text-base font-light mb-10 text-center leading-relaxed tracking-wide">
+                    제품을 협찬받아서 전시하고, 판매수익을 쉐어받으세요.
+                </p>
+                <div class="grid md:grid-cols-3 gap-6 text-left">
+                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
+                        <div class="text-2xl mb-5">💰</div>
+                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">판매 수익 발생</h3>
+                        <p class="text-[#9C9288] text-sm leading-relaxed font-light">게스트가 QR로 주문할 때마다 호스트에게 판매 수익 일부가 자동 정산됩니다.</p>
+                    </div>
+                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
+                        <div class="text-2xl mb-5">📦</div>
+                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">재고·배송 부담 없음</h3>
+                        <p class="text-[#9C9288] text-sm leading-relaxed font-light">주문 처리와 배송은 공급사에서 직접 담당합니다. 호스트는 아무것도 안 해도 됩니다.</p>
+                    </div>
+                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
+                        <div class="text-2xl mb-5">🛋️</div>
+                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">공간 가치 상승</h3>
+                        <p class="text-[#9C9288] text-sm leading-relaxed font-light">큐레이션된 제품으로 숙소를 채워, 게스트 만족도와 리뷰 점수를 동시에 높입니다.</p>
+                    </div>
                 </div>
-                <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                    <div class="text-2xl mb-5">📦</div>
-                    <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">재고·배송 부담 없음</h3>
-                    <p class="text-[#9C9288] text-sm leading-relaxed font-light">주문 처리와 배송은 공급사에서 직접 담당합니다. 호스트는 아무것도 안 해도 됩니다.</p>
-                </div>
-                <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                    <div class="text-2xl mb-5">🛋️</div>
-                    <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">공간 가치 상승</h3>
-                    <p class="text-[#9C9288] text-sm leading-relaxed font-light">큐레이션된 제품으로 숙소를 채워, 게스트 만족도와 리뷰 점수를 동시에 높입니다.</p>
+                <div class="mt-12 text-center">
+                    <a href="{{ admin_url }}" class="inline-block bg-[#2C2520] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#3D342E] transition-all shadow-lg">호스트 등록하기 →</a>
                 </div>
             </div>
-            <div class="mt-14">
-                <a href="{{ admin_url }}" class="inline-block bg-[#2C2520] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#3D342E] transition-all shadow-lg">호스트 등록하기 →</a>
+
+            <!-- 브랜드 혜택 패널 (기본 숨김) -->
+            <div id="panel-brand" class="hidden">
+                <p class="text-[#8B6F5E] text-base font-light mb-10 text-center leading-relaxed tracking-wide">
+                    협찬 비용 하나로, 판매·마케팅·데이터를 한 번에.
+                </p>
+                <div class="grid md:grid-cols-3 gap-6 text-left">
+                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
+                        <div class="text-2xl mb-5">🛒</div>
+                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">새로운 판매 채널 확보</h3>
+                        <p class="text-[#9C9288] text-sm leading-relaxed font-light">전국 숙소를 오프라인 쇼룸으로 활용해 기존 채널 외 새로운 구매 전환을 만들어냅니다. 체험 후 구매로 이어지는 높은 전환율이 강점입니다.</p>
+                    </div>
+                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
+                        <div class="text-2xl mb-5">📣</div>
+                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">협찬비 = 전부</h3>
+                        <p class="text-[#9C9288] text-sm leading-relaxed font-light">제품 협찬 비용만으로 마케팅이 완성됩니다. 별도 광고비·인플루언서 비용 없이 실제 숙소 이용자에게 자연스럽게 노출됩니다.</p>
+                    </div>
+                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
+                        <div class="text-2xl mb-5">📊</div>
+                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">무료 소비자 데이터</h3>
+                        <p class="text-[#9C9288] text-sm leading-relaxed font-light">실제 제품을 체험한 소비자의 구매 패턴·후기·재구매율 데이터를 플랫폼을 통해 무료로 제공받습니다. 제품 개선과 마케팅 전략에 직접 활용 가능합니다.</p>
+                    </div>
+                </div>
+                <div class="mt-12 text-center">
+                    <a href="{{ admin_url }}" class="inline-block bg-[#8B6F5E] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#7A6050] transition-all shadow-lg">브랜드 파트너 등록하기 →</a>
+                </div>
             </div>
+
         </div>
     </section>
+
+    <script>
+        function switchTab(tab) {
+            const panels = { host: document.getElementById('panel-host'), brand: document.getElementById('panel-brand') };
+            const btns   = { host: document.getElementById('tab-host-btn'), brand: document.getElementById('tab-brand-btn') };
+            Object.keys(panels).forEach(k => {
+                panels[k].classList.add('hidden');
+                btns[k].className = 'tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all border border-[#2C2520]/30 text-[#9C9288] hover:border-[#2C2520] hover:text-[#2C2520]';
+            });
+            panels[tab].classList.remove('hidden');
+            btns[tab].className = 'tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all bg-[#2C2520] text-white';
+        }
+    </script>
+
+
 
     <!-- Footer -->
     <footer class="py-10 border-t border-[#E8E2D9] text-center px-4">
