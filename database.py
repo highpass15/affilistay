@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import base64
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -17,7 +18,7 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mvp_v2_ecommerce.db')
 
-# 수파베이스 클라이언트 초기화 (Client 타입 힌트 없이)
+# 수파베이스 클라이언트 초기화
 supabase = None
 if SUPABASE_AVAILABLE and create_client and SUPABASE_URL and SUPABASE_KEY:
     try:
@@ -38,6 +39,7 @@ def init_db():
     cursor = conn.cursor()
 
     if DATABASE_URL:
+        # ── 기존 테이블 ──────────────────────────────
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS hosts (
             id SERIAL PRIMARY KEY,
@@ -78,14 +80,54 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        # ── 신규 테이블 ──────────────────────────────
+        # 호스트 숙소 프로필 (위치, 사진 2장)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS host_venues (
+            id SERIAL PRIMARY KEY,
+            host_id INTEGER REFERENCES hosts(id) UNIQUE,
+            location TEXT,
+            description TEXT,
+            image1 TEXT,
+            image2 TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        # 협찬업체가 등록한 협찬 가능 제품
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS brand_items (
+            id SERIAL PRIMARY KEY,
+            brand_id INTEGER REFERENCES hosts(id),
+            item_name TEXT NOT NULL,
+            description TEXT,
+            stock_qty INTEGER DEFAULT 0,
+            image TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        # 협찬 내역: 업체가 호스트에게 협찬 결정
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sponsorships (
+            id SERIAL PRIMARY KEY,
+            brand_id INTEGER REFERENCES hosts(id),
+            host_id INTEGER REFERENCES hosts(id),
+            brand_item_id INTEGER REFERENCES brand_items(id),
+            qty INTEGER DEFAULT 1,
+            message TEXT,
+            status TEXT DEFAULT 'PENDING',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
     else:
+        # SQLite
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS hosts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE, password TEXT, name TEXT,
-            role TEXT, entity_type TEXT, phone TEXT, email TEXT,
-            signup_path TEXT, desired_product_type TEXT,
-            is_master BOOLEAN, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            role TEXT DEFAULT 'HOST', entity_type TEXT DEFAULT 'Individual',
+            phone TEXT, email TEXT, signup_path TEXT, desired_product_type TEXT,
+            is_master BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
         cursor.execute("""
@@ -99,22 +141,46 @@ def init_db():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER, customer_name TEXT,
-            phone_number TEXT, shipping_address TEXT,
-            total_amount INTEGER, payment_status TEXT,
-            settlement_status TEXT,
+            product_id INTEGER, customer_name TEXT, phone_number TEXT,
+            shipping_address TEXT, total_amount INTEGER,
+            payment_status TEXT DEFAULT 'PAID',
+            settlement_status TEXT DEFAULT 'PENDING',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS host_venues (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            host_id INTEGER UNIQUE, location TEXT, description TEXT,
+            image1 TEXT, image2 TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS brand_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            brand_id INTEGER, item_name TEXT NOT NULL,
+            description TEXT, stock_qty INTEGER DEFAULT 0, image TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sponsorships (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            brand_id INTEGER, host_id INTEGER, brand_item_id INTEGER,
+            qty INTEGER DEFAULT 1, message TEXT,
+            status TEXT DEFAULT 'PENDING',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
 
-    # 마스터 계정 초기화 확인
+    # 마스터 계정 초기화
     master_id = 'jwchoi1207'
     master_pw = 'b3356choi!'
     if DATABASE_URL:
         cursor.execute('SELECT id FROM hosts WHERE username = %s', (master_id,))
     else:
         cursor.execute('SELECT id FROM hosts WHERE username = ?', (master_id,))
-
     if not cursor.fetchone():
         if DATABASE_URL:
             cursor.execute(
@@ -127,22 +193,37 @@ def init_db():
                 (master_id, master_pw, 'Master Admin', True, 'HOST')
             )
 
-    # 마이그레이션: 기존 테이블에 누락된 컬럼 추가
+    # ── 마이그레이션: 기존 테이블에 누락 컬럼 추가 ──
     if DATABASE_URL:
-        try:
-            cursor.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)")
-            cursor.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'PENDING'")
-        except Exception:
-            pass
+        migrations = [
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'PENDING'",
+        ]
+        for sql in migrations:
+            try:
+                cursor.execute(sql)
+            except Exception:
+                pass
 
     conn.commit()
     conn.close()
 
+
+# ── 이미지 변환 헬퍼 ─────────────────────────────────
+def file_to_base64(uploaded_file) -> str:
+    """Streamlit UploadedFile → base64 문자열"""
+    return base64.b64encode(uploaded_file.read()).decode('utf-8')
+
+def base64_to_bytes(b64_str: str) -> bytes:
+    """base64 문자열 → bytes (st.image에 직접 사용)"""
+    return base64.b64decode(b64_str)
+
+
+# ── 수파베이스 동기화 ────────────────────────────────
 def sync_order_to_supabase(order_id):
     """주문 정산 데이터를 수파베이스에 미러링합니다."""
     if not supabase:
         return
-
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -158,7 +239,6 @@ def sync_order_to_supabase(order_id):
                 FROM orders o JOIN products p ON o.product_id = p.id
                 WHERE o.id = ?
             """, (order_id,))
-
         row = cursor.fetchone()
         if row:
             total = row[1]
@@ -176,5 +256,7 @@ def sync_order_to_supabase(order_id):
     finally:
         conn.close()
 
+
 if __name__ == "__main__":
     init_db()
+    print("DB 초기화 완료")
