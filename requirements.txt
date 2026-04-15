@@ -8,3 +8,4 @@ qrcode
 httpx
 psycopg2-binary
 pillow
+supabase
