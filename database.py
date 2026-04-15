@@ -127,6 +127,14 @@ def init_db():
                 (master_id, master_pw, 'Master Admin', True, 'HOST')
             )
 
+    # 마이그레이션: 기존 테이블에 누락된 컬럼 추가
+    if DATABASE_URL:
+        try:
+            cursor.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)")
+            cursor.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'PENDING'")
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
 
