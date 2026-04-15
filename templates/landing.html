@@ -126,35 +126,88 @@
                 </div>
             </div>
 
-            <!-- ② 오른쪽: 욕실 + QR 스탠드 이미지 + QR 카드 -->
-            <div class="flex flex-col gap-4">
-                <!-- 메인 이미지: 숙소 욕실 + 아크릴 QR 스탠드 + 헤어드라이어 -->
-                <div class="flex-1 rounded-3xl overflow-hidden bg-[#E8E2D9] relative min-h-[380px]">
-                    <img
-                        src="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=700&fit=crop&q=85"
-                        class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                        alt="숙소 욕실 QR 스탠드 체험"
-                        onerror="this.src='https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=800&h=700&fit=crop&q=85'"
+            <!-- ② 오른쪽: 비디오 배경 + CSS 아크릴 QR 스탠드 합성 -->
+            <div class="flex flex-col gap-0">
+                <!-- 비디오 + QR 스탠드 합성 컨테이너 -->
+                <div class="rounded-3xl overflow-hidden relative" style="min-height: 520px;">
+
+                    <!-- 배경 비디오 (Mixkit 무료 라이선스) -->
+                    <video
+                        autoplay loop muted playsinline
+                        class="absolute inset-0 w-full h-full object-cover"
+                        poster="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=700&fit=crop&q=85"
                     >
-                    <!-- QR 스탠드 오버레이 라벨 -->
-                    <div class="absolute bottom-5 left-5 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-sm">
-                        <p class="text-[10px] text-[#2C2520] font-light tracking-wider">📱 아크릴 QR 스탠드</p>
+                        <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-using-skin-care-products-in-the-bathroom-4385-large.mp4" type="video/mp4">
+                        <source src="https://assets.mixkit.co/videos/preview/mixkit-young-woman-applying-moisturizer-on-face-4387-large.mp4" type="video/mp4">
+                        <!-- 동영상 불가 시 정지 이미지 폴백 -->
+                        <img src="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=700&fit=crop&q=85" class="absolute inset-0 w-full h-full object-cover">
+                    </video>
+
+                    <!-- 웜톤 그라디언트 오버레이 -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"></div>
+
+                    <!-- ✦ CSS 아크릴 QR 스탠드 합성 ✦ -->
+                    <div class="absolute bottom-14 right-8 flex flex-col items-center" style="filter: drop-shadow(0 12px 32px rgba(0,0,0,0.35));">
+
+                        <!-- 아크릴 패널 (글래스모피즘) -->
+                        <div class="relative rounded-2xl overflow-hidden"
+                             style="width: 108px;
+                                    background: rgba(255,255,255,0.22);
+                                    backdrop-filter: blur(14px);
+                                    -webkit-backdrop-filter: blur(14px);
+                                    border: 1px solid rgba(255,255,255,0.55);
+                                    box-shadow: 0 4px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(255,255,255,0.2);
+                                    padding: 10px;">
+                            <!-- 하이라이트 반사 효과 -->
+                            <div class="absolute top-0 left-0 right-0 h-1/2 rounded-t-2xl pointer-events-none"
+                                 style="background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 100%);"></div>
+                            <!-- QR 코드 -->
+                            <img
+                                src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://affilistay-showroom.onrender.com&margin=4&color=2C2520&bgcolor=ffffff"
+                                alt="AFFILISTAY QR"
+                                class="w-full rounded-lg"
+                                style="border-radius: 8px;"
+                            >
+                            <!-- 브랜드 라벨 -->
+                            <p class="text-center text-white font-light mt-2 drop-shadow"
+                               style="font-size: 8px; letter-spacing: 0.25em;">AFFILISTAY</p>
+                        </div>
+
+                        <!-- 스탠드 기둥 -->
+                        <div style="width: 2.5px; height: 22px; background: rgba(255,255,255,0.55); border-radius: 99px;"></div>
+                        <!-- 스탠드 베이스 -->
+                        <div style="width: 68px; height: 5px;
+                                    background: rgba(255,255,255,0.35);
+                                    backdrop-filter: blur(6px);
+                                    border: 1px solid rgba(255,255,255,0.5);
+                                    border-radius: 99px;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);"></div>
+
                     </div>
+
+                    <!-- 좌하단 스캔 중 뱃지 -->
+                    <div class="absolute bottom-5 left-5 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-md flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse flex-shrink-0"></span>
+                        <p class="text-[10px] text-[#2C2520] font-light tracking-wider">QR로 주문 중</p>
+                    </div>
+
                 </div>
-                <!-- QR 코드 카드 (하단 고정) -->
-                <div class="bg-white rounded-2xl p-5 flex items-center gap-5 qr-glow">
+
+                <!-- 하단 QR 설명 카드 -->
+                <div class="bg-white rounded-2xl p-5 flex items-center gap-5 mt-4 qr-glow">
                     <img
                         src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://affilistay-showroom.onrender.com&margin=6&color=2C2520&bgcolor=ffffff"
                         alt="AFFILISTAY QR 예시"
-                        class="w-20 h-20 rounded-xl flex-shrink-0"
+                        class="w-16 h-16 rounded-xl flex-shrink-0"
                     >
                     <div>
                         <p class="text-[11px] font-semibold text-[#2C2520] tracking-wider mb-1">체험 후 QR 스캔</p>
                         <p class="text-[12px] text-[#6B6460] font-light leading-relaxed">게스트 전용 할인가로<br>즉시 주문 · 집으로 직배송</p>
-                        <p class="text-[10px] text-[#9C9288] font-light mt-2">affilistay-showroom.onrender.com</p>
                     </div>
                 </div>
             </div>
+
+
 
         </div>
     </section>
