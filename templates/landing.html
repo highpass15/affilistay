@@ -126,83 +126,25 @@
                 </div>
             </div>
 
-            <!-- ② 오른쪽: 비디오 배경 + CSS 아크릴 QR 스탠드 합성 -->
+            <!-- ② 오른쪽: 직접 촬영 라이프스타일 이미지 + QR 카드 -->
             <div class="flex flex-col gap-0">
                 <div class="rounded-3xl overflow-hidden relative" style="min-height: 560px;">
 
-                    <!-- 배경 비디오: 헤어드라이어·뷰티 스타일링 (Mixkit 무료) -->
-                    <video
-                        autoplay loop muted playsinline
-                        class="absolute inset-0 w-full h-full object-cover"
-                        poster="https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop"
+                    <!-- 실제 AFFILISTAY 쇼룸 체험 이미지 -->
+                    <img
+                        src="/static/bathroom_demo.jpg"
+                        class="absolute inset-0 w-full h-full object-cover object-center"
+                        alt="AFFILISTAY 숙소 체험 - 헤어드라이어 QR 주문"
+                        onerror="this.src='https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop'"
                     >
-                        <!-- 헤어드라이어 사용 영상 소스 (우선순위 순) -->
-                        <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-styling-her-hair-with-a-hair-dryer-41836-large.mp4" type="video/mp4">
-                        <source src="https://assets.mixkit.co/videos/preview/mixkit-young-woman-taking-care-of-her-hair-5036-large.mp4" type="video/mp4">
-                        <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-combing-her-hair-4389-large.mp4" type="video/mp4">
-                        <!-- 폴백 이미지: 따뜻한 욕실·스파 분위기 여성 -->
-                        <img
-                            src="https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop"
-                            class="absolute inset-0 w-full h-full object-cover object-top"
-                            alt="숙소 체험 라이프스타일"
-                            onerror="this.src='https://images.pexels.com/photos/3764013/pexels-photo-3764013.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop'"
-                        >
-                    </video>
 
-                    <!-- 황금 앰버 웜톤 오버레이 (참고 이미지 분위기 구현) -->
+                    <!-- 하단 자연스러운 페이드 오버레이 (텍스트 가독성용) -->
                     <div class="absolute inset-0 pointer-events-none"
                          style="background: linear-gradient(
                              180deg,
-                             rgba(160, 100, 40, 0.08) 0%,
-                             rgba(120, 80, 30, 0.12) 50%,
-                             rgba(0, 0, 0, 0.52) 100%
+                             rgba(0,0,0,0) 55%,
+                             rgba(0,0,0,0.38) 100%
                          );"></div>
-
-                    <!-- ✦ CSS 아크릴 QR 스탠드 — 카운터 중앙 하단에 배치 ✦ -->
-                    <div class="absolute flex flex-col items-center"
-                         style="bottom: 52px; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 16px 40px rgba(0,0,0,0.45));">
-
-                        <!-- "AFFILISTAY" 상단 라벨 -->
-                        <p style="font-size: 9px; letter-spacing: 0.4em; color: rgba(255,255,255,0.75); margin-bottom: 6px; font-weight: 300;">AFFILISTAY</p>
-
-                        <!-- 아크릴 패널 본체 -->
-                        <div class="relative overflow-hidden"
-                             style="width: 128px;
-                                    background: rgba(255,255,255,0.28);
-                                    backdrop-filter: blur(18px);
-                                    -webkit-backdrop-filter: blur(18px);
-                                    border: 1px solid rgba(255,255,255,0.65);
-                                    border-radius: 16px;
-                                    box-shadow:
-                                        0 4px 30px rgba(0,0,0,0.2),
-                                        inset 0 1.5px 0 rgba(255,255,255,0.8),
-                                        inset 0 -1px 0 rgba(255,255,255,0.15);
-                                    padding: 12px;">
-                            <!-- 상단 반사광 -->
-                            <div class="absolute top-0 left-0 right-0 pointer-events-none"
-                                 style="height: 44%; border-radius: 16px 16px 0 0;
-                                        background: linear-gradient(180deg, rgba(255,255,255,0.40) 0%, transparent 100%);"></div>
-                            <!-- QR 코드 -->
-                            <img
-                                src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://affilistay-showroom.onrender.com&margin=4&color=2C2520&bgcolor=ffffff"
-                                alt="AFFILISTAY QR"
-                                style="width: 100%; border-radius: 8px; display: block;"
-                            >
-                            <!-- 하단 브랜드 -->
-                            <p style="text-align:center; color: rgba(44,37,32,0.8); font-size: 8px; letter-spacing: 0.3em; margin-top: 8px; font-weight: 400;">SCAN TO ORDER</p>
-                        </div>
-
-                        <!-- 스탠드 기둥 -->
-                        <div style="width: 3px; height: 26px; background: rgba(255,255,255,0.60); border-radius: 99px;"></div>
-
-                        <!-- 스탠드 베이스 타원 -->
-                        <div style="width: 80px; height: 6px;
-                                    background: rgba(255,255,255,0.38);
-                                    backdrop-filter: blur(8px);
-                                    border: 1px solid rgba(255,255,255,0.55);
-                                    border-radius: 99px;
-                                    box-shadow: 0 2px 10px rgba(0,0,0,0.22);"></div>
-                    </div>
 
                     <!-- 좌하단: QR로 주문 중 뱃지 -->
                     <div class="absolute bottom-5 left-5 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-md flex items-center gap-2">
@@ -225,8 +167,6 @@
                     </div>
                 </div>
             </div>
-
-
 
         </div>
     </section>
@@ -332,7 +272,7 @@
                     </div>
                 </div>
                 <div class="mt-12 text-center">
-                    <a href="{{ admin_url }}" class="inline-block bg-[#2C2520] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#3D342E] transition-all shadow-lg">호스트 / 제품협찬 등록하기 →</a>
+                    <a href="{{ admin_url }}" class="inline-block bg-[#2C2520] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#3D342E] transition-all shadow-lg">호스트 등록하기 →</a>
                 </div>
             </div>
 
