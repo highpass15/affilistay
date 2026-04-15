@@ -128,64 +128,83 @@
 
             <!-- ② 오른쪽: 비디오 배경 + CSS 아크릴 QR 스탠드 합성 -->
             <div class="flex flex-col gap-0">
-                <!-- 비디오 + QR 스탠드 합성 컨테이너 -->
-                <div class="rounded-3xl overflow-hidden relative" style="min-height: 520px;">
+                <div class="rounded-3xl overflow-hidden relative" style="min-height: 560px;">
 
-                    <!-- 배경 비디오 (Mixkit 무료 라이선스) -->
+                    <!-- 배경 비디오: 헤어드라이어·뷰티 스타일링 (Mixkit 무료) -->
                     <video
                         autoplay loop muted playsinline
                         class="absolute inset-0 w-full h-full object-cover"
-                        poster="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=700&fit=crop&q=85"
+                        poster="https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop"
                     >
-                        <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-using-skin-care-products-in-the-bathroom-4385-large.mp4" type="video/mp4">
-                        <source src="https://assets.mixkit.co/videos/preview/mixkit-young-woman-applying-moisturizer-on-face-4387-large.mp4" type="video/mp4">
-                        <!-- 동영상 불가 시 정지 이미지 폴백 -->
-                        <img src="https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&h=700&fit=crop&q=85" class="absolute inset-0 w-full h-full object-cover">
+                        <!-- 헤어드라이어 사용 영상 소스 (우선순위 순) -->
+                        <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-styling-her-hair-with-a-hair-dryer-41836-large.mp4" type="video/mp4">
+                        <source src="https://assets.mixkit.co/videos/preview/mixkit-young-woman-taking-care-of-her-hair-5036-large.mp4" type="video/mp4">
+                        <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-combing-her-hair-4389-large.mp4" type="video/mp4">
+                        <!-- 폴백 이미지: 따뜻한 욕실·스파 분위기 여성 -->
+                        <img
+                            src="https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop"
+                            class="absolute inset-0 w-full h-full object-cover object-top"
+                            alt="숙소 체험 라이프스타일"
+                            onerror="this.src='https://images.pexels.com/photos/3764013/pexels-photo-3764013.jpeg?auto=compress&cs=tinysrgb&w=800&h=1000&fit=crop'"
+                        >
                     </video>
 
-                    <!-- 웜톤 그라디언트 오버레이 -->
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"></div>
+                    <!-- 황금 앰버 웜톤 오버레이 (참고 이미지 분위기 구현) -->
+                    <div class="absolute inset-0 pointer-events-none"
+                         style="background: linear-gradient(
+                             180deg,
+                             rgba(160, 100, 40, 0.08) 0%,
+                             rgba(120, 80, 30, 0.12) 50%,
+                             rgba(0, 0, 0, 0.52) 100%
+                         );"></div>
 
-                    <!-- ✦ CSS 아크릴 QR 스탠드 합성 ✦ -->
-                    <div class="absolute bottom-14 right-8 flex flex-col items-center" style="filter: drop-shadow(0 12px 32px rgba(0,0,0,0.35));">
+                    <!-- ✦ CSS 아크릴 QR 스탠드 — 카운터 중앙 하단에 배치 ✦ -->
+                    <div class="absolute flex flex-col items-center"
+                         style="bottom: 52px; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 16px 40px rgba(0,0,0,0.45));">
 
-                        <!-- 아크릴 패널 (글래스모피즘) -->
-                        <div class="relative rounded-2xl overflow-hidden"
-                             style="width: 108px;
-                                    background: rgba(255,255,255,0.22);
-                                    backdrop-filter: blur(14px);
-                                    -webkit-backdrop-filter: blur(14px);
-                                    border: 1px solid rgba(255,255,255,0.55);
-                                    box-shadow: 0 4px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(255,255,255,0.2);
-                                    padding: 10px;">
-                            <!-- 하이라이트 반사 효과 -->
-                            <div class="absolute top-0 left-0 right-0 h-1/2 rounded-t-2xl pointer-events-none"
-                                 style="background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 100%);"></div>
+                        <!-- "AFFILISTAY" 상단 라벨 -->
+                        <p style="font-size: 9px; letter-spacing: 0.4em; color: rgba(255,255,255,0.75); margin-bottom: 6px; font-weight: 300;">AFFILISTAY</p>
+
+                        <!-- 아크릴 패널 본체 -->
+                        <div class="relative overflow-hidden"
+                             style="width: 128px;
+                                    background: rgba(255,255,255,0.28);
+                                    backdrop-filter: blur(18px);
+                                    -webkit-backdrop-filter: blur(18px);
+                                    border: 1px solid rgba(255,255,255,0.65);
+                                    border-radius: 16px;
+                                    box-shadow:
+                                        0 4px 30px rgba(0,0,0,0.2),
+                                        inset 0 1.5px 0 rgba(255,255,255,0.8),
+                                        inset 0 -1px 0 rgba(255,255,255,0.15);
+                                    padding: 12px;">
+                            <!-- 상단 반사광 -->
+                            <div class="absolute top-0 left-0 right-0 pointer-events-none"
+                                 style="height: 44%; border-radius: 16px 16px 0 0;
+                                        background: linear-gradient(180deg, rgba(255,255,255,0.40) 0%, transparent 100%);"></div>
                             <!-- QR 코드 -->
                             <img
-                                src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://affilistay-showroom.onrender.com&margin=4&color=2C2520&bgcolor=ffffff"
+                                src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://affilistay-showroom.onrender.com&margin=4&color=2C2520&bgcolor=ffffff"
                                 alt="AFFILISTAY QR"
-                                class="w-full rounded-lg"
-                                style="border-radius: 8px;"
+                                style="width: 100%; border-radius: 8px; display: block;"
                             >
-                            <!-- 브랜드 라벨 -->
-                            <p class="text-center text-white font-light mt-2 drop-shadow"
-                               style="font-size: 8px; letter-spacing: 0.25em;">AFFILISTAY</p>
+                            <!-- 하단 브랜드 -->
+                            <p style="text-align:center; color: rgba(44,37,32,0.8); font-size: 8px; letter-spacing: 0.3em; margin-top: 8px; font-weight: 400;">SCAN TO ORDER</p>
                         </div>
 
                         <!-- 스탠드 기둥 -->
-                        <div style="width: 2.5px; height: 22px; background: rgba(255,255,255,0.55); border-radius: 99px;"></div>
-                        <!-- 스탠드 베이스 -->
-                        <div style="width: 68px; height: 5px;
-                                    background: rgba(255,255,255,0.35);
-                                    backdrop-filter: blur(6px);
-                                    border: 1px solid rgba(255,255,255,0.5);
-                                    border-radius: 99px;
-                                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);"></div>
+                        <div style="width: 3px; height: 26px; background: rgba(255,255,255,0.60); border-radius: 99px;"></div>
 
+                        <!-- 스탠드 베이스 타원 -->
+                        <div style="width: 80px; height: 6px;
+                                    background: rgba(255,255,255,0.38);
+                                    backdrop-filter: blur(8px);
+                                    border: 1px solid rgba(255,255,255,0.55);
+                                    border-radius: 99px;
+                                    box-shadow: 0 2px 10px rgba(0,0,0,0.22);"></div>
                     </div>
 
-                    <!-- 좌하단 스캔 중 뱃지 -->
+                    <!-- 좌하단: QR로 주문 중 뱃지 -->
                     <div class="absolute bottom-5 left-5 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-md flex items-center gap-2">
                         <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse flex-shrink-0"></span>
                         <p class="text-[10px] text-[#2C2520] font-light tracking-wider">QR로 주문 중</p>
