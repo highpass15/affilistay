@@ -107,67 +107,68 @@
         </div>
     </header>
 
-    <!-- ② Concept Section: 풀스크린 배경 이미지 + 오버레이 콘텐츠 -->
-    <section id="concept" class="relative min-h-screen flex items-center overflow-hidden">
-        <!-- 배경 이미지 (섹션 전체를 가득 채움) -->
-        <img 
-            src="/static/collage_bg.jpg" 
-            class="absolute inset-0 w-full h-full object-cover object-center"
-            alt="AFFILISTAY QR Display Ideas"
-        >
-        
-        <!-- 텍스트 가독성을 위한 최소한의 오버레이 (새 스탠드 이미지에 맞춤) -->
-        <div class="absolute inset-0 pointer-events-none" 
-             style="background: radial-gradient(circle at 10% 20%, rgba(250,248,244,0.85) 0%, rgba(250,248,244,0.4) 35%, transparent 55%);">
-        </div>
-
-        <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 py-24">
-            <div class="max-w-2xl">
-                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-6 block fade-up">Our Concept</span>
-                <h2 class="text-4xl md:text-6xl font-light leading-[1.15] mb-8 text-[#2C2520] fade-up">
-                    모든 숙소는<br>하나의 <span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
+    <!-- ② Concept Section: 컨셉 설명 + QR 디스플레이 아이디어 갤러리 -->
+    <section id="concept" class="relative py-24 md:py-32 bg-[#FAF8F4] overflow-hidden">
+        <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12">
+            <!-- Header Text -->
+            <div class="max-w-3xl mb-16 fade-up">
+                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 block">Our Concept</span>
+                <h2 class="text-4xl md:text-5xl lg:text-6xl font-light leading-[1.2] mb-8 text-[#2C2520]">
+                    모든 숙소는 하나의<br><span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이 됩니다.
                 </h2>
                 
-                <div class="space-y-6 mb-12 fade-up">
+                <div class="space-y-4">
                     <p class="text-base md:text-lg text-[#6B6460] leading-relaxed font-light">
                         호스트는 엄선된 생활용품을 숙소에 배치하고,<br class="hidden md:block">
                         게스트는 직접 체험한 제품을 <span class="font-normal text-[#2C2520] border-b border-[#8B6F5E]/30">QR 코드 스캔 한 번</span>으로 주문합니다.
                     </p>
                     <p class="text-sm text-[#9C9288] leading-relaxed font-light">
-                        주문 즉시 협찬업체에서 게스트의 집으로 직배송하여,<br class="hidden md:block">
-                        호스트의 재고 부담 없이 전국 숙소가 가장 강력한 쇼룸이 됩니다.
+                        주문 즉시 협찬업체에서 게스트의 집으로 여유롭게 직배송하여,<br class="hidden md:block">
+                        호스트의 재고/배송 부담 없이 전국 숙소가 가장 강력한 라이프스타일 샵이 됩니다.
                     </p>
                 </div>
+            </div>
 
-                <!-- 세련된 아이콘 배치: 하단 수평 그리드 -->
-                <div class="grid grid-cols-3 gap-4 md:gap-8 fade-up">
-                    <div class="group">
-                        <div class="w-12 h-12 mb-4 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/40 border-t-white group-hover:scale-110 transition-transform duration-500">
-                            <span class="text-xl">✨</span>
+            <!-- QR Display Ideas Grid -->
+            <div class="mt-24 fade-up">
+                <div class="flex items-center space-x-4 mb-10">
+                    <h3 class="text-xs md:text-sm font-semibold text-[#2C2520] tracking-[0.2em] uppercase">QR Display Ideas for Affilistay Showroom</h3>
+                    <div class="flex-grow border-t border-[#E8E2D9]"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Idea 1 -->
+                    <div class="group cursor-default">
+                        <div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-2xl bg-white shadow-sm border border-stone-100">
+                            <img src="/static/qr_idea_1.png" alt="어메니티 트레이 형태" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                         </div>
-                        <h3 class="text-xs font-semibold text-[#2C2520] tracking-widest uppercase mb-1">Experience</h3>
-                        <p class="text-[11px] text-[#9C9288] font-light uppercase tracking-tighter">직접 체험의 가치</p>
+                        <div class="px-2">
+                            <h4 class="text-lg font-semibold text-[#2C2520] mb-2 tracking-wide">1. 프리미엄 어메니티 트레이 형태</h4>
+                            <p class="text-[13px] text-[#9C9288] font-light leading-relaxed">자연스러운 우드와 골드 명판의 조화로 고급 호텔 어메니티와 같은 대접받는 느낌을 줍니다.</p>
+                        </div>
                     </div>
-                    <div class="group">
-                        <div class="w-12 h-12 mb-4 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/40 border-t-white group-hover:scale-110 transition-transform duration-500">
-                            <span class="text-xl">🤳</span>
+                    <!-- Idea 2 -->
+                    <div class="group cursor-default md:mt-12">
+                        <div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-2xl bg-white shadow-sm border border-stone-100">
+                            <img src="/static/qr_idea_2.png" alt="벽걸이 명패 형태" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                         </div>
-                        <h3 class="text-xs font-semibold text-[#2C2520] tracking-widest uppercase mb-1">Direct Scan</h3>
-                        <p class="text-[11px] text-[#9C9288] font-light uppercase tracking-tighter">QR 즉시 주문</p>
+                        <div class="px-2">
+                            <h4 class="text-lg font-semibold text-[#2C2520] mb-2 tracking-wide">2. 미니멀 벽걸이 황동/유리 명패</h4>
+                            <p class="text-[13px] text-[#9C9288] font-light leading-relaxed">공간을 전혀 차지하지 않으며 사용자 눈높이에 맞춰 세련된 브라스 플레이트를 띄웁니다.</p>
+                        </div>
                     </div>
-                    <div class="group">
-                        <div class="w-12 h-12 mb-4 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/40 border-t-white group-hover:scale-110 transition-transform duration-500">
-                            <span class="text-xl">🏠</span>
+                    <!-- Idea 3 -->
+                    <div class="group cursor-default">
+                        <div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-2xl bg-white shadow-sm border border-stone-100">
+                            <img src="/static/qr_idea_3.png" alt="무광 아크릴 스탠드 형태" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                         </div>
-                        <h3 class="text-xs font-semibold text-[#2C2520] tracking-widest uppercase mb-1">To Door</h3>
-                        <p class="text-[11px] text-[#9C9288] font-light uppercase tracking-tighter">집으로 직배송</p>
+                        <div class="px-2">
+                            <h4 class="text-lg font-semibold text-[#2C2520] mb-2 tracking-wide">3. 무광 불투명 아크릴 스탠드</h4>
+                            <p class="text-[13px] text-[#9C9288] font-light leading-relaxed">모든 인테리어에 부드럽게 스며드는 반투명 디자인으로, 모던한 오브제 역할을 합니다.</p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-
-
         </div>
     </section>
 
