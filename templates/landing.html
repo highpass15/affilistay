@@ -119,23 +119,22 @@
             >
         </div>
         
-        <!-- 텍스트 가독성을 위한 오버레이 (좌우로 부드럽게 그라데이션) -->
-        <div class="absolute inset-0 pointer-events-none z-0" 
-             style="background: linear-gradient(to right, rgba(250,248,244,0.95) 0%, rgba(250,248,244,0.7) 40%, transparent 65%, rgba(250,248,244,0.3) 100%);">
-        </div>
+        <!-- 텍스트 가독성을 위한 오버레이 (이미지 고유의 색감을 해치지 않도록 아주 옅은 어두운 필터만 적용) -->
+        <div class="absolute inset-0 pointer-events-none z-0 bg-black/10"></div>
 
         <!-- 이미지에서 지운 상단 글씨를 웹 폰트로 다시 입히기 -->
         <div class="relative z-10 w-full text-center pt-8 md:pt-12 pointer-events-none">
-            <h3 class="text-sm md:text-xl text-[#2C2520] font-semibold tracking-widest drop-shadow-xl bg-white/70 backdrop-blur-sm inline-block px-8 py-3 rounded-full border border-stone-200/50">
+            <h3 class="text-sm md:text-xl text-[#2C2520] font-semibold tracking-widest drop-shadow-xl bg-white/80 backdrop-blur-md inline-block px-8 py-3 rounded-full border border-white/50 shadow-sm">
                 QR DISPLAY IDEAS <span class="font-light text-[#6B6460]">FOR AFFILISTAY SHOWROOM</span>
             </h3>
         </div>
 
         <!-- 중앙 원래 텍스트 배치 영역 ('모든 숙소는 하나의 쇼룸이 됩니다') -->
         <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 flex-grow flex items-center">
-            <div class="max-w-2xl py-6">
-                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 md:mb-6 block fade-up">Our Concept</span>
-                <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-[1.15] mb-6 md:mb-8 text-[#2C2520] fade-up">
+            <!-- 좌측 이미지를 가리지 않도록 텍스트 박스 자체에 고급스러운 반투명 글래스 패널 적용 -->
+            <div class="max-w-2xl py-10 px-8 md:px-12 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl fade-up">
+                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 md:mb-6 block">Our Concept</span>
+                <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-[1.15] mb-6 md:mb-8 text-[#2C2520]">
                     모든 숙소는<br>하나의 <span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
                 </h2>
                 
