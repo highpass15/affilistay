@@ -107,56 +107,52 @@
         </div>
     </header>
 
-    <!-- ② Concept Section: 풀스크린 3단 배경 이미지 + 오버레이 콘텐츠 -->
-    <section id="concept" class="relative min-h-screen flex items-center justify-start overflow-hidden">
+    <!-- ② Concept Section -->
+    <section id="concept" class="relative min-h-screen flex flex-col justify-between overflow-hidden">
         
-        <!-- 깨지지 않는 고화질 배경: 3개의 개별 이미지를 나란히 배치 (모바일에선 첫번째만 혹은 스크롤 가능하게) -->
-        <div class="absolute inset-0 grid grid-cols-1 md:grid-cols-3">
-            <img src="/static/qr_idea_1.png" class="w-full h-full object-cover">
-            <img src="/static/qr_idea_2.png" class="w-full h-full object-cover hidden md:block">
-            <img src="/static/qr_idea_3.png" class="w-full h-full object-cover hidden md:block">
+        <!-- 배경 이미지 (원본 콜라주 이미지를 그대로 복원하되, 상하를 CSS로 125% 확대하여 텍스트 부분만 화면 밖으로 밀어내 시각적으로 제거) -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <img 
+                src="/static/collage_bg.jpg" 
+                class="absolute top-1/2 left-0 w-full h-[125%] -translate-y-1/2 object-cover object-center"
+                alt="AFFILISTAY QR Display Ideas Background"
+            >
+        </div>
+        
+        <!-- 텍스트 가독성을 위한 오버레이 (좌우로 부드럽게 그라데이션) -->
+        <div class="absolute inset-0 pointer-events-none z-0" 
+             style="background: linear-gradient(to right, rgba(250,248,244,0.95) 0%, rgba(250,248,244,0.7) 40%, transparent 65%, rgba(250,248,244,0.3) 100%);">
         </div>
 
-        <!-- 원래 이미지에 박혀있던 글씨를 지우고, 깨끗한 홈페이지 폰트로 상하단 텍스트 삽입 -->
-        <!-- 상단 타이틀 -->
-        <div class="absolute top-10 w-full text-center z-0 hidden md:block pointer-events-none">
-            <h3 class="text-[22px] text-[#2C2520] font-semibold tracking-widest drop-shadow-2xl bg-white/50 backdrop-blur-sm inline-block px-10 py-3 rounded-full border border-white/40">
+        <!-- 이미지에서 지운 상단 글씨를 웹 폰트로 다시 입히기 -->
+        <div class="relative z-10 w-full text-center pt-8 md:pt-12 pointer-events-none">
+            <h3 class="text-sm md:text-xl text-[#2C2520] font-semibold tracking-widest drop-shadow-xl bg-white/70 backdrop-blur-sm inline-block px-8 py-3 rounded-full border border-stone-200/50">
                 QR DISPLAY IDEAS <span class="font-light text-[#6B6460]">FOR AFFILISTAY SHOWROOM</span>
             </h3>
         </div>
-        
-        <!-- 하단 1, 2, 3 형태 설명 텍스트 -->
-        <div class="absolute bottom-10 w-full z-0 hidden md:grid grid-cols-3 text-center px-4 pointer-events-none">
-            <div class="px-6"><p class="text-[14px] text-white font-medium tracking-wide drop-shadow-lg bg-black/30 backdrop-blur-md py-3 rounded-full border border-white/20">1. 프리미엄 어메니티 트레이</p></div>
-            <div class="px-6"><p class="text-[14px] text-white font-medium tracking-wide drop-shadow-lg bg-black/30 backdrop-blur-md py-3 rounded-full border border-white/20">2. 미니멀 벽걸이 명패</p></div>
-            <div class="px-6"><p class="text-[14px] text-white font-medium tracking-wide drop-shadow-lg bg-black/30 backdrop-blur-md py-3 rounded-full border border-white/20">3. 무광 아크릴 스탠드</p></div>
-        </div>
-        
-        <!-- 왼쪽 '모든 숙소는...' 텍스트 가독성을 위한 그라데이션 오버레이 -->
-        <div class="absolute inset-0 pointer-events-none" 
-             style="background: linear-gradient(to right, rgba(250,248,244,0.95) 0%, rgba(250,248,244,0.85) 30%, transparent 60%);">
-        </div>
 
-        <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 py-24">
-            <div class="max-w-2xl">
-                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-6 block fade-up">Our Concept</span>
-                <h2 class="text-4xl md:text-6xl font-light leading-[1.15] mb-8 text-[#2C2520] fade-up">
+        <!-- 중앙 원래 텍스트 배치 영역 ('모든 숙소는 하나의 쇼룸이 됩니다') -->
+        <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 flex-grow flex items-center">
+            <div class="max-w-2xl py-6">
+                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 md:mb-6 block fade-up">Our Concept</span>
+                <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-[1.15] mb-6 md:mb-8 text-[#2C2520] fade-up">
                     모든 숙소는<br>하나의 <span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
                 </h2>
                 
-                <div class="space-y-6 mb-12 fade-up">
-                    <p class="text-base md:text-lg text-[#6B6460] leading-relaxed font-light">
+                <div class="space-y-4 md:space-y-6 mb-8 md:mb-12 fade-up">
+                    <p class="text-sm md:text-base lg:text-lg text-[#6B6460] leading-relaxed font-light">
                         호스트는 엄선된 생활용품을 숙소에 배치하고,<br class="hidden md:block">
                         게스트는 직접 체험한 제품을 <span class="font-normal text-[#2C2520] border-b border-[#8B6F5E]/30">QR 코드 스캔 한 번</span>으로 주문합니다.
                     </p>
-                    <p class="text-sm text-[#9C9288] leading-relaxed font-light">
+                    <p class="text-xs md:text-sm text-[#9C9288] leading-relaxed font-light">
                         주문 즉시 협찬업체에서 게스트의 집으로 직배송하여,<br class="hidden md:block">
                         호스트의 재고 부담 없이 전국 숙소가 가장 강력한 쇼룸이 됩니다.
                     </p>
                 </div>
 
+
                 <!-- 세련된 아이콘 배치: 하단 수평 그리드 -->
-                <div class="grid grid-cols-3 gap-4 md:gap-8 fade-up">
+                <div class="grid grid-cols-3 gap-4 md:gap-8 fade-up hidden md:grid">
                     <div class="group">
                         <div class="w-12 h-12 mb-4 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/40 border-t-white group-hover:scale-110 transition-transform duration-500">
                             <span class="text-xl">✨</span>
@@ -180,6 +176,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- 이미지에서 지워진 하단 1, 2, 3 형태 설명 텍스트를 웹 폰트로 다시 입히기 -->
+        <div class="relative z-10 w-full hidden md:grid grid-cols-3 text-center px-4 pb-8 md:pb-12 pointer-events-none lg:text-sm text-xs mt-auto">
+            <div class="px-2"><p class="text-[#2C2520] font-medium tracking-wide drop-shadow-md bg-white/75 backdrop-blur-md py-3 rounded-xl border border-white/40 shadow-sm mx-auto w-10/12 xl:w-8/12">1. 프리미엄 어메니티 트레이</p></div>
+            <div class="px-2"><p class="text-[#2C2520] font-medium tracking-wide drop-shadow-md bg-white/75 backdrop-blur-md py-3 rounded-xl border border-white/40 shadow-sm mx-auto w-10/12 xl:w-8/12">2. 미니멀 벽걸이 황동/유리 명패</p></div>
+            <div class="px-2"><p class="text-[#2C2520] font-medium tracking-wide drop-shadow-md bg-white/75 backdrop-blur-md py-3 rounded-xl border border-white/40 shadow-sm mx-auto w-10/12 xl:w-8/12">3. 무광 불투명 아크릴 스탠드</p></div>
         </div>
     </section>
 
