@@ -116,14 +116,9 @@
             alt="AFFILISTAY Concept Background"
         >
         
-        <!-- 시선 유도 오버레이: 
-             1. 우측(여성)을 크림색으로 덮어 시선을 분산 (linear-gradient)
-             2. 좌측 상단(텍스트) 가독성 유지 (radial-gradient)
-             3. 좌측 하단(QR코드)은 아예 투명하게 집중 조명 -->
+        <!-- 텍스트 가독성을 위한 최소한의 오버레이: 상단 좌측 텍스트 뒤에만 살짝 깔림. 나머지(여성, QR코드)는 100% 원본 투명도 유지 -->
         <div class="absolute inset-0 pointer-events-none" 
-             style="background: 
-                radial-gradient(circle at 15% 15%, rgba(250,248,244,0.95) 0%, rgba(250,248,244,0.7) 35%, transparent 60%),
-                linear-gradient(270deg, rgba(250,248,244,0.85) 0%, rgba(250,248,244,0.65) 40%, rgba(250,248,244,0) 75%);">
+             style="background: radial-gradient(circle at 10% 20%, rgba(250,248,244,0.7) 0%, rgba(250,248,244,0.3) 25%, transparent 45%);">
         </div>
 
         <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 py-24">
