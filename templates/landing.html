@@ -111,21 +111,14 @@
     <section id="concept" class="relative min-h-screen flex items-center overflow-hidden">
         <!-- 배경 이미지 (섹션 전체를 가득 채움) -->
         <img 
-            src="/static/bathroom_demo.jpg" 
-            class="absolute inset-0 w-full h-full object-cover object-[25%_center] md:object-center"
-            alt="AFFILISTAY Concept Background"
+            src="/static/affilistay_acrylic_stand.png" 
+            class="absolute inset-0 w-full h-full object-cover object-center"
+            alt="AFFILISTAY Concept QR Stand"
         >
         
-        <!-- 텍스트 가독성을 위한 최소한의 오버레이 -->
+        <!-- 텍스트 가독성을 위한 최소한의 오버레이 (새 스탠드 이미지에 맞춤) -->
         <div class="absolute inset-0 pointer-events-none" 
-             style="background: radial-gradient(circle at 10% 20%, rgba(250,248,244,0.7) 0%, rgba(250,248,244,0.3) 25%, transparent 45%);">
-        </div>
-
-        <!-- 여자부분(오른쪽)만 살짝 흐리게 처리 (색상을 덮지 않고 초점만 흐리게 하여 QR코드로 시선 유도) -->
-        <div class="absolute inset-y-0 right-0 w-[55%] pointer-events-none"
-             style="backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); 
-                    mask-image: linear-gradient(to right, transparent 0%, black 40%); 
-                    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 40%);">
+             style="background: radial-gradient(circle at 10% 20%, rgba(250,248,244,0.85) 0%, rgba(250,248,244,0.4) 35%, transparent 55%);">
         </div>
 
         <div class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 py-24">
