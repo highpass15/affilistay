@@ -1,4 +1,11 @@
-<!DOCTYPE html>
+# -*- coding: utf-8 -*-
+import os
+
+# Use relative path to avoid unicode escape errors in Windows paths
+base_dir = os.path.dirname(os.path.abspath(__file__))
+target_path = os.path.join(base_dir, "templates", "landing.html")
+
+content = """<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -264,4 +271,9 @@
         });
     </script>
 </body>
-</html>
+</html>"""
+
+with open(target_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print(f"File successfully written to {target_path} with explicit UTF-8 encoding.")
