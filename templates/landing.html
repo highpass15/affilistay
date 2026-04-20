@@ -1,366 +1,167 @@
 <!DOCTYPE html>
-<!-- scroll-smooth은 html 태그에 적용 -->
-<html lang="ko" class="scroll-smooth">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AFFILISTAY | 숙소가 쇼룸이 되는 순간</title>
-    <meta name="description" content="체험하고, QR로 주문하고, 집으로 받는다. AFFILISTAY의 새로운 쇼핑 경험을 만나보세요.">
+    <title>AFFILISTAY | Stay as a Showroom</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600;700&family=Playfair+Display:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         :root {
-            --cream: #FAF8F4;
-            --stone: #E8E2D9;
-            --warm-gray: #9C9288;
-            --deep: #2C2520;
-            --accent: #8B6F5E;
+            --bg-color: #F8F7F4; /* 내추럴 베이지/아이보리 */
+            --text-main: #2A2A2A;
+            --accent: #B0A295; /* 사진 속 따뜻한 나무/종이 톤 */
         }
-        /* 부드러운 스크롤 */
-        html { scroll-behavior: smooth; }
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--cream);
-            color: var(--deep);
-        }
-        /* 모바일 단어 끊김 방지 */
-        @media (max-width: 768px) {
-            h1, h2, h3, p { word-break: keep-all; overflow-wrap: break-word; }
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main);
+            overflow-x: hidden;
+            letter-spacing: -0.01em;
         }
         .serif { font-family: 'Playfair Display', serif; }
-        .hero-zoom { transition: transform 22s ease; }
-        .hero-container:hover .hero-zoom { transform: scale(1.05); }
-        #mobile-menu { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .menu-open #mobile-menu { transform: translateX(0); opacity: 1; pointer-events: auto; }
-        .menu-hidden #mobile-menu { transform: translateX(100%); opacity: 0; pointer-events: none; }
-        .card-hover { transition: transform 0.35s ease, box-shadow 0.35s ease; }
-        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(44,37,32,0.10); }
-        /* 아이콘 hover 확대 효과 */
-        .icon-zoom { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); display: inline-block; }
-        .icon-zoom:hover { transform: scale(1.35); }
-        /* QR 카드 효과 */
-        .qr-glow {
-            box-shadow: 0 0 0 1px rgba(139,111,94,0.15), 0 8px 32px rgba(139,111,94,0.12);
+        
+        /* 마이크로 텍스처: 실제 종이/사진 질감을 위한 미세한 노이즈 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/natural-paper.png');
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 9999;
         }
-        /* 스크롤 등장 애니메이션 */
-        .fade-up {
-            opacity: 0; transform: translateY(40px);
-            transition: opacity 0.7s ease, transform 0.7s ease;
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1.2s cubic-bezier(0.2, 1, 0.3, 1);
         }
-        .fade-up.visible {
-            opacity: 1; transform: translateY(0);
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 내비게이션 스크롤 효과 */
+        #navbar.scrolled {
+            background-color: rgba(248, 247, 244, 0.95);
+            padding: 1.5rem 4rem;
+            backdrop-blur: 10px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
     </style>
 </head>
-<body class="antialiased menu-hidden">
+<body class="antialiased">
 
     <!-- Navigation -->
-    <nav class="flex justify-between items-center px-6 md:px-12 py-5 fixed w-full z-50 bg-[#FAF8F4]/85 backdrop-blur-md border-b border-stone-200/60">
-        <div class="text-xl font-semibold tracking-tighter text-[#2C2520]">AFFILISTAY.</div>
-        <div class="hidden md:flex space-x-8 text-[11px] font-light tracking-widest text-[#9C9288] uppercase">
-            <a href="#concept" class="hover:text-[#2C2520] transition-colors">서비스 소개</a>
-            <a href="#how" class="hover:text-[#2C2520] transition-colors">이용 방법</a>
-            <a href="#host" class="hover:text-[#2C2520] transition-colors">호스트/협찬업체 혜택</a>
+    <nav class="flex justify-between items-center px-8 md:px-20 py-10 fixed w-full z-50 transition-all duration-700" id="navbar">
+        <div class="text-xl md:text-2xl font-bold tracking-[0.25em] uppercase">AFFILISTAY</div>
+        
+        <div class="hidden md:flex space-x-14 text-[10px] font-bold tracking-[0.4em] text-gray-400 uppercase">
+            <a href="#" class="hover:text-black transition-colors">Vision</a>
+            <a href="#" class="hover:text-black transition-colors">Experience</a>
+            <a href="#" class="hover:text-black transition-colors">Partners</a>
         </div>
-        <div class="flex items-center space-x-4">
-            <a href="{{ admin_url }}" class="hidden md:block text-[10px] font-light tracking-widest border border-[#2C2520]/40 px-5 py-2 rounded-full hover:bg-[#2C2520] hover:text-white transition-all text-[#2C2520]">로그인</a>
-            <button id="menu-toggle" class="md:hidden p-2 focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
+        
+        <div class="flex items-center space-x-8">
+            <a href="{{ admin_url }}" class="hidden md:block text-[9px] font-bold border border-black/10 px-7 py-3 rounded-full hover:bg-black hover:text-white transition-all uppercase tracking-[0.2em]">Partner Access</a>
+            <button id="menu-toggle" class="md:hidden flex flex-col space-y-1.5 focus:outline-none">
+                <div class="w-6 h-0.5 bg-black"></div>
+                <div class="w-4 h-0.5 bg-black ml-auto"></div>
             </button>
         </div>
     </nav>
 
-    <!-- Mobile Drawer -->
-    <div id="mobile-menu" class="fixed inset-0 z-[60] bg-[#FAF8F4] flex flex-col items-center justify-center space-y-8 text-center md:hidden">
-        <button id="menu-close" class="absolute top-6 right-6 p-2">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-        <span class="text-[10px] font-light tracking-[0.4em] text-[#9C9288] uppercase">Menu</span>
-        <a href="#concept" class="text-3xl serif italic text-[#2C2520] hover:text-[#8B6F5E]">서비스 소개</a>
-        <a href="#how" class="text-3xl serif italic text-[#2C2520] hover:text-[#8B6F5E]">이용 방법</a>
-        <a href="#host" class="text-3xl serif italic text-[#2C2520] hover:text-[#8B6F5E]">호스트 혜택</a>
-        <div class="pt-8">
-            <a href="{{ admin_url }}" class="text-sm font-light tracking-widest border border-[#2C2520] px-8 py-4 rounded-full bg-[#2C2520] text-white">호스트 로그인</a>
+    <!-- Hero Section: 실제 사진 느낌을 살린 에디토리얼 스타일 -->
+    <header class="relative h-screen flex items-center px-8 md:px-20 bg-white overflow-hidden">
+        <div class="absolute right-0 top-0 w-full md:w-3/5 h-full overflow-hidden">
+            <img src="/static/hero.png" alt="Interior" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-r from-white via-white/20 to-transparent hidden md:block"></div>
         </div>
-    </div>
-
-    <!-- ① Hero Section -->
-    <header class="relative h-screen flex items-center justify-center overflow-hidden hero-container">
-        <img src="/static/hero_with_stand.png" alt="Luxury Interior QR Stand" class="absolute inset-0 w-full h-full object-cover hero-zoom">
-        <div class="absolute inset-0 bg-black/25"></div>
-        <div class="relative z-10 text-center px-6 max-w-4xl">
-            <p class="text-white/60 text-[10px] tracking-[0.5em] uppercase mb-5 font-light">AFFILISTAY</p>
-            <h1 class="text-5xl sm:text-7xl md:text-8xl text-white serif italic mb-7 drop-shadow-2xl leading-tight font-light">
-                The Home of<br>Experience.
+        
+        <div class="relative z-10 max-w-2xl mt-20">
+            <span class="text-[10px] md:text-[12px] text-accent font-bold tracking-[0.6em] uppercase mb-8 block reveal">Redefining Stay</span>
+            <h1 class="text-5xl md:text-8xl serif italic leading-[1.05] mb-10 reveal">
+                The Stay <br> <span class="text-gray-300">As a</span> <br> Showroom.
             </h1>
-            <p class="text-white text-sm sm:text-base font-light tracking-wide max-w-lg mx-auto opacity-80 leading-relaxed">
-                숙소에서 체험한 제품을 QR 하나로 주문하면<br>
-                협찬업체가 집으로 직접 배송해 드립니다.
+            <p class="text-gray-500 text-sm md:text-base font-light tracking-wide max-w-md reveal leading-loose mb-12">
+                인위적인 마케팅이 아닌, 실제 머무는 시간 속에 자연스럽게 스며드는 브랜드 경험. 어필리스테이가 제안하는 프리미엄 오프라인 쇼룸의 정의입니다.
             </p>
-            <div class="mt-10">
-                <a href="#concept" class="bg-white/95 text-[#2C2520] px-10 py-4 rounded-full font-light text-xs tracking-[0.25em] hover:bg-white transition-all shadow-xl inline-block">서비스 알아보기</a>
+            <div class="reveal">
+                <a href="{{ admin_url }}" class="inline-block border-b border-black pb-2 text-[10px] font-bold tracking-[0.3em] hover:text-accent hover:border-accent transition-all">START PARTNERSHIP</a>
             </div>
         </div>
     </header>
 
-    <!-- ② Concept Section -->
-    <section id="concept" class="relative min-h-screen flex flex-col justify-between overflow-hidden">
-        
-        <!-- 깨지지 않는 고화질 배경: 3개의 개별 이미지를 나란히 배치 (모바일 환경에서도 3장 모두 표시) -->
-        <div class="absolute inset-0 grid grid-cols-3">
-            <img src="/static/qr_idea_1.png" class="w-full h-full object-cover">
-            <img src="/static/qr_idea_2.png" class="w-full h-full object-cover border-l border-white/10">
-            <img src="/static/qr_idea_3.png" class="w-full h-full object-cover border-l border-white/10">
-        </div>
-        
-        <!-- 전체적으로 살짝 톤다운 시켜 텍스트 가독성 확보 -->
-        <div class="absolute inset-0 pointer-events-none z-0 bg-black/15"></div>
-
-        <!-- 이미지에서 지운 상단 글씨를 웹 폰트로 다시 입히기 (모바일 뷰어블 적용) -->
-        <div class="relative z-10 w-full text-center pt-10 md:pt-14 pointer-events-none px-4">
-            <h3 class="text-[12px] sm:text-sm md:text-xl text-[#2C2520] font-semibold tracking-widest drop-shadow-xl bg-white/85 backdrop-blur-md inline-block px-5 md:px-8 py-3 rounded-full border border-white/50 shadow-sm whitespace-nowrap">
-                QR DISPLAY IDEAS <span class="font-light text-[#6B6460]">FOR AFFILISTAY SHOWROOM</span>
-            </h3>
-        </div>
-
-        <!-- 중앙 원래 텍스트 배치 영역 ('모든 숙소는 하나의 쇼룸이 됩니다') -->
-        <div class="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-12 flex-grow flex items-center">
-            <!-- 좌측 이미지를 가리지 않도록 텍스트 박스 자체에 테두리가 있는 고급스러운 반투명 글래스 패널 적용 -->
-            <div class="max-w-2xl py-8 md:py-10 px-6 sm:px-8 md:px-12 bg-white/75 backdrop-blur-xl rounded-3xl border border-white/60 shadow-2xl fade-up mt-4 md:mt-0">
-                <span class="text-[9px] md:text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 md:mb-6 block">Our Concept</span>
-                <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light leading-[1.2] mb-6 md:mb-8 text-[#2C2520]">
-                    모든 숙소는<br>하나의 <span class="serif italic font-light text-[#8B6F5E]">쇼룸</span>이<br>됩니다.
+    <!-- Experience Flow: 사용자 사진 속 '종이 카드'를 강조 -->
+    <section class="py-32 md:py-56 bg-white">
+        <div class="max-w-7xl mx-auto px-8 grid md:grid-cols-12 gap-16 items-center">
+            <div class="md:col-span-7 reveal">
+                <div class="relative rounded-[2.5rem] overflow-hidden shadow-sm">
+                    <img src="/static/product.png" alt="Branded Card" class="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-1000">
+                </div>
+            </div>
+            <div class="md:col-span-5 reveal lg:pl-16">
+                <h2 class="text-3xl md:text-5xl serif italic leading-[1.3] mb-8">
+                    촉감으로 이어지는 <br> 브랜드의 진심.
                 </h2>
-                
-                <div class="space-y-4 md:space-y-6 mb-6 md:mb-10 fade-up">
-                    <p class="text-[13px] md:text-base lg:text-lg text-[#6B6460] leading-relaxed font-light">
-                        호스트는 엄선된 생활용품을 숙소에 배치하고,<br class="hidden md:block">
-                        게스트는 직접 체험한 제품을 <span class="font-normal text-[#2C2520] border-b border-[#8B6F5E]/30">QR 스캔 한 번</span>으로 주문합니다.
-                    </p>
-                    <p class="text-[11px] md:text-sm text-[#9C9288] leading-relaxed font-light hidden sm:block">
-                        주문 즉시 협찬업체에서 게스트의 집으로 직배송하여,<br class="hidden md:block">
-                        호스트의 재고 부담 없이 전국 숙소가 쇼룸이 됩니다.
-                    </p>
-                </div>
-
-                <!-- 세련된 아이콘 배치: 하단 수평 그리드 -->
-                <div class="grid grid-cols-3 gap-2 md:gap-8 fade-up hidden sm:grid">
-                    <div class="group">
-                        <div class="w-10 h-10 md:w-12 md:h-12 mb-3 md:mb-4 rounded-xl md:rounded-2xl bg-white/70 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/50 border-t-white group-hover:scale-110 transition-transform duration-500">
-                            <span class="text-lg md:text-xl">✨</span>
-                        </div>
-                        <h3 class="text-[10px] md:text-xs font-semibold text-[#2C2520] tracking-widest uppercase mb-1">Experience</h3>
-                        <p class="text-[9px] md:text-[11px] text-[#9C9288] font-light uppercase tracking-tighter">직접 체험의 가치</p>
-                    </div>
-                    <div class="group">
-                        <div class="w-10 h-10 md:w-12 md:h-12 mb-3 md:mb-4 rounded-xl md:rounded-2xl bg-white/70 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/50 border-t-white group-hover:scale-110 transition-transform duration-500">
-                            <span class="text-lg md:text-xl">🤳</span>
-                        </div>
-                        <h3 class="text-[10px] md:text-xs font-semibold text-[#2C2520] tracking-widest uppercase mb-1">Direct Scan</h3>
-                        <p class="text-[9px] md:text-[11px] text-[#9C9288] font-light uppercase tracking-tighter">QR 즉시 주문</p>
-                    </div>
-                    <div class="group">
-                        <div class="w-10 h-10 md:w-12 md:h-12 mb-3 md:mb-4 rounded-xl md:rounded-2xl bg-white/70 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/50 border-t-white group-hover:scale-110 transition-transform duration-500">
-                            <span class="text-lg md:text-xl">🏠</span>
-                        </div>
-                        <h3 class="text-[10px] md:text-xs font-semibold text-[#2C2520] tracking-widest uppercase mb-1">To Door</h3>
-                        <p class="text-[9px] md:text-[11px] text-[#9C9288] font-light uppercase tracking-tighter">집으로 직배송</p>
+                <div class="space-y-10 text-gray-400 font-light leading-loose text-sm md:text-base">
+                    <p>우리는 디지털 화면 너머의 연결보다, 손끝에 닿는 종이 한 장의 온기를 믿습니다. 숙소에 놓인 큐레이션 카드는 방문객에게 과한 광고가 아닌 정성스러운 초대로 다가갑니다.</p>
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-px bg-accent"></div>
+                        <span class="text-[10px] tracking-[0.3em] uppercase text-accent font-bold">Nature meets Tech</span>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- 이미지에서 지워진 하단 1, 2, 3 형태 설명 텍스트를 웹 폰트로 다시 입히기 (모바일에서도 3열 유지) -->
-        <div class="relative z-10 w-full grid grid-cols-3 text-center px-2 sm:px-4 pb-6 md:pb-12 pointer-events-none lg:text-sm text-[8.5px] sm:text-xs mt-auto">
-            <div class="px-1 sm:px-2 flex items-end justify-center"><p class="w-full text-[#2C2520] font-medium tracking-tighter sm:tracking-wide drop-shadow-md bg-white/85 backdrop-blur-md py-2 sm:py-3 rounded-lg border border-white/50 shadow-sm max-w-[280px]">1. 어메니티 트레이</p></div>
-            <div class="px-1 sm:px-2 flex items-end justify-center"><p class="w-full text-[#2C2520] font-medium tracking-tighter sm:tracking-wide drop-shadow-md bg-white/85 backdrop-blur-md py-2 sm:py-3 rounded-lg border border-white/50 shadow-sm max-w-[280px]">2. 벽걸이 명패</p></div>
-            <div class="px-1 sm:px-2 flex items-end justify-center"><p class="w-full text-[#2C2520] font-medium tracking-tighter sm:tracking-wide drop-shadow-md bg-white/85 backdrop-blur-md py-2 sm:py-3 rounded-lg border border-white/50 shadow-sm max-w-[280px]">3. 아크릴 스탠드</p></div>
-        </div>
-    </section>
-
-
-        </div>
-    </section>
-
-    <!-- ③ How It Works (따뜻한 베이지 배경) -->
-    <section id="how" class="py-20 md:py-32" style="background-color: #F0EBE3;">
-        <div class="max-w-6xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <span class="text-[10px] font-light text-[#9C9288] tracking-[0.4em] uppercase mb-4 block">How It Works</span>
-                <h2 class="text-3xl md:text-5xl font-light text-[#2C2520]">
-                    3단계로 완성되는<br><span class="serif italic font-light text-[#8B6F5E]">쇼룸 쇼핑 경험</span>
-                </h2>
-            </div>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="card-hover bg-white p-8 rounded-3xl">
-                    <div class="text-4xl font-light text-[#E8E2D9] mb-4">01</div>
-                    <h3 class="text-lg font-light text-[#2C2520] mb-3 tracking-wide">체험</h3>
-                    <p class="text-[#9C9288] text-sm leading-[1.6] font-light">숙소에 비치된 제품을 직접 사용해보고,<br class="block md:hidden"> 마음에 드는 아이템을 발견합니다.</p>
-                </div>
-                <div class="card-hover bg-white p-8 rounded-3xl">
-                    <div class="text-4xl font-light text-[#E8E2D9] mb-4">02</div>
-                    <h3 class="text-lg font-light text-[#2C2520] mb-3 tracking-wide">QR 스캔</h3>
-                    <p class="text-[#9C9288] text-sm leading-[1.6] font-light">제품 옆 QR 코드를 스캔하면 주문 페이지로 연결.<br class="block md:hidden"> 게스트 전용 할인가로 바로 구매합니다.</p>
-                </div>
-                <div class="card-hover bg-white p-8 rounded-3xl">
-                    <div class="text-4xl font-light text-[#E8E2D9] mb-4">03</div>
-                    <h3 class="text-lg font-light text-[#2C2520] mb-3 tracking-wide">집으로 직배송</h3>
-                    <p class="text-[#9C9288] text-sm leading-[1.6] font-light">주문 즉시 배송되어 귀갓길엔 이미 도착해 있습니다.<br class="block md:hidden"> 두 손 가볍게 돌아가세요.</p>
-                </div>
-
             </div>
         </div>
     </section>
-
-    <!-- ④ QR 라이프스타일 풀섹션 이미지 -->
-    <section class="relative h-[60vh] md:h-[70vh] overflow-hidden flex items-center justify-center">
-        <img
-            src="/static/affilistay_acrylic_stand.png"
-            class="absolute inset-0 w-full h-full object-cover"
-            alt="QR 체험 쇼핑 스탠드"
-        >
-        <!-- 배경을 연하게 반투명 처리하고 살짝 흐리게 하여 글씨 가독성 극대화 -->
-        <div class="absolute inset-0 bg-white/40 backdrop-blur-[2px]"></div>
-        <div class="relative z-10 text-center px-6">
-            <p class="text-[#8B6F5E] text-[10px] tracking-[0.5em] uppercase mb-4 font-light">Experience</p>
-            <h2 class="text-3xl md:text-5xl text-[#2C2520] serif italic font-light leading-tight">
-                체험이 시작되는 곳,<br>그 자리에서 주문까지.
-            </h2>
-        </div>
-    </section>
-
-    <!-- ⑤ Host & Brand Benefits (탭 전환) -->
-    <section id="host" class="py-24 md:py-36 px-6" style="background-color: var(--cream);">
-        <div class="max-w-5xl mx-auto">
-
-            <!-- 상단 타이틀 -->
-            <div class="text-center mb-10">
-                <h2 class="text-3xl md:text-5xl font-light text-[#2C2520] mb-0 leading-[1.4] md:leading-snug">
-                    숙소 호스트도,<br class="block md:hidden"> 협찬 브랜드도,<br>고객들 모두가 만족합니다.
-                </h2>
-            </div>
-
-
-            <!-- 탭 버튼 -->
-            <div class="flex justify-center gap-3 mb-12">
-                <button id="tab-host-btn"
-                    onclick="switchTab('host')"
-                    class="tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all bg-[#2C2520] text-white">
-                    🏠 호스트 혜택
-                </button>
-                <button id="tab-brand-btn"
-                    onclick="switchTab('brand')"
-                    class="tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all border border-[#2C2520]/30 text-[#9C9288] hover:border-[#2C2520] hover:text-[#2C2520]">
-                    🎁 브랜드 혜택
-                </button>
-            </div>
-
-            <!-- 호스트 혜택 패널 -->
-            <div id="panel-host">
-                <p class="text-[#8B6F5E] text-base font-light mb-10 text-center leading-relaxed tracking-wide">
-                    제품을 협찬받아서 전시하고, 판매수익을 쉐어받으세요.
-                </p>
-                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5 text-left">
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">🎁</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">무료 제품 협찬</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">협찬업체가 숙소에 제품을 무료로 제공합니다.<br class="block md:hidden"> 비용 없이 프리미엄 인테리어를 완성하세요.</p>
-                    </div>
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">💰</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">판매 수익 발생</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">게스트가 QR로 주문할 때마다<br class="block md:hidden"> 호스트에게 판매 수익 일부가 자동 정산됩니다.</p>
-                    </div>
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">📦</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">재고·배송 부담 없음</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">주문 처리와 배송은 협찬업체에서 담당합니다.<br class="block md:hidden"> 호스트는 재고 부담을 질 필요가 없습니다.</p>
-                    </div>
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">🛋️</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">공간 가치 상승</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">큐레이션된 제품으로 숙소를 채워,<br class="block md:hidden"> 게스트 만족도와 리뷰 점수를 동시에 높입니다.</p>
-                    </div>
-                </div>
-                <div class="mt-12 text-center">
-                    <a href="{{ admin_url }}" class="inline-block bg-[#2C2520] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#3D342E] transition-all shadow-lg">호스트 등록하기 →</a>
-                </div>
-            </div>
-
-            <!-- 브랜드 혜택 패널 (기본 숨김) -->
-            <div id="panel-brand" class="hidden">
-                <p class="text-[#8B6F5E] text-base font-light mb-10 text-center leading-relaxed tracking-wide">
-                    협찬 비용 하나로, 판매·마케팅·데이터를 한 번에.
-                </p>
-                <div class="grid md:grid-cols-3 gap-6 text-left">
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">🛒</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">새로운 판매 채널 확보</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">숙소를 쇼룸으로 활용해 새로운 구매 전환을 만듭니다.<br class="block md:hidden"> 체험 후 구매로 이어지는 높은 전환율이 강점입니다.</p>
-                    </div>
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">📣</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">협찬비 = 전부</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">제품 협찬 비용만으로 마케팅이 완성됩니다.<br class="block md:hidden"> 추가 비용 없이 타겟 이용자에게 자연스레 노출됩니다.</p>
-                    </div>
-                    <div class="card-hover p-8 border border-[#E8E2D9] rounded-3xl bg-white">
-                        <div class="text-2xl mb-5">📊</div>
-                        <h3 class="font-light text-[#2C2520] text-lg mb-3 tracking-wide">무료 소비자 데이터</h3>
-                        <p class="text-[#9C9288] text-sm leading-[1.6] font-light">제품을 체험한 소비자의 구매 패턴과 후기를 제공받아,<br class="block md:hidden"> 제품 개선 및 마케팅 전략에 직접 활용할 수 있습니다.</p>
-                    </div>
-                </div>
-                <div class="mt-12 text-center">
-                    <a href="{{ admin_url }}" class="inline-block bg-[#8B6F5E] text-white px-12 py-5 rounded-full font-light text-xs tracking-[0.3em] hover:bg-[#7A6050] transition-all shadow-lg">브랜드 파트너 등록하기 →</a>
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-    <script>
-        function switchTab(tab) {
-            const panels = { host: document.getElementById('panel-host'), brand: document.getElementById('panel-brand') };
-            const btns   = { host: document.getElementById('tab-host-btn'), brand: document.getElementById('tab-brand-btn') };
-            Object.keys(panels).forEach(k => {
-                panels[k].classList.add('hidden');
-                btns[k].className = 'tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all border border-[#2C2520]/30 text-[#9C9288] hover:border-[#2C2520] hover:text-[#2C2520]';
-            });
-            panels[tab].classList.remove('hidden');
-            btns[tab].className = 'tab-btn px-8 py-3 rounded-full text-sm font-light tracking-widest transition-all bg-[#2C2520] text-white';
-        }
-    </script>
-
-
 
     <!-- Footer -->
-    <footer class="py-10 border-t border-[#E8E2D9] text-center px-4">
-        <p class="text-[9px] text-[#9C9288] tracking-[0.4em] uppercase font-light">© 2026 AFFILISTAY. ALL RIGHTS RESERVED.</p>
+    <footer class="py-24 border-t border-black/5 bg-[#F8F7F4]">
+        <div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-start gap-16">
+            <div class="space-y-6">
+                <div class="text-2xl font-bold tracking-[0.2em] uppercase">AFFILISTAY</div>
+                <p class="text-[11px] text-gray-400 max-w-xs leading-loose font-light">공간의 가치를 발견하고, 브랜드의 경험을 일상으로 확장합니다. <br>Inspired by Interior Context.</p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-16 text-[9px] font-bold tracking-[0.3em] text-gray-400 uppercase">
+                <div class="space-y-4">
+                    <span class="text-black">Contact</span>
+                    <a href="#" class="block hover:text-accent">Partnership</a>
+                    <a href="#" class="block hover:text-accent">Support</a>
+                </div>
+                <div class="space-y-4">
+                    <span class="text-black">Social</span>
+                    <a href="#" class="block hover:text-accent">Instagram</a>
+                    <a href="#" class="block hover:text-accent">Youtube</a>
+                </div>
+                <div class="space-y-4">
+                    <span class="text-black">Legal</span>
+                    <a href="#" class="block hover:text-accent">Privacy</a>
+                    <a href="#" class="block hover:text-accent">Terms</a>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-8 mt-24 text-[8px] text-gray-300 tracking-[0.5em] uppercase text-center md:text-left">
+            © 2026 AFFILISTAY. ALL RIGHTS RESERVED.
+        </div>
     </footer>
 
     <script>
-        const menuToggle = document.getElementById('menu-toggle');
-        const menuClose  = document.getElementById('menu-close');
-        const body = document.body;
-        menuToggle.addEventListener('click', () => {
-            body.classList.remove('menu-hidden');
-            body.classList.add('menu-open', 'overflow-hidden');
-        });
-        menuClose.addEventListener('click', () => {
-            body.classList.remove('menu-open', 'overflow-hidden');
-            body.classList.add('menu-hidden');
-        });
-        document.querySelectorAll('a[href^="#"]').forEach(a => {
-            a.addEventListener('click', e => {
-                const target = document.querySelector(a.getAttribute('href'));
-                if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
-                body.classList.remove('menu-open', 'overflow-hidden');
-                body.classList.add('menu-hidden');
-            });
+        // Reveal on scroll
+        const reveals = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if(entry.isIntersecting) entry.target.classList.add('active'); });
+        }, { threshold: 0.1 });
+        reveals.forEach(el => observer.observe(el));
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('navbar');
+            if (window.scrollY > 10) nav.classList.add('scrolled');
+            else nav.classList.remove('scrolled');
         });
     </script>
 </body>
 </html>
+
+
