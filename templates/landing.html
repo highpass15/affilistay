@@ -72,7 +72,7 @@
         </div>
     </nav>
 
-    <!-- Hero Section: 실제 사진 느낌을 살린 에디토리얼 스타일 -->
+    <!-- Section 01: Hero -->
     <header class="relative h-screen flex items-center px-8 md:px-20 bg-white overflow-hidden">
         <div class="absolute right-0 top-0 w-full md:w-3/5 h-full overflow-hidden">
             <img src="/static/hero.png" alt="Interior" class="w-full h-full object-cover">
@@ -93,25 +93,132 @@
         </div>
     </header>
 
-    <!-- Experience Flow: 사용자 사진 속 '종이 카드'를 강조 -->
-    <section class="py-32 md:py-56 bg-white">
-        <div class="max-w-7xl mx-auto px-8 grid md:grid-cols-12 gap-16 items-center">
-            <div class="md:col-span-7 reveal">
-                <div class="relative rounded-[2.5rem] overflow-hidden shadow-sm">
+    <!-- Section 02: How It Works -->
+    <section class="py-32 md:py-56 px-8 md:px-20 bg-[#F8F7F4]">
+        <div class="max-w-7xl mx-auto">
+            <div class="mb-24 md:mb-40 reveal text-center md:text-left">
+                <span class="text-[9px] font-bold text-accent tracking-[0.5em] uppercase mb-6 block">The Journey</span>
+                <h2 class="text-4xl md:text-6xl serif italic">3단계로 완성되는 <br class="md:hidden">쇼룸 쇼핑 경험</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-16 md:gap-32">
+                <div class="reveal group">
+                    <span class="text-5xl md:text-7xl serif italic text-accent/30 block mb-8 group-hover:text-accent transition-colors duration-700">01</span>
+                    <h3 class="text-xl md:text-2xl font-bold mb-6 tracking-tight">체험</h3>
+                    <p class="text-gray-400 font-light leading-relaxed text-sm md:text-base border-t border-black/5 pt-8">
+                        숙소에 비치된 프리미엄 제품을 직접 사용해보고, 일상 속에서 제품의 진정한 가치를 발견합니다.
+                    </p>
+                </div>
+                <div class="reveal group" style="transition-delay: 200ms;">
+                    <span class="text-5xl md:text-7xl serif italic text-accent/30 block mb-8 group-hover:text-accent transition-colors duration-700">02</span>
+                    <h3 class="text-xl md:text-2xl font-bold mb-6 tracking-tight">QR 스캔</h3>
+                    <p class="text-gray-400 font-light leading-relaxed text-sm md:text-base border-t border-black/5 pt-8">
+                        제품 옆 비치된 리플렛의 QR 코드를 스캔하여 전용 페이지로 즉시 연결됩니다.
+                    </p>
+                </div>
+                <div class="reveal group" style="transition-delay: 400ms;">
+                    <span class="text-5xl md:text-7xl serif italic text-accent/30 block mb-8 group-hover:text-accent transition-colors duration-700">03</span>
+                    <h3 class="text-xl md:text-2xl font-bold mb-6 tracking-tight">직배송</h3>
+                    <p class="text-gray-400 font-light leading-relaxed text-sm md:text-base border-t border-black/5 pt-8">
+                        주문 즉시 브랜드사에서 발송되어, 여행을 마치고 집에 돌아갈 즈음 제품을 받아보실 수 있습니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 03: The Paper Identity (Image Focus) -->
+    <section class="py-32 md:py-56 bg-white overflow-hidden">
+        <div class="max-w-7xl mx-auto px-8 grid md:grid-cols-12 gap-16 md:gap-32 items-center">
+            <div class="md:col-span-6 reveal">
+                <div class="relative rounded-[2.5rem] overflow-hidden shadow-sm aspect-[4/5]">
                     <img src="/static/product.png" alt="Branded Card" class="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-1000">
                 </div>
             </div>
-            <div class="md:col-span-5 reveal lg:pl-16">
-                <h2 class="text-3xl md:text-5xl serif italic leading-[1.3] mb-8">
-                    촉감으로 이어지는 <br> 브랜드의 진심.
+            <div class="md:col-span-6 reveal lg:pl-8">
+                <span class="text-[9px] font-bold text-accent tracking-[0.5em] uppercase mb-8 block">Offline Identity</span>
+                <h2 class="text-4xl md:text-6xl serif italic leading-[1.25] mb-10">
+                    손끝에서 피어나는 <br> 브랜드의 진심.
                 </h2>
                 <div class="space-y-10 text-gray-400 font-light leading-loose text-sm md:text-base">
-                    <p>우리는 디지털 화면 너머의 연결보다, 손끝에 닿는 종이 한 장의 온기를 믿습니다. 숙소에 놓인 큐레이션 카드는 방문객에게 과한 광고가 아닌 정성스러운 초대로 다가갑니다.</p>
+                    <p>인위적인 팝업 메시지보다 정성스럽게 놓인 종이 한 장의 힘을 믿습니다. 숙소의 분위기에 조화롭게 스며든 큐레이션 카드는 방문객에게 단순한 광고가 아닌 '발견의 즐거움'을 선사합니다.</p>
                     <div class="flex items-center space-x-4">
                         <div class="w-12 h-px bg-accent"></div>
-                        <span class="text-[10px] tracking-[0.3em] uppercase text-accent font-bold">Nature meets Tech</span>
+                        <span class="text-[10px] tracking-[0.3em] uppercase text-accent font-bold">Tangible Inspiration</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 04: Multi-Benefit -->
+    <section class="py-32 md:py-56 px-8 md:px-20 border-t border-black/5">
+        <div class="max-w-7xl mx-auto">
+            <div class="mb-24 md:mb-40 reveal">
+                <span class="text-[9px] font-bold text-accent tracking-[0.5em] uppercase mb-6 block">Partnership Value</span>
+                <h2 class="text-4xl md:text-6xl serif italic">모두가 만족하는 <br>지속 가능한 성장 모델</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-24 md:gap-40">
+                <!-- Host Benefits -->
+                <div class="reveal">
+                    <h3 class="text-sm font-bold tracking-[0.3em] text-black uppercase mb-12 border-b border-black/10 pb-4">For Hosts</h3>
+                    <ul class="space-y-10 font-light text-gray-500 text-sm md:text-base">
+                        <li class="flex items-start">
+                            <span class="w-8 serif italic text-accent font-bold mr-4">·</span>
+                            <div>
+                                <strong class="text-black block mb-2">프리미엄 공간 완성</strong>
+                                비용 부담 없이 글로벌 트렌트 제품을 협찬받아 숙소의 인테리어 수준을 높입니다.
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="w-8 serif italic text-accent font-bold mr-4">·</span>
+                            <div>
+                                <strong class="text-black block mb-2">추가 수익 창출</strong>
+                                게스트의 구매액 중 일부를 판매 수수료로 정산받아 운영 수익을 극대화합니다.
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="w-8 serif italic text-accent font-bold mr-4">·</span>
+                            <div>
+                                <strong class="text-black block mb-2">리뷰 및 평점 상승</strong>
+                                큐레이션된 고가의 제품 체험은 게스트의 만족도와 숙소 평점으로 직결됩니다.
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Brand Benefits -->
+                <div class="reveal" style="transition-delay: 200ms;">
+                    <h3 class="text-sm font-bold tracking-[0.3em] text-black uppercase mb-12 border-b border-black/10 pb-4">For Brands</h3>
+                    <ul class="space-y-10 font-light text-gray-500 text-sm md:text-base">
+                        <li class="flex items-start">
+                            <span class="w-8 serif italic text-accent font-bold mr-4">·</span>
+                            <div>
+                                <strong class="text-black block mb-2">가장 강력한 슬립오버 쇼룸</strong>
+                                단순 관람이 아닌, 하룻밤 동안 제품을 깊이 있게 체험하는 강력한 마케팅 접점을 확보합니다.
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="w-8 serif italic text-accent font-bold mr-4">·</span>
+                            <div>
+                                <strong class="text-black block mb-2">잠재 고객 타겟 마케팅</strong>
+                                프리미엄 숙소의 방문객이라는 검증된 구매력의 타겟 그룹에 정확히 도달합니다.
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="w-8 serif italic text-accent font-bold mr-4">·</span>
+                            <div>
+                                <strong class="text-black block mb-2">재고 및 물류 부담 제로</strong>
+                                공간 전시는 호스트가, 주문과 배송은 브랜드사가 직접 관리하여 중간 유통 비용을 줄입니다.
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-32 text-center reveal">
+                <a href="{{ admin_url }}" class="bg-black text-white px-16 py-6 rounded-full text-[10px] font-bold tracking-[0.4em] hover:bg-accent transition-all duration-500 shadow-xl">BECOME A PARTNER</a>
             </div>
         </div>
     </section>
