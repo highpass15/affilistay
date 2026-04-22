@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문 완료 | AFFILISTAY</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #FAF9F6;
+            --bg-card: #FFFFFF;
+            --text-primary: #1A1A1A;
+            --text-secondary: #7A7672;
+            --text-muted: #B0AAA3;
+            --accent: #B0A295;
+            --accent-dark: #8A7E73;
+            --border: #EEEDEA;
+            --success: #4A9D6E;
+            --success-bg: #F0F8F3;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+        }
+
+        /* ── 완료 컨테이너 ── */
+        .complete-container {
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        /* ── 체크 아이콘 애니메이션 ── */
+        .check-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--success-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 28px;
+            opacity: 0;
+            transform: scale(0.5);
+            animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s forwards;
+        }
+
+        .check-icon {
+            width: 36px;
+            height: 36px;
+            stroke: var(--success);
+            stroke-width: 2.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .check-icon .check-path {
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: drawCheck 0.4s ease 0.7s forwards;
+        }
+
+        @keyframes popIn {
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes drawCheck {
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* ── 텍스트 ── */
+        .complete-title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 10px;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: fadeUp 0.5s ease 0.5s forwards;
+        }
+
+        .complete-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 300;
+            line-height: 1.7;
+            margin-bottom: 36px;
+            word-break: keep-all;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: fadeUp 0.5s ease 0.6s forwards;
+        }
+
+        @keyframes fadeUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── 주문 정보 카드 ── */
+        .order-info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            margin-bottom: 28px;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: fadeUp 0.5s ease 0.7s forwards;
+        }
+
+        .order-info-title {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .order-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .order-info-row + .order-info-row {
+            border-top: 1px solid #F5F4F2;
+        }
+
+        .order-info-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .order-info-value {
+            font-size: 13px;
+            font-weight: 500;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        .order-info-value.highlight {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .order-number-badge {
+            display: inline-block;
+            background: #F3F2EF;
+            padding: 4px 14px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── 버튼 ── */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: fadeUp 0.5s ease 0.8s forwards;
+        }
+
+        .btn-primary {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: var(--text-primary);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: #333;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+        }
+
+        /* ── 푸터 ── */
+        .complete-footer {
+            margin-top: 40px;
+            opacity: 0;
+            animation: fadeUp 0.5s ease 0.9s forwards;
+        }
+
+        .complete-footer .logo {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .complete-footer p {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="complete-container">
+
+        <!-- 체크 아이콘 -->
+        <div class="check-circle">
+            <svg class="check-icon" viewBox="0 0 24 24">
+                <path class="check-path" d="M6 12l4 4 8-8"/>
+            </svg>
+        </div>
+
+        <!-- 타이틀 -->
+        <h1 class="complete-title">주문이 완료되었습니다</h1>
+        <p class="complete-subtitle">
+            주문 정보가 브랜드사로 전달되었습니다.<br>
+            입력하신 배송지로 신속히 보내드리겠습니다.
+        </p>
+
+        <!-- 주문 정보 -->
+        {% if order %}
+        <div class="order-info-card">
+            <div class="order-info-title">주문 내역</div>
+
+            <div class="order-info-row">
+                <span class="order-info-label">주문번호</span>
+                <span class="order-info-value">
+                    <span class="order-number-badge">#{{ order_id }}</span>
+                </span>
+            </div>
+
+            <div class="order-info-row">
+                <span class="order-info-label">제품</span>
+                <span class="order-info-value">{{ order.product_name }}</span>
+            </div>
+
+            <div class="order-info-row">
+                <span class="order-info-label">브랜드</span>
+                <span class="order-info-value">{{ order.brand_name }}</span>
+            </div>
+
+            <div class="order-info-row">
+                <span class="order-info-label">결제 금액</span>
+                <span class="order-info-value highlight">{{ "{:,}".format(order.total_amount) }}원</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 버튼 -->
+        <div class="action-buttons">
+            {% if qr_code_id %}
+            <a href="/shop/{{ qr_code_id }}" class="btn-primary" id="continue-shopping">
+                다른 제품 둘러보기
+            </a>
+            {% endif %}
+            <a href="/" class="btn-secondary" id="go-home">홈으로 돌아가기</a>
+        </div>
+
+        <!-- 푸터 -->
+        <div class="complete-footer">
+            <div class="logo">AFFILISTAY</div>
+            <p>Stay as a Showroom</p>
+        </div>
+
+    </div>
+
+</body>
+</html>

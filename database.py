@@ -64,6 +64,9 @@ def init_db():
             price INTEGER NOT NULL,
             qr_code_id TEXT UNIQUE NOT NULL,
             owner_id INTEGER REFERENCES hosts(id),
+            room_category TEXT DEFAULT 'living_room',
+            description TEXT,
+            image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -74,6 +77,7 @@ def init_db():
             customer_name TEXT NOT NULL,
             phone_number TEXT NOT NULL,
             shipping_address TEXT NOT NULL,
+            delivery_note TEXT,
             total_amount INTEGER NOT NULL,
             payment_status TEXT DEFAULT 'PAID',
             settlement_status TEXT DEFAULT 'PENDING',
@@ -135,6 +139,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             brand_name TEXT, product_name TEXT, price INTEGER,
             qr_code_id TEXT UNIQUE, owner_id INTEGER,
+            room_category TEXT DEFAULT 'living_room',
+            description TEXT, image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -142,7 +148,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER, customer_name TEXT, phone_number TEXT,
-            shipping_address TEXT, total_amount INTEGER,
+            shipping_address TEXT, delivery_note TEXT, total_amount INTEGER,
             payment_status TEXT DEFAULT 'PAID',
             settlement_status TEXT DEFAULT 'PENDING',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -197,7 +203,11 @@ def init_db():
     if DATABASE_URL:
         migrations = [
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS room_category TEXT DEFAULT 'living_room'",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'PENDING'",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT",
         ]
         for sql in migrations:
             try:

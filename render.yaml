@@ -12,34 +12,22 @@ services:
         fromDatabase:
           name: affilistay-db
           property: connectionString
-<<<<<<< HEAD
-=======
 
->>>>>>> 0eb9d04 (Fix: Update ADMIN_URL to https://affilistay-admin.onrender.com/)
   # 2. 호스트 전용 포털 (Streamlit)
   - type: web
     name: affilistay-admin
     env: docker
     dockerContext: .
     dockerfilePath: Dockerfile
-<<<<<<< HEAD
     plan: free
-=======
-    plan: opacity
->>>>>>> 0eb9d04 (Fix: Update ADMIN_URL to https://affilistay-admin.onrender.com/)
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: affilistay-db
           property: connectionString
-<<<<<<< HEAD
     # 배포 시 실행 명령어를 dockerCommand로 설정합니다.
     dockerCommand: "python -m streamlit run admin_dashboard_ui.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
-=======
-    # 배포 시 실행 명령어를 streamlit으로 덮어씁니다.
-    startCommand: "python -m streamlit run admin_dashboard_ui.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
 
->>>>>>> 0eb9d04 (Fix: Update ADMIN_URL to https://affilistay-admin.onrender.com/)
 databases:
   # 3. 전용 관리형 데이터베이스 (PostgreSQL)
   - name: affilistay-db

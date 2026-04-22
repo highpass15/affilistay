@@ -1,15 +1,23 @@
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, Form, Query
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from database import get_db_connection
 import os
 
-app = FastAPI(title="Minoan Style Platform")
+app = FastAPI(title="AffiliStay Showroom Platform")
 
 # 클라우드 어드민 주소를 고정하여 즉시 연결되도록 합니다.
 ADMIN_URL = 'https://affilistay-admin.onrender.com/'
+
+# 카테고리 한글 매핑
+ROOM_CATEGORIES = {
+    'living_room': '거실',
+    'bedroom': '침실',
+    'kitchen': '주방',
+    'bathroom': '화장실',
+}
 
 # 정적 파일(이미지 등) 서비스 설정
 static_dir = os.path.join(os.path.dirname(__file__), 'static')
@@ -20,8 +28,55 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 templates = Jinja2Templates(directory=template_dir)
 
+# ─────────────────────────────────────────
+# 헬퍼 함수: DB 호환 쿼리 실행
+# ─────────────────────────────────────────
+def _is_pg():
+    """PostgreSQL 사용 여부 확인"""
+    return bool(os.environ.get('DATABASE_URL'))
+
+def _ph(param):
+    """DB에 맞는 플레이스홀더 반환 (%s 또는 ?)"""
+    return '%s' if _is_pg() else '?'
+
+def _fetch_all(conn, query_pg, query_sqlite, params=None):
+    """SELECT 결과를 dict 리스트로 반환"""
+    query = query_pg if _is_pg() else query_sqlite
+    if _is_pg():
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+    else:
+        cursor = conn.execute(query, params or ())
+        return [dict(row) for row in cursor.fetchall()]
+
+def _fetch_one(conn, query_pg, query_sqlite, params=None):
+    """SELECT 단일 결과를 dict로 반환"""
+    query = query_pg if _is_pg() else query_sqlite
+    if _is_pg():
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            row = cur.fetchone()
+            return dict(zip(columns, row)) if row else None
+    else:
+        row = conn.execute(query, params or ()).fetchone()
+        return dict(row) if row else None
+
+
+# ─────────────────────────────────────────
+# 기본 라우트
+# ─────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
+async def read_root(request: Request, qr: str = Query(default=None)):
+    """
+    랜딩 페이지 또는 QR 리다이렉트 처리.
+    기존 QR 링크 /?qr=XXXX 호환성 유지.
+    """
+    if qr:
+        return RedirectResponse(url=f"/shop/{qr}", status_code=301)
     return templates.TemplateResponse(
         request=request, name="landing.html", context={"admin_url": ADMIN_URL}
     )
@@ -30,77 +85,243 @@ async def read_root(request: Request):
 async def health_check():
     return {"status": "ok"}
 
-@app.get("/buy/{qr_code_id}", response_class=HTMLResponse)
-async def view_checkout_page(request: Request, qr_code_id: str):
+
+# ─────────────────────────────────────────
+# 숙소 쇼룸 메인 페이지
+# ─────────────────────────────────────────
+@app.get("/shop/{qr_code_id}", response_class=HTMLResponse)
+async def shop_page(request: Request, qr_code_id: str, category: str = Query(default=None)):
+    """
+    QR 코드 ID로 진입 → 해당 제품의 호스트(owner_id) 기반으로
+    같은 숙소의 모든 협찬제품을 카테고리별로 표시합니다.
+    """
     conn = get_db_connection()
-    # SQLite와 PostgreSQL 모두 호환되는 dict fetch를 위해 처리
-    if os.environ.get('DATABASE_URL'):
-        # PostgreSQL
-        with conn.cursor(cursor_factory=None) as cur:
-            cur.execute('SELECT * FROM products WHERE qr_code_id = %s', (qr_code_id,))
-            columns = [desc[0] for desc in cur.description]
-            row = cur.fetchone()
-            product = dict(zip(columns, row)) if row else None
-    else:
-        # SQLite
-        product = conn.execute('SELECT * FROM products WHERE qr_code_id = ?', (qr_code_id,)).fetchone()
-        product = dict(product) if product else None
-    conn.close()
-    
-    if not product:
-        return HTMLResponse(content="<h1>만료되거나 유효하지 않은 QR 코드입니다.</h1>", status_code=404)
-        
-    return templates.TemplateResponse(
-        request=request, name="checkout.html", context={"product": product}
+
+    # 1. QR 코드에 해당하는 제품 조회 → owner_id 추출
+    entry_product = _fetch_one(
+        conn,
+        "SELECT * FROM products WHERE qr_code_id = %s",
+        "SELECT * FROM products WHERE qr_code_id = ?",
+        (qr_code_id,)
     )
 
-@app.post("/pay/{qr_code_id}", response_class=HTMLResponse)
-async def process_mock_payment(
+    if not entry_product:
+        conn.close()
+        return HTMLResponse(
+            content="<html><body style='font-family:Outfit,sans-serif;text-align:center;padding-top:20%;background:#FAF9F6'>"
+                    "<h2 style='font-weight:300'>유효하지 않은 QR 코드입니다</h2>"
+                    "<p style='color:#888;font-size:14px'>만료되었거나 존재하지 않는 코드입니다.</p></body></html>",
+            status_code=404
+        )
+
+    owner_id = entry_product.get('owner_id')
+
+    # 2. 호스트 정보 조회
+    host_info = _fetch_one(
+        conn,
+        "SELECT name FROM hosts WHERE id = %s",
+        "SELECT name FROM hosts WHERE id = ?",
+        (owner_id,)
+    ) if owner_id else None
+
+    host_name = host_info['name'] if host_info else "AFFILISTAY Showroom"
+
+    # 3. 해당 호스트의 모든 제품을 카테고리별로 조회
+    if category and category in ROOM_CATEGORIES:
+        products = _fetch_all(
+            conn,
+            "SELECT * FROM products WHERE owner_id = %s AND room_category = %s ORDER BY id",
+            "SELECT * FROM products WHERE owner_id = ? AND room_category = ? ORDER BY id",
+            (owner_id, category)
+        )
+    else:
+        products = _fetch_all(
+            conn,
+            "SELECT * FROM products WHERE owner_id = %s ORDER BY room_category, id",
+            "SELECT * FROM products WHERE owner_id = ? ORDER BY room_category, id",
+            (owner_id,)
+        )
+
+    conn.close()
+
+    # 4. 카테고리별 제품 그룹핑
+    categorized = {}
+    for cat_key, cat_name in ROOM_CATEGORIES.items():
+        cat_products = [p for p in products if p.get('room_category') == cat_key]
+        if cat_products:
+            categorized[cat_key] = {
+                'name': cat_name,
+                'products': cat_products
+            }
+
+    return templates.TemplateResponse(
+        request=request,
+        name="shop.html",
+        context={
+            "host_name": host_name,
+            "qr_code_id": qr_code_id,
+            "categories": ROOM_CATEGORIES,
+            "categorized": categorized,
+            "active_category": category,
+            "all_products": products,
+        }
+    )
+
+
+# ─────────────────────────────────────────
+# 제품 상세 페이지
+# ─────────────────────────────────────────
+@app.get("/shop/{qr_code_id}/product/{product_id}", response_class=HTMLResponse)
+async def product_detail(request: Request, qr_code_id: str, product_id: int):
+    """개별 제품 상세 페이지"""
+    conn = get_db_connection()
+
+    product = _fetch_one(
+        conn,
+        "SELECT * FROM products WHERE id = %s",
+        "SELECT * FROM products WHERE id = ?",
+        (product_id,)
+    )
+
+    conn.close()
+
+    if not product:
+        return HTMLResponse(
+            content="<html><body style='font-family:Outfit,sans-serif;text-align:center;padding-top:20%;background:#FAF9F6'>"
+                    "<h2 style='font-weight:300'>제품을 찾을 수 없습니다</h2></body></html>",
+            status_code=404
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="product_detail.html",
+        context={
+            "product": product,
+            "qr_code_id": qr_code_id,
+            "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
+        }
+    )
+
+
+# ─────────────────────────────────────────
+# 주문서 페이지
+# ─────────────────────────────────────────
+@app.get("/shop/{qr_code_id}/order/{product_id}", response_class=HTMLResponse)
+async def order_form(request: Request, qr_code_id: str, product_id: int):
+    """주문서 작성 페이지"""
+    conn = get_db_connection()
+
+    product = _fetch_one(
+        conn,
+        "SELECT * FROM products WHERE id = %s",
+        "SELECT * FROM products WHERE id = ?",
+        (product_id,)
+    )
+
+    conn.close()
+
+    if not product:
+        return HTMLResponse(content="<h1>제품을 찾을 수 없습니다</h1>", status_code=404)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="order_form.html",
+        context={
+            "product": product,
+            "qr_code_id": qr_code_id,
+        }
+    )
+
+
+# ─────────────────────────────────────────
+# 주문 처리 API
+# ─────────────────────────────────────────
+@app.post("/shop/{qr_code_id}/order", response_class=HTMLResponse)
+async def process_order(
     qr_code_id: str,
+    product_id: int = Form(...),
     customer_name: str = Form(...),
     phone_number: str = Form(...),
-    shipping_address: str = Form(...)
+    shipping_address: str = Form(...),
+    delivery_note: str = Form(default=""),
 ):
+    """
+    주문 처리 → orders 테이블 INSERT →
+    관리자 주문현황/정산 탭에 자동 반영
+    """
     conn = get_db_connection()
-    
-    if os.environ.get('DATABASE_URL'):
-        # PostgreSQL
+
+    if _is_pg():
         with conn.cursor() as cur:
-            cur.execute('SELECT id, price FROM products WHERE qr_code_id = %s', (qr_code_id,))
+            cur.execute('SELECT id, price FROM products WHERE id = %s', (product_id,))
             product = cur.fetchone()
             if product:
                 cur.execute('''
-                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, total_amount)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (product[0], customer_name, phone_number, shipping_address, product[1]))
+                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount)
+                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1]))
+                order_id = cur.fetchone()[0]
     else:
-        # SQLite
-        product = conn.execute('SELECT * FROM products WHERE qr_code_id = ?', (qr_code_id,)).fetchone()
+        product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
         if product:
-            conn.execute('''
-                INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, total_amount)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (product['id'], customer_name, phone_number, shipping_address, product['price']))
-    
+            cursor = conn.execute('''
+                INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (product['id'], customer_name, phone_number, shipping_address, delivery_note, product['price']))
+            order_id = cursor.lastrowid
+
     conn.commit()
     conn.close()
-    
-    success_html = f"""
-    <html>
-    <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-    <body style="font-family:'Inter', sans-serif; text-align:center; padding-top:20%; background-color:#FAF9F6; color:#1A1A1A;">
-        <h1 style="font-weight:200; font-size:2rem; letter-spacing:0.1em;">THANK YOU.</h1>
-        <p style="font-size:0.9rem; color:#666;">전달해주신 배송지로 신속히 보내드리겠습니다.</p>
-        <div style="margin-top:2rem;">
-            <a href="/" style="text-decoration:none; font-size:0.7rem; color:#A89F91; border-bottom:1px solid #A89F91;">BACK TO HOME</a>
-        </div>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=success_html)
+
+    if not product:
+        return HTMLResponse(content="<h1>제품을 찾을 수 없습니다</h1>", status_code=404)
+
+    return RedirectResponse(url=f"/order-complete/{order_id}?qr={qr_code_id}", status_code=303)
+
+
+# ─────────────────────────────────────────
+# 주문 완료 페이지
+# ─────────────────────────────────────────
+@app.get("/order-complete/{order_id}", response_class=HTMLResponse)
+async def order_complete(request: Request, order_id: int, qr: str = Query(default="")):
+    """주문 완료 확인 페이지"""
+    conn = get_db_connection()
+
+    order = _fetch_one(
+        conn,
+        """SELECT o.*, p.product_name, p.brand_name, p.price
+           FROM orders o JOIN products p ON o.product_id = p.id
+           WHERE o.id = %s""",
+        """SELECT o.*, p.product_name, p.brand_name, p.price
+           FROM orders o JOIN products p ON o.product_id = p.id
+           WHERE o.id = ?""",
+        (order_id,)
+    )
+
+    conn.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="order_complete.html",
+        context={
+            "order": order,
+            "order_id": order_id,
+            "qr_code_id": qr,
+        }
+    )
+
+
+# ─────────────────────────────────────────
+# 레거시 호환: 기존 /buy/{qr_code_id} 라우트 유지
+# ─────────────────────────────────────────
+@app.get("/buy/{qr_code_id}", response_class=HTMLResponse)
+async def legacy_checkout(request: Request, qr_code_id: str):
+    """기존 직접 결제 라우트 → 새로운 쇼룸으로 리다이렉트"""
+    return RedirectResponse(url=f"/shop/{qr_code_id}", status_code=301)
+
 
 if __name__ == "__main__":
     import database
     database.init_db()
-    print("[SERVER] Minoan Style Web Server is running on port 8000...")
+    print("[SERVER] AffiliStay Showroom Server is running on port 8000...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
