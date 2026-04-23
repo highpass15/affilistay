@@ -301,6 +301,84 @@
             text-transform: uppercase;
         }
 
+        /* ── 스크롤 스와이프 위젯 (유니버셜 카트) ── */
+        .cross-sell-section {
+            padding: 40px 0 60px;
+            background: #F8F7F4;
+            margin-top: 20px;
+        }
+        
+        .cs-header {
+            padding: 0 24px;
+            margin-bottom: 20px;
+        }
+        
+        .cs-title {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        
+        .cs-scroll-wrap {
+            display: flex;
+            gap: 14px;
+            padding: 0 24px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .cs-scroll-wrap::-webkit-scrollbar { display: none; }
+        
+        .cs-card {
+            flex: 0 0 140px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .cs-card:active { transform: scale(0.96); }
+        
+        .cs-img-wrap {
+            width: 100%;
+            height: 140px;
+            background: #F0EFEC;
+            position: relative;
+        }
+        .cs-img-wrap img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            position: absolute; top:0; left:0;
+        }
+        .cs-info { padding: 12px; }
+        .cs-host {
+            font-size: 10px;
+            color: var(--accent-dark);
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cs-name {
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.3;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .cs-price {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
         /* ── 페이드인 ── */
         .fade-in {
             opacity: 0;
@@ -407,6 +485,33 @@
             </div>
         </form>
     </section>
+
+    <!-- 멀티 유니버스 크로스셀 위젯 -->
+    {% if cross_sell_products %}
+    <section class="cross-sell-section fade-in delay-3">
+        <div class="cs-header">
+            <h3 class="cs-title">다른 감성 숙소 호스트들의 큐레이션 훔쳐보기</h3>
+        </div>
+        <div class="cs-scroll-wrap">
+            {% for item in cross_sell_products %}
+            <a href="/shop/{{ qr_code_id }}/product/{{ item.id }}" class="cs-card">
+                <div class="cs-img-wrap">
+                    {% if item.image_url %}
+                        <img src="data:image/jpeg;base64,{{ item.image_url }}" alt="">
+                    {% else %}
+                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.2;font-size:24px;">📦</div>
+                    {% endif %}
+                </div>
+                <div class="cs-info">
+                    <div class="cs-host">By {{ item.host_name }}</div>
+                    <div class="cs-name">{{ item.product_name }}</div>
+                    <div class="cs-price">{{ "{:,}".format(item.price) }}원</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 
     <script>
         // 전화번호 자동 포맷팅 (010-0000-0000)

@@ -215,14 +215,22 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
         (product_id,)
     )
 
-    conn.close()
-
     if not product:
+        conn.close()
         return HTMLResponse(
             content="<html><body style='font-family:Outfit,sans-serif;text-align:center;padding-top:20%;background:#FAF9F6'>"
                     "<h2 style='font-weight:300'>제품을 찾을 수 없습니다</h2></body></html>",
             status_code=404
         )
+
+    cross_sell_products = _fetch_all(
+        conn,
+        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != %s ORDER BY RANDOM() LIMIT 4",
+        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != ? ORDER BY RANDOM() LIMIT 4",
+        (product['owner_id'],)
+    )
+
+    conn.close()
 
     return templates.TemplateResponse(
         request=request,
@@ -231,6 +239,7 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
             "product": product,
             "qr_code_id": qr_code_id,
             "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
+            "cross_sell_products": cross_sell_products,
         }
     )
 
@@ -250,10 +259,18 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
         (product_id,)
     )
 
-    conn.close()
-
     if not product:
+        conn.close()
         return HTMLResponse(content="<h1>제품을 찾을 수 없습니다</h1>", status_code=404)
+
+    cross_sell_products = _fetch_all(
+        conn,
+        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != %s ORDER BY RANDOM() LIMIT 4",
+        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != ? ORDER BY RANDOM() LIMIT 4",
+        (product['owner_id'],)
+    )
+    
+    conn.close()
 
     return templates.TemplateResponse(
         request=request,
@@ -261,6 +278,7 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
         context={
             "product": product,
             "qr_code_id": qr_code_id,
+            "cross_sell_products": cross_sell_products,
         }
     )
 
