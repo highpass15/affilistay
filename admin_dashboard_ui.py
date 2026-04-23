@@ -154,6 +154,108 @@ with st.sidebar:
         st.rerun()
 
 # ─────────────────────────────────────────
+# 공통 UI 컴포넌트: 상품 & QR / 주문 현황
+# ─────────────────────────────────────────
+def render_tab_qr(host_id, is_master):
+    st.subheader("➕ 새 제품 등록 & QR 생성")
+    ROOM_MAP = {
+        '거실': 'living_room', '침실': 'bedroom', '주방': 'kitchen', '화장실': 'bathroom',
+    }
+    with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            brand_name   = st.text_input("브랜드명 *")
+            product_name = st.text_input("제품명 *")
+            room_label   = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
+        with c2:
+            price = st.number_input("판매가격 (원) *", min_value=0, step=1000, format="%d")
+            prod_description = st.text_area("제품 설명 (선택)", height=80)
+            prod_image = st.file_uploader("제품 이미지", type=["jpg","jpeg","png","webp"])
+        submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
+
+    if submitted:
+        if not brand_name or not product_name or price <= 0:
+            st.error("모든 항목을 입력해 주세요.")
+        else:
+            qr_id = str(uuid.uuid4())[:12]
+            url   = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
+            img_b64 = database.file_to_base64(prod_image) if prod_image else None
+            conn = database.get_db_connection()
+            try:
+                q = ('INSERT INTO products (brand_name,product_name,price,qr_code_id,owner_id,room_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
+                     if database.DATABASE_URL else
+                     'INSERT INTO products (brand_name,product_name,price,qr_code_id,owner_id,room_category,description,image_url) VALUES (?,?,?,?,?,?,?,?)')
+                conn.cursor().execute(q, (brand_name, product_name, price, qr_id, host_id, ROOM_MAP[room_label], prod_description or None, img_b64))
+                conn.commit()
+                st.success(f"✅ '{product_name}' 등록 완료!")
+                buf = make_qr(url)
+                cq, ci = st.columns([1, 2])
+                with cq:
+                    st.image(buf, width=180)
+                    buf.seek(0)
+                    st.download_button("📥 QR 다운로드", buf, f"QR_{product_name}.png", "image/png", use_container_width=True)
+                with ci:
+                    st.code(url, language=None)
+            except Exception as e:
+                st.error(f"오류: {e}")
+            finally:
+                conn.close()
+
+    st.markdown("---")
+    st.subheader("📋 전체/내 제품 목록")
+    conn = database.get_db_connection()
+    if is_master:
+        df_p = pd.read_sql_query("SELECT p.id,p.brand_name,p.product_name,p.price,p.room_category,p.qr_code_id,h.name as owner FROM products p LEFT JOIN hosts h ON p.owner_id=h.id ORDER BY p.id DESC", conn)
+    else:
+        q = ('SELECT id,brand_name,product_name,price,room_category,qr_code_id FROM products WHERE owner_id=%s ORDER BY id DESC'
+             if database.DATABASE_URL else
+             'SELECT id,brand_name,product_name,price,room_category,qr_code_id FROM products WHERE owner_id=? ORDER BY id DESC')
+        df_p = pd.read_sql_query(q, conn, params=(host_id,))
+    conn.close()
+
+    if df_p.empty:
+        st.info("등록된 제품이 없습니다.")
+    else:
+        dsp = df_p.copy()
+        dsp['price'] = dsp['price'].apply(lambda x: f"{x:,}원")
+        ROOM_LABEL_MAP = {'living_room': '거실', 'bedroom': '침실', 'kitchen': '주방', 'bathroom': '화장실'}
+        if 'room_category' in dsp.columns:
+            dsp['room_category'] = dsp['room_category'].map(ROOM_LABEL_MAP).fillna('-')
+        st.dataframe(dsp, use_container_width=True, hide_index=True)
+
+        st.markdown("#### 🔄 QR 재발급")
+        sel = st.selectbox("제품 선택 (QR 다운로드용)", df_p['id'].tolist(),
+                           format_func=lambda x: f"[{x}] {df_p[df_p['id']==x]['brand_name'].values[0]} - {df_p[df_p['id']==x]['product_name'].values[0]}")
+        if st.button("📱 선택 제품 QR 보기", key=f"qr_regen_{host_id}"):
+            row = df_p[df_p['id']==sel].iloc[0]
+            url = f"{CHECKOUT_BASE_URL}/shop/{row['qr_code_id']}"
+            buf = make_qr(url)
+            cq2, ci2 = st.columns([1, 2])
+            with cq2:
+                st.image(buf, width=180)
+                buf.seek(0)
+                st.download_button("📥 다운로드", buf, f"QR_{row['product_name']}.png", "image/png", key=f"qr_dl_{host_id}")
+            with ci2:
+                st.code(url, language=None)
+
+def render_tab_orders(host_id, is_master):
+    st.subheader("📦 주문 현황")
+    conn = database.get_db_connection()
+    if is_master:
+        df_o = pd.read_sql_query("SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,p.brand_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id ORDER BY o.id DESC", conn)
+    else:
+        q = ('SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id WHERE p.owner_id=%s ORDER BY o.id DESC'
+             if database.DATABASE_URL else
+             'SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id WHERE p.owner_id=? ORDER BY o.id DESC')
+        df_o = pd.read_sql_query(q, conn, params=(host_id,))
+    conn.close()
+    if df_o.empty:
+        st.info("아직 고객 주문이 없습니다.")
+    else:
+        st.dataframe(df_o, use_container_width=True, hide_index=True)
+
+
+# ─────────────────────────────────────────
 # GUEST 페이지
 # ─────────────────────────────────────────
 if role == 'GUEST' and not is_master:
@@ -165,12 +267,17 @@ if role == 'GUEST' and not is_master:
 # BRAND (입점업체) 페이지
 # ─────────────────────────────────────────
 if role == 'BRAND' and not is_master:
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📦 내 입점 제품 관리",
+    tab_qr, tab_ord, tab1, tab2, tab3, tab4 = st.tabs([
+        "🛍️ 상품 & QR (다이렉트 판매)",
+        "📦 고객 주문 현황",
+        "📦 브랜드 제품 풀(Pool) 관리",
         "🏠 호스트 숙소 탐색",
-        "📤 입점 보내기",
-        "📊 입점 현황"
+        "📤 호스트 입점 제안",
+        "📊 전체 입점 현황"
     ])
+    
+    with tab_qr: render_tab_qr(host_id, is_master)
+    with tab_ord: render_tab_orders(host_id, is_master)
 
     # ── TAB1: 내 입점 제품 관리 ──────────────────
     with tab1:
@@ -362,113 +469,13 @@ tab_list = st.tabs(tabs_list)
 # TAB 0 — 상품 관리 & QR
 # ═══════════════════════════════════════
 with tab_list[0]:
-    st.subheader("➕ 새 제품 등록 & QR 생성")
-    # 카테고리 한글 매핑
-    ROOM_MAP = {
-        '거실': 'living_room',
-        '침실': 'bedroom',
-        '주방': 'kitchen',
-        '화장실': 'bathroom',
-    }
-    with st.form("product_register_form", clear_on_submit=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            brand_name   = st.text_input("브랜드명 *")
-            product_name = st.text_input("제품명 *")
-            room_label   = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
-        with c2:
-            price = st.number_input("판매가격 (원) *", min_value=0, step=1000, format="%d")
-            prod_description = st.text_area("제품 설명 (선택)", height=80)
-            prod_image = st.file_uploader("제품 이미지", type=["jpg","jpeg","png","webp"], key="prod_img")
-        submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
-
-    if submitted:
-        if not brand_name or not product_name or price <= 0:
-            st.error("모든 항목을 입력해 주세요.")
-        else:
-            qr_id = str(uuid.uuid4())[:12]
-            url   = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
-            owner = host_id
-            room_category = ROOM_MAP[room_label]
-            img_b64 = database.file_to_base64(prod_image) if prod_image else None
-            conn = database.get_db_connection()
-            cursor = conn.cursor()
-            try:
-                q = ('INSERT INTO products (brand_name,product_name,price,qr_code_id,owner_id,room_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
-                     if database.DATABASE_URL else
-                     'INSERT INTO products (brand_name,product_name,price,qr_code_id,owner_id,room_category,description,image_url) VALUES (?,?,?,?,?,?,?,?)')
-                cursor.execute(q, (brand_name, product_name, price, qr_id, owner, room_category, prod_description or None, img_b64))
-                conn.commit()
-                st.success(f"✅ '{product_name}' 등록 완료!")
-                buf = make_qr(url)
-                cq, ci = st.columns([1, 2])
-                with cq:
-                    st.image(buf, width=180)
-                    buf.seek(0)
-                    st.download_button("📥 QR 다운로드", buf, f"QR_{product_name}.png", "image/png", use_container_width=True)
-                with ci:
-                    st.code(url, language=None)
-            except Exception as e:
-                st.error(f"오류: {e}")
-            finally:
-                conn.close()
-
-    st.markdown("---")
-    st.subheader("📋 제품 목록")
-    conn = database.get_db_connection()
-    if is_master:
-        df_p = pd.read_sql_query("SELECT p.id,p.brand_name,p.product_name,p.price,p.room_category,p.qr_code_id,h.name as owner FROM products p LEFT JOIN hosts h ON p.owner_id=h.id ORDER BY p.id DESC", conn)
-    else:
-        q = ('SELECT id,brand_name,product_name,price,room_category,qr_code_id FROM products WHERE owner_id=%s ORDER BY id DESC'
-             if database.DATABASE_URL else
-             'SELECT id,brand_name,product_name,price,room_category,qr_code_id FROM products WHERE owner_id=? ORDER BY id DESC')
-        df_p = pd.read_sql_query(q, conn, params=(host_id,))
-    conn.close()
-
-    if df_p.empty:
-        st.info("등록된 제품이 없습니다.")
-    else:
-        dsp = df_p.copy()
-        dsp['price'] = dsp['price'].apply(lambda x: f"{x:,}원")
-        # 카테고리 한글 표시
-        ROOM_LABEL_MAP = {'living_room': '거실', 'bedroom': '침실', 'kitchen': '주방', 'bathroom': '화장실'}
-        if 'room_category' in dsp.columns:
-            dsp['room_category'] = dsp['room_category'].map(ROOM_LABEL_MAP).fillna('-')
-        st.dataframe(dsp, use_container_width=True, hide_index=True)
-
-        st.markdown("#### 🔄 QR 재발급")
-        sel = st.selectbox("제품 선택", df_p['id'].tolist(),
-                           format_func=lambda x: f"[{x}] {df_p[df_p['id']==x]['brand_name'].values[0]} - {df_p[df_p['id']==x]['product_name'].values[0]}")
-        if st.button("📱 QR 보기"):
-            row = df_p[df_p['id']==sel].iloc[0]
-            url = f"{CHECKOUT_BASE_URL}/shop/{row['qr_code_id']}"
-            buf = make_qr(url)
-            cq2, ci2 = st.columns([1, 2])
-            with cq2:
-                st.image(buf, width=180)
-                buf.seek(0)
-                st.download_button("📥 다운로드", buf, f"QR_{row['product_name']}.png", "image/png")
-            with ci2:
-                st.code(url, language=None)
+    render_tab_qr(host_id, is_master)
 
 # ═══════════════════════════════════════
 # TAB 1 — 주문 현황
 # ═══════════════════════════════════════
 with tab_list[1]:
-    st.subheader("📦 주문 현황")
-    conn = database.get_db_connection()
-    if is_master:
-        df_o = pd.read_sql_query("SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,p.brand_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id ORDER BY o.id DESC", conn)
-    else:
-        q = ('SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id WHERE p.owner_id=%s ORDER BY o.id DESC'
-             if database.DATABASE_URL else
-             'SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id WHERE p.owner_id=? ORDER BY o.id DESC')
-        df_o = pd.read_sql_query(q, conn, params=(host_id,))
-    conn.close()
-    if df_o.empty:
-        st.info("아직 주문이 없습니다.")
-    else:
-        st.dataframe(df_o, use_container_width=True, hide_index=True)
+    render_tab_orders(host_id, is_master)
 
 # ═══════════════════════════════════════
 # TAB 2 — HOST: 숙소 프로필 / MASTER: 숙소 탐색
