@@ -241,6 +241,36 @@
             color: var(--text-secondary);
         }
 
+        /* ── 탭 네비게이션 ── */
+        .pdp-tabs {
+            position: sticky;
+            top: 60px;
+            background: white;
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            margin-bottom: 24px;
+        }
+        .pdp-tab {
+            flex: 1;
+            text-align: center;
+            padding: 16px 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .pdp-tab span { font-size: 11px; margin-left: 2px; opacity: 0.6; }
+        .pdp-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+            font-weight: 600;
+        }
+        .tab-content { display: none; padding: 0 24px 60px; }
+        .tab-content.active { display: block; }
+
         /* ── 옵션 선택 ── */
         .options-section {
             margin-bottom: 32px;
@@ -303,6 +333,66 @@
             color: var(--text-secondary);
             white-space: pre-wrap;
         }
+
+        /* ── 리뷰 & 문의 아이템 ── */
+        .item-list { margin-top: 20px; }
+        .item-card {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .item-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .item-name { color: var(--text-primary); font-weight: 600; }
+        .item-rating { color: #FFB800; }
+        .item-text { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+        .item-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #F0F0F0;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        /* ── 정보 폼 ── */
+        .submission-form {
+            background: #F9F9F8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+        }
+        .form-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+        .form-row { margin-bottom: 12px; }
+        .form-row label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+        .form-row input, .form-row textarea, .form-row select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #DDD;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+        .form-submit {
+            width: 100%;
+            padding: 12px;
+            background: var(--text-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ── 안내 섹션 ── */
+        .policy-section { margin-bottom: 32px; }
+        .policy-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; border-left: 3px solid var(--text-primary); padding-left: 10px; }
+        .policy-text { font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
 
         /* ── CTA 버튼 ── */
         .cta-section {
@@ -547,36 +637,148 @@
         </div>
         <p style="font-size: 11px; color: var(--text-muted); margin-top: -16px; margin-bottom: 24px;">* 배송비 별도 / 환불·교환 시 왕복 배송비 고객 부담</p>
 
+    <!-- 탭 네비게이션 -->
+    <div class="pdp-tabs">
+        <div class="pdp-tab active" onclick="switchTab('info')">상품정보</div>
+        <div class="pdp-tab" onclick="switchTab('reviews')">리뷰 <span>{{ reviews|length }}</span></div>
+        <div class="pdp-tab" onclick="switchTab('inquiries')">문의 <span>{{ inquiries|length }}</span></div>
+        <div class="pdp-tab" onclick="switchTab('policy')">배송/환불</div>
+    </div>
+
+    <!-- [Tab 1] 상품정보 -->
+    <div id="tab-info" class="tab-content active">
+        <!-- 기존 상세 설명 -->
         {% if product.description %}
         <div class="product-description">
             {{ product.description }}
         </div>
         {% endif %}
 
-        <!-- 옵션 선택 -->
-        {% if options %}
-        <div class="options-section">
-            {% for opt in options %}
-            <div class="option-group" data-option-name="{{ opt.name }}">
-                <span class="option-name">{{ opt.name }}</span>
-                <div class="option-values">
-                    {% for val in opt.values %}
-                    <button class="option-btn" onclick="selectOption(this, '{{ opt.name }}', '{{ val }}')">{{ val }}</button>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- 상세 정보 -->
         {% if product.detailed_description %}
         <div class="detailed-context">
             <h3 class="detailed-title">제품 상세 정보</h3>
             <div class="detailed-content">{{ product.detailed_description }}</div>
         </div>
         {% endif %}
-    </section>
+    </div>
+
+    <!-- [Tab 2] 리뷰 -->
+    <div id="tab-reviews" class="tab-content">
+        <div class="submission-form">
+            <div class="form-title">구매 후기 남기기</div>
+            <form action="/shop/{{ qr_code_id }}/product/{{ product.id }}/review" method="POST">
+                <div class="form-row">
+                    <label>이름</label>
+                    <input type="text" name="customer_name" required placeholder="수령인 성함">
+                </div>
+                <div class="form-row">
+                    <label>별점</label>
+                    <select name="rating">
+                        <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                        <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                        <option value="3">⭐⭐⭐ (3/5)</option>
+                        <option value="2">⭐⭐ (2/5)</option>
+                        <option value="1">⭐ (1/5)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>후기 내용</label>
+                    <textarea name="comment" rows="3" required placeholder="제품은 어떠셨나요?"></textarea>
+                </div>
+                <button type="submit" class="form-submit">리뷰 등록</button>
+            </form>
+        </div>
+
+        <div class="item-list">
+            {% if reviews %}
+                {% for r in reviews %}
+                <div class="item-card">
+                    <div class="item-meta">
+                        <span class="item-name">{{ r.customer_name }}</span>
+                        <span class="item-rating">
+                            {% for _ in range(r.rating) %}⭐{% endfor %}
+                        </span>
+                    </div>
+                    <div class="item-text">{{ r.comment }}</div>
+                    <div class="item-meta" style="margin-top:8px; font-size:10px;">{{ r.created_at.strftime('%Y.%m.%d') }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align:center; color:#999; font-size:13px; padding:40px 0;">아직 작성된 리뷰가 없습니다.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- [Tab 3] 문의 -->
+    <div id="tab-inquiries" class="tab-content">
+        <div class="submission-form">
+            <div class="form-title">취소/환불/기타 문의하기</div>
+            <form action="/shop/{{ qr_code_id }}/product/{{ product.id }}/inquiry" method="POST">
+                <div class="form-row">
+                    <label>성함</label>
+                    <input type="text" name="customer_name" required placeholder="문의자 성함">
+                </div>
+                <div class="form-row">
+                    <label>문의 유형</label>
+                    <select name="type">
+                        <option value="배송">배송 문의</option>
+                        <option value="취소/환불">취소/환불 문의</option>
+                        <option value="상품">상품 문의</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>문의 내용</label>
+                    <textarea name="content" rows="3" required placeholder="문의하실 내용을 상세히 적어주세요."></textarea>
+                </div>
+                <button type="submit" class="form-submit">문의 등록</button>
+            </form>
+        </div>
+
+        <div class="item-list">
+            {% if inquiries %}
+                {% for q in inquiries %}
+                <div class="item-card">
+                    <div class="item-meta">
+                        <span><span class="item-badge">{{ q.type }}</span> <span class="item-name">{{ q.customer_name }}</span></span>
+                        <span>{{ q.created_at.strftime('%Y.%m.%d') }}</span>
+                    </div>
+                    <div class="item-text">{{ q.content }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align:center; color:#999; font-size:13px; padding:40px 0;">문의 내역이 없습니다.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- [Tab 4] 배송/환불 -->
+    <div id="tab-policy" class="tab-content">
+        <div class="policy-section">
+            <h4 class="policy-title">배송 정보</h4>
+            <div class="policy-text">
+                • 배송 방식: 브랜드사 직배송 (택배)<br>
+                • 배송비: 제품별 별도 부과 (구매 화면에서 확인 가능)<br>
+                • 배송 기간: 결제 완료 후 평균 2~5일 이내 (영업일 기준)
+            </div>
+        </div>
+        <div class="policy-section">
+            <h4 class="policy-title">교환/환불 정책</h4>
+            <div class="policy-text">
+                • 교환/반품 기간: 상품 수령 후 7일 이내 신청 가능<br>
+                • 단순 변심 시: 왕복 배송비 고객 부담<br>
+                • 상품 불량 시: 배송비 전액 브랜드사 부담<br>
+                • 불가 사유: 사용 흔적이 있거나 패키지가 훼손된 경우 환불이 제한될 수 있습니다.
+            </div>
+        </div>
+        <div class="policy-section">
+            <h4 class="policy-title">취소 안내</h4>
+            <div class="policy-text">
+                • [배송 준비 중] 이전 단계에서는 즉시 취소 요청이 가능하며, 이후 단계에서는 반품 절차로 진행될 수 있습니다.
+            </div>
+        </div>
+    </div>
+</section>
 
     <!-- 멀티 유니버스 크로스셀 위젯 -->
     {% if cross_sell_products %}
@@ -623,6 +825,34 @@
     </div>
 
     <script>
+        // 탭 전환 로직
+        function switchTab(tabName) {
+            // 모든 탭 비활성화
+            document.querySelectorAll('.pdp-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // 선택한 탭 활성화
+            const targetTab = Array.from(document.querySelectorAll('.pdp-tab')).find(t => t.innerText.includes(
+                tabName === 'info' ? '상품정보' : (tabName === 'reviews' ? '리뷰' : (tabName === 'inquiries' ? '문의' : '배송/환불'))
+            ));
+            if (targetTab) targetTab.classList.add('active');
+            
+            const content = document.getElementById('tab-' + tabName);
+            if (content) content.classList.add('active');
+
+            // URL 업데이트 (히스토리)
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.replaceState({}, '', url);
+        }
+
+        // 초기 탭 로드 (URL 파라미터 확인)
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab');
+            if (tab) switchTab(tab);
+        });
+
         // 캐러셀 닷 업데이트
         const carousel = document.getElementById('image-carousel');
         const dots = document.querySelectorAll('.dot');

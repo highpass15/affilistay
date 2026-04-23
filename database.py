@@ -90,9 +90,25 @@ def init_db():
         )
         """)
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS orders (
+        CREATE TABLE IF NOT EXISTS reviews (
             id SERIAL PRIMARY KEY,
-            product_id INTEGER REFERENCES products(id),
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            customer_name TEXT NOT NULL,
+            rating INTEGER DEFAULT 5,
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_inquiries (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            customer_name TEXT NOT NULL,
+            type TEXT NOT NULL, -- 배송/취소/환불/기타
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
             customer_name TEXT NOT NULL,
             phone_number TEXT NOT NULL,
             shipping_address TEXT NOT NULL,
@@ -265,6 +281,8 @@ def init_db():
             "CREATE TABLE IF NOT EXISTS product_options (id SERIAL PRIMARY KEY, product_id INTEGER, name TEXT, values TEXT)",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS selected_options TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT",
+            "CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, rating INTEGER, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS product_inquiries (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, type TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         ]
         for sql in migrations:
             try:

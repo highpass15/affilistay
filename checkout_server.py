@@ -310,6 +310,22 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
             'values': [v.strip() for v in opt['values'].split(',')]
         })
 
+    # 리뷰 조회
+    reviews = _fetch_all(
+        conn,
+        "SELECT * FROM reviews WHERE product_id = %s ORDER BY created_at DESC",
+        "SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC",
+        (product_id,)
+    )
+
+    # 문의 조회
+    inquiries = _fetch_all(
+        conn,
+        "SELECT * FROM product_inquiries WHERE product_id = %s ORDER BY created_at DESC",
+        "SELECT * FROM product_inquiries WHERE product_id = ? ORDER BY created_at DESC",
+        (product_id,)
+    )
+
     cross_sell_products = _fetch_all(
         conn,
         "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != %s ORDER BY RANDOM() LIMIT 4",
@@ -326,6 +342,8 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
             "product": product,
             "images": images if images else [{'image_data': product['image_url']}],
             "options": options,
+            "reviews": reviews,
+            "inquiries": inquiries,
             "qr_code_id": qr_code_id,
             "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
             "product_category_label": PRODUCT_CATEGORIES.get(product.get('product_category', ''), ''),
@@ -471,3 +489,43 @@ if __name__ == "__main__":
     database.init_db()
     print("[SERVER] AffiliStay Showroom Server is running on port 8000...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
+# ─────────────────────────────────────────
+# 리뷰/문의 제출 처리
+# ─────────────────────────────────────────
+@app.post("/shop/{qr_code_id}/product/{product_id}/review")
+async def post_review(
+    qr_code_id: str,
+    product_id: int,
+    customer_name: str = Form(...),
+    rating: int = Form(5),
+    comment: str = Form(...),
+):
+    conn = get_db_connection()
+    q = ("INSERT INTO reviews (product_id, customer_name, rating, comment) VALUES (%s,%s,%s,%s)"
+         if _is_pg() else "INSERT INTO reviews (product_id, customer_name, rating, comment) VALUES (?,?,?,?)")
+    if _is_pg():
+        with conn.cursor() as cur: cur.execute(q, (product_id, customer_name, rating, comment))
+    else:
+        conn.execute(q, (product_id, customer_name, rating, comment))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url=f"/shop/{qr_code_id}/product/{product_id}?tab=reviews", status_code=303)
+
+@app.post("/shop/{qr_code_id}/product/{product_id}/inquiry")
+async def post_inquiry(
+    qr_code_id: str,
+    product_id: int,
+    customer_name: str = Form(...),
+    type: str = Form(...),
+    content: str = Form(...),
+):
+    conn = get_db_connection()
+    q = ("INSERT INTO product_inquiries (product_id, customer_name, type, content) VALUES (%s,%s,%s,%s)"
+         if _is_pg() else "INSERT INTO product_inquiries (product_id, customer_name, type, content) VALUES (?,?,?,?)")
+    if _is_pg():
+        with conn.cursor() as cur: cur.execute(q, (product_id, customer_name, type, content))
+    else:
+        conn.execute(q, (product_id, customer_name, type, content))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url=f"/shop/{qr_code_id}/product/{product_id}?tab=inquiries", status_code=303)
