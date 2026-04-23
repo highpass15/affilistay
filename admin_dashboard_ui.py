@@ -65,26 +65,28 @@ def check_auth():
 
         if st.session_state['auth_mode'] == 'login':
             st.markdown("#### 로그인")
-            u = st.text_input("아이디", key="login_u")
-            p = st.text_input("비밀번호", type="password", key="login_p")
-            if st.button("로그인", use_container_width=True, type="primary"):
-                conn = database.get_db_connection()
-                cursor = conn.cursor()
-                q = ('SELECT id,username,name,is_master,role FROM hosts WHERE username=%s AND password=%s'
-                     if database.DATABASE_URL else
-                     'SELECT id,username,name,is_master,role FROM hosts WHERE username=? AND password=?')
-                cursor.execute(q, (u, p))
-                user = cursor.fetchone()
-                conn.close()
-                if user:
-                    st.session_state.update({
-                        "authenticated": True, "host_id": user[0],
-                        "username": user[1], "name": user[2],
-                        "is_master": bool(user[3]), "role": user[4]
-                    })
-                    st.rerun()
-                else:
-                    st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+            with st.form("login_form", clear_on_submit=False):
+                u = st.text_input("아이디")
+                p = st.text_input("비밀번호", type="password")
+                if st.form_submit_button("로그인", use_container_width=True, type="primary"):
+                    conn = database.get_db_connection()
+                    cursor = conn.cursor()
+                    q = ('SELECT id,username,name,is_master,role FROM hosts WHERE username=%s AND password=%s'
+                         if database.DATABASE_URL else
+                         'SELECT id,username,name,is_master,role FROM hosts WHERE username=? AND password=?')
+                    cursor.execute(q, (u, p))
+                    user = cursor.fetchone()
+                    conn.close()
+                    if user:
+                        st.session_state.update({
+                            "authenticated": True, "host_id": user[0],
+                            "username": user[1], "name": user[2],
+                            "is_master": bool(user[3]), "role": user[4]
+                        })
+                        st.rerun()
+                    else:
+                        st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+            
             if st.button("계정이 없으신가요? 회원가입", use_container_width=True):
                 st.session_state['auth_mode'] = 'signup'
                 st.rerun()
@@ -170,7 +172,8 @@ def render_tab_qr(host_id, is_master):
         '🪴 데코·식물': 'deco',
         '💡 조명': 'lighting',
         '📦 수납·정리': 'storage',
-        '🛁 생활용품': 'lifestyle'
+        '🛁 생활품': 'lifestyle',
+        '🔌 헤어드라이어': 'hairdryer'
     }
     with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
         c1, c2 = st.columns(2)

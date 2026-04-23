@@ -28,6 +28,7 @@ PRODUCT_CATEGORIES = {
     'deco': '데코·식물',
     'lighting': '조명',
     'storage': '수납·정리',
+    'hairdryer': '헤어드라이어',
     'lifestyle': '생활용품'
 }
 
