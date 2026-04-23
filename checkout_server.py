@@ -20,15 +20,15 @@ ROOM_CATEGORIES = {
 }
 
 PRODUCT_CATEGORIES = {
-    'furniture': '🛋️ 가구',
-    'fabric': '🧶 패브릭',
-    'appliance': '📺 가전·디지털',
-    'kitchenware': '🍳 주방용품',
-    'food': '🥯 식품',
-    'deco': '🪴 데코·식물',
-    'lighting': '💡 조명',
-    'storage': '📦 수납·정리',
-    'lifestyle': '🛁 생활용품'
+    'furniture': '가구',
+    'fabric': '패브릭',
+    'appliance': '가전·디지털',
+    'kitchenware': '주방용품',
+    'food': '식품',
+    'deco': '데코·식물',
+    'lighting': '조명',
+    'storage': '수납·정리',
+    'lifestyle': '생활용품'
 }
 
 # 정적 파일(이미지 등) 서비스 설정
