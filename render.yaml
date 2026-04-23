@@ -12,6 +12,8 @@ services:
         fromDatabase:
           name: affilistay-db
           property: connectionString
+      - key: SERVICE_TYPE
+        value: showroom
     dockerCommand: "uvicorn checkout_server:app --host 0.0.0.0 --port $PORT"
 
   # 2. 호스트 전용 포털 (Streamlit)
@@ -26,6 +28,8 @@ services:
         fromDatabase:
           name: affilistay-db
           property: connectionString
+      - key: SERVICE_TYPE
+        value: admin
     # 배포 시 실행 명령어를 dockerCommand로 설정합니다.
     dockerCommand: "streamlit run admin_dashboard_ui.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
 
