@@ -19,6 +19,14 @@ ROOM_CATEGORIES = {
     'bathroom': '화장실',
 }
 
+PRODUCT_CATEGORIES = {
+    'furniture': '가구',
+    'lighting': '조명',
+    'bedding': '침구',
+    'kitchenware': '주방용품',
+    'lifestyle': '생활/소품'
+}
+
 # 정적 파일(이미지 등) 서비스 설정
 static_dir = os.path.join(os.path.dirname(__file__), 'static')
 if not os.path.exists(static_dir):
@@ -126,18 +134,18 @@ async def catalog_page(request: Request, category: str = Query(default=None)):
     """QR 접속 없이 플랫폼 전체 입점제품 및 숙소(호스트) 공간 구경"""
     conn = get_db_connection()
 
-    if category and category in ROOM_CATEGORIES:
+    if category and category in PRODUCT_CATEGORIES:
         products = _fetch_all(
             conn,
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.room_category = %s ORDER BY p.id",
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.room_category = ? ORDER BY p.id",
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id",
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id",
             (category,)
         )
     else:
         products = _fetch_all(
             conn,
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.room_category, p.id",
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.room_category, p.id"
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.product_category, p.id",
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.product_category, p.id"
         )
         
     hosts = _fetch_all(
@@ -148,11 +156,11 @@ async def catalog_page(request: Request, category: str = Query(default=None)):
 
     conn.close()
 
-    categorized = {}
-    for cat_key, cat_name in ROOM_CATEGORIES.items():
-        cat_products = [p for p in products if p.get('room_category') == cat_key]
+    categorized_by_item = {}
+    for cat_key, cat_name in PRODUCT_CATEGORIES.items():
+        cat_products = [p for p in products if p.get('product_category') == cat_key]
         if cat_products:
-            categorized[cat_key] = {
+            categorized_by_item[cat_key] = {
                 'name': cat_name,
                 'products': cat_products
             }
@@ -161,8 +169,8 @@ async def catalog_page(request: Request, category: str = Query(default=None)):
         request=request,
         name="catalog.html",
         context={
-            "categories": ROOM_CATEGORIES,
-            "categorized": categorized,
+            "prod_categories": PRODUCT_CATEGORIES,
+            "categorized_by_item": categorized_by_item,
             "active_category": category,
             "all_products": products,
             "hosts": hosts,

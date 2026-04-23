@@ -284,8 +284,8 @@
 
     <!-- 메인 탭 -->
     <div class="main-tabs fade-in" style="animation-delay: 0.1s">
-        <div class="main-tab active" onclick="switchTab('products', this)">전체 제품 둘러보기</div>
-        <div class="main-tab" onclick="switchTab('hosts', this)">감성 숙소 구경하기</div>
+        <div class="main-tab active" onclick="switchTab('products', this)">📦 품목별 탐색</div>
+        <div class="main-tab" onclick="switchTab('hosts', this)">🏡 쇼룸별 탐색</div>
     </div>
 
     <!-- [View 1] 카테고리별 제품 보기 -->
@@ -296,19 +296,19 @@
                 <a href="/catalog" class="category-tab {% if not active_category %}active{% endif %}">
                     <span class="tab-icon">🏠</span> 전체
                 </a>
-                {% for key, name in categories.items() %}
-                {% set icon = {'living_room': '🛋️', 'bedroom': '🛏️', 'kitchen': '🍳', 'bathroom': '🚿'} %}
+                {% for key, name in prod_categories.items() %}
+                {% set icon = {'furniture': '🛋️', 'lighting': '💡', 'bedding': '🛏️', 'kitchenware': '🍱', 'lifestyle': '🧸'} %}
                 <a href="/catalog?category={{ key }}" class="category-tab {% if active_category == key %}active{% endif %}">
-                    <span class="tab-icon">{{ icon[key] }}</span> {{ name }}
+                    <span class="tab-icon">{{ icon[key] or '📦' }}</span> {{ name }}
                 </a>
                 {% endfor %}
             </div>
         </nav>
 
-        {% if categorized %}
+        {% if categorized_by_item %}
             {% if active_category %}
-                {% if active_category in categorized %}
-                    {% set cat = categorized[active_category] %}
+                {% if active_category in categorized_by_item %}
+                    {% set cat = categorized_by_item[active_category] %}
                     <section class="category-section fade-in" style="animation-delay: 0.2s">
                         <div class="category-title">
                             <h2>{{ cat.name }}</h2>
@@ -317,7 +317,6 @@
                         </div>
                         <div class="product-grid">
                             {% for product in cat.products %}
-                            <!-- 제품의 원본 qr_code_id를 사용하여 원래 숙소의 결제 체인지로 연결 -->
                             <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="product-card fade-in">
                                 <div class="product-img-wrap">
                                     {% if product.image_url %}
@@ -347,7 +346,7 @@
                     <div class="empty-state">해당 카테고리에 등록된 제품이 없습니다.</div>
                 {% endif %}
             {% else %}
-                {% for cat_key, cat_data in categorized.items() %}
+                {% for cat_key, cat_data in categorized_by_item.items() %}
                 <section class="category-section fade-in" style="animation-delay: 0.2s">
                     <div class="category-title">
                         <h2>{{ cat_data.name }}</h2>
@@ -356,7 +355,6 @@
                     </div>
                     <div class="product-grid">
                         {% for product in cat_data.products %}
-                        <!-- 제품 고유의 qr_code_id를 탑재 (해당 숙소 컨텍스트로 이동) -->
                         <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="product-card fade-in">
                             <div class="product-img-wrap">
                                 {% if product.image_url %}

@@ -161,12 +161,16 @@ def render_tab_qr(host_id, is_master):
     ROOM_MAP = {
         '거실': 'living_room', '침실': 'bedroom', '주방': 'kitchen', '화장실': 'bathroom',
     }
+    PROD_CAT_MAP = {
+        '🏷️ 가구': 'furniture', '💡 조명': 'lighting', '🛏️ 침구': 'bedding', '🛁 주방/욕실용품': 'kitchenware', '🧸 생활/소품': 'lifestyle'
+    }
     with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
         c1, c2 = st.columns(2)
         with c1:
             brand_name   = st.text_input("브랜드명 *")
             product_name = st.text_input("제품명 *")
-            room_label   = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
+            room_label   = st.selectbox("배치 공간 (룸 타입) *", list(ROOM_MAP.keys()))
+            prod_cat_label = st.selectbox("품목 카테고리 *", list(PROD_CAT_MAP.keys()))
         with c2:
             original_price = st.number_input("정가 (할인 전 가격) *", min_value=0, step=1000, format="%d")
             price = st.number_input("판매가 (실제 결제 금액) *", min_value=0, step=1000, format="%d")
@@ -183,10 +187,10 @@ def render_tab_qr(host_id, is_master):
             img_b64 = database.file_to_base64(prod_image) if prod_image else None
             conn = database.get_db_connection()
             try:
-                q = ('INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)'
+                q = ('INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
                      if database.DATABASE_URL else
-                     'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,description,image_url) VALUES (?,?,?,?,?,?,?,?,?)')
-                conn.cursor().execute(q, (brand_name, product_name, price, original_price or price, qr_id, host_id, ROOM_MAP[room_label], prod_description or None, img_b64))
+                     'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?)')
+                conn.cursor().execute(q, (brand_name, product_name, price, original_price or price, qr_id, host_id, ROOM_MAP[room_label], PROD_CAT_MAP[prod_cat_label], prod_description or None, img_b64))
                 conn.commit()
                 st.success(f"✅ '{product_name}' 등록 완료!")
                 buf = make_qr(url)

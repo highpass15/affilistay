@@ -66,6 +66,7 @@ def init_db():
             qr_code_id TEXT UNIQUE NOT NULL,
             owner_id INTEGER REFERENCES hosts(id),
             room_category TEXT DEFAULT 'living_room',
+            product_category TEXT DEFAULT 'lifestyle',
             description TEXT,
             image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -159,6 +160,7 @@ def init_db():
             price INTEGER, original_price INTEGER,
             qr_code_id TEXT UNIQUE, owner_id INTEGER,
             room_category TEXT DEFAULT 'living_room',
+            product_category TEXT DEFAULT 'lifestyle',
             description TEXT, image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -243,6 +245,7 @@ def init_db():
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price INTEGER",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS product_category TEXT DEFAULT 'lifestyle'",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'PENDING'",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT",
         ]
