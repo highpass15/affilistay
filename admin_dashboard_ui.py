@@ -510,9 +510,9 @@ if role == 'BRAND' and not is_master:
 # ─────────────────────────────────────────
 # HOST 페이지 + MASTER 공통
 # ─────────────────────────────────────────
-tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 프로필", "🎁 입점 신청"]
+tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "⭐ 리뷰", "💬 문의사항", "🏠 숙소 프로필", "🎁 입점 신청"]
 if is_master:
-    tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 탐색", "🎁 입점 현황", "👥 사용자 관리", "💰 정산", "📩 문의사항"]
+    tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "⭐ 리뷰", "💬 문의사항", "🏠 숙소 탐색", "🎁 입점 현황", "👥 사용자 관리", "💰 정산"]
 
 tab_list = st.tabs(tabs_list)
 
@@ -529,9 +529,41 @@ with tab_list[1]:
     render_tab_orders(host_id, is_master)
 
 # ═══════════════════════════════════════
-# TAB 2 — HOST: 숙소 프로필 / MASTER: 숙소 탐색
+# TAB 2 — 리뷰 관리
 # ═══════════════════════════════════════
 with tab_list[2]:
+    st.subheader("⭐ 제품 리뷰 관리")
+    conn = database.get_db_connection()
+    q = ("""
+        SELECT r.id, p.product_name, r.customer_name, r.rating, r.comment, r.created_at
+        FROM reviews r JOIN products p ON r.product_id = p.id
+        """ + ("" if is_master else " WHERE p.owner_id = %s") + " ORDER BY r.created_at DESC")
+    if is_master: df_r = pd.read_sql_query(q, conn)
+    else: df_r = pd.read_sql_query(q, conn, params=(host_id,))
+    conn.close()
+    if df_r.empty: st.info("아직 리뷰가 없습니다.")
+    else: st.dataframe(df_r, use_container_width=True, hide_index=True)
+
+# ═══════════════════════════════════════
+# TAB 3 — 문의사항 관리
+# ═══════════════════════════════════════
+with tab_list[3]:
+    st.subheader("💬 제품 문의사항 (취소/환불/기타)")
+    conn = database.get_db_connection()
+    q = ("""
+        SELECT q.id, p.product_name, q.customer_name, q.type, q.content, q.created_at
+        FROM product_inquiries q JOIN products p ON q.product_id = p.id
+        """ + ("" if is_master else " WHERE p.owner_id = %s") + " ORDER BY q.created_at DESC")
+    if is_master: df_inq = pd.read_sql_query(q, conn)
+    else: df_inq = pd.read_sql_query(q, conn, params=(host_id,))
+    conn.close()
+    if df_inq.empty: st.info("아직 문의사항이 없습니다.")
+    else: st.dataframe(df_inq, use_container_width=True, hide_index=True)
+
+# ═══════════════════════════════════════
+# TAB 4 — HOST: 숙소 프로필 / MASTER: 숙소 탐색
+# ═══════════════════════════════════════
+with tab_list[4]:
     if is_master:
         # 마스터: 전체 숙소 탐색
         st.subheader("🏠 전체 호스트 숙소")
