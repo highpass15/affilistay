@@ -246,9 +246,9 @@
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-12 md:gap-16 text-[9px] font-bold tracking-[0.3em] text-gray-400 uppercase">
                 <div class="space-y-4">
-                    <span class="text-black">Contact</span>
-                    <a href="#" class="block hover:text-accent">Partnership</a>
-                    <a href="#" class="block hover:text-accent">Support</a>
+                    <button onclick="openContactModal()" class="text-black uppercase tracking-[0.3em] font-bold hover:text-accent transition-colors text-[9px]">Contact</button>
+                    <button onclick="openContactModal()" class="block w-full text-left hover:text-accent tracking-[0.3em] uppercase">Partnership</button>
+                    <button onclick="openContactModal()" class="block w-full text-left hover:text-accent tracking-[0.3em] uppercase">Support</button>
                 </div>
                 <div class="space-y-4">
                     <span class="text-black">Social</span>
@@ -261,8 +261,9 @@
                 </div>
             </div>
         </div>
-        <div class="max-w-6xl mx-auto px-6 mt-20 md:mt-24 text-[8px] text-gray-300 tracking-[0.5em] uppercase text-center md:text-left">
-            © 2026 AFFILISTAY. ALL RIGHTS RESERVED.
+        <div class="max-w-6xl mx-auto px-6 mt-20 md:mt-24 text-[9px] text-gray-400 tracking-[0.2em] text-center md:text-left space-y-2">
+            <p>상호명: 어필리스테이 | 대표자명: 최장우</p>
+            <p class="text-[8px] text-gray-300 tracking-[0.5em] uppercase">© 2026 AFFILISTAY. ALL RIGHTS RESERVED.</p>
         </div>
     </footer>
 
@@ -406,6 +407,23 @@
         </div>
     </div>
 
+    <!-- Contact Modal -->
+    <div id="contactModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-11/12 max-w-sm p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="contactModalContent">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold tracking-widest uppercase">Contact Us</h3>
+                <button onclick="closeContactModal()" class="text-gray-400 hover:text-black">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="space-y-4 text-sm text-gray-600 font-light tracking-wide keep-all">
+                <p><span class="font-bold text-black w-20 inline-block">대표자명</span> 최장우</p>
+                <p><span class="font-bold text-black w-20 inline-block">이메일</span> jwchoi1207@naver.com</p>
+                <p><span class="font-bold text-black w-20 inline-block">연락처</span> 010-4670-5097</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         const reveals = document.querySelectorAll('.reveal');
         const observer = new IntersectionObserver((entries) => {
@@ -449,6 +467,23 @@
                 document.getElementById('signupOverlay').classList.add('translate-x-full');
                 document.body.style.overflow = '';
             }
+        }
+
+        // Contact Modal Logic
+        function openContactModal() {
+            const modal = document.getElementById('contactModal');
+            const content = document.getElementById('contactModalContent');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        function closeContactModal() {
+            const modal = document.getElementById('contactModal');
+            const content = document.getElementById('contactModalContent');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
         }
 
         // 스마트폰의 물리 라우팅/뒤로가기 버튼 감지
