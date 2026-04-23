@@ -93,7 +93,7 @@ async def health_check():
 async def shop_page(request: Request, qr_code_id: str, category: str = Query(default=None)):
     """
     QR 코드 ID로 진입 → 해당 제품의 호스트(owner_id) 기반으로
-    같은 숙소의 모든 협찬제품을 카테고리별로 표시합니다.
+    같은 숙소의 모든 입점제품을 카테고리별로 표시합니다.
     """
     conn = get_db_connection()
 

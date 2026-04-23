@@ -123,7 +123,7 @@ content = """<!DOCTYPE html>
                     <span class="text-4xl md:text-6xl font-light text-accent/30 block mb-6 md:mb-8 group-hover:text-accent transition-colors duration-700">03</span>
                     <h3 class="text-lg md:text-xl font-bold mb-4 md:mb-6 tracking-tight">집으로 직배송</h3>
                     <p class="text-gray-400 font-light leading-relaxed text-sm border-t border-black/5 pt-6 md:pt-8 keep-all">
-                        주문 정보는 협찬 브랜드사로 즉시 전달되어 집으로 직배송됩니다. 여행의 여운이 가시기 전에 제품을 만나보세요.
+                        주문 정보는 입점 브랜드사로 즉시 전달되어 집으로 직배송됩니다. 여행의 여운이 가시기 전에 제품을 만나보세요.
                     </p>
                 </div>
             </div>
@@ -173,7 +173,7 @@ content = """<!DOCTYPE html>
                         <li class="flex items-start">
                             <span class="w-10 font-light text-accent text-xl mt-[-4px]">01</span>
                             <div class="pl-2">
-                                <strong class="text-black block mb-2 text-base md:text-lg">무료 제품 협찬</strong>
+                                <strong class="text-black block mb-2 text-base md:text-lg">무료 제품 입점</strong>
                                 <p class="leading-relaxed keep-all">브랜드사가 숙소에 제품을 무상으로 제공합니다. 비용 부담 없이 프리미엄 인테리어를 완성하세요.</p>
                             </div>
                         </li>

@@ -95,7 +95,7 @@ def check_auth():
             # 역할 선택 (3가지)
             role_map = {
                 "🏠 호스트 (숙소 운영자)": "HOST",
-                "🎁 협찬업체 (제품 공급사)": "BRAND",
+                "🎁 입점업체 (제품 공급사)": "BRAND",
                 "🛋️ 게스트 (쇼룸 방문자)": "GUEST"
             }
             role_label = st.radio("가입 유형을 선택하세요", list(role_map.keys()), horizontal=False)
@@ -142,7 +142,7 @@ is_master = st.session_state['is_master']
 host_id   = st.session_state['host_id']
 uname     = st.session_state['name']
 
-ROLE_LABELS = {"HOST": "호스트", "BRAND": "협찬업체", "GUEST": "게스트"}
+ROLE_LABELS = {"HOST": "호스트", "BRAND": "입점업체", "GUEST": "게스트"}
 role_display = "MASTER" if is_master else ROLE_LABELS.get(role, role)
 
 with st.sidebar:
@@ -162,20 +162,20 @@ if role == 'GUEST' and not is_master:
     st.stop()
 
 # ─────────────────────────────────────────
-# BRAND (협찬업체) 페이지
+# BRAND (입점업체) 페이지
 # ─────────────────────────────────────────
 if role == 'BRAND' and not is_master:
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📦 내 협찬 제품 관리",
+        "📦 내 입점 제품 관리",
         "🏠 호스트 숙소 탐색",
-        "📤 협찬 보내기",
-        "📊 협찬 현황"
+        "📤 입점 보내기",
+        "📊 입점 현황"
     ])
 
-    # ── TAB1: 내 협찬 제품 관리 ──────────────────
+    # ── TAB1: 내 입점 제품 관리 ──────────────────
     with tab1:
-        st.subheader("📦 협찬 제품 등록 · 관리")
-        st.caption("숙소에 비치할 협찬 가능 제품을 등록하세요.")
+        st.subheader("📦 입점 제품 등록 · 관리")
+        st.caption("숙소에 비치할 입점 가능 제품을 등록하세요.")
 
         with st.form("brand_item_form", clear_on_submit=True):
             c1, c2 = st.columns(2)
@@ -183,7 +183,7 @@ if role == 'BRAND' and not is_master:
                 item_name = st.text_input("제품명 *")
                 description = st.text_area("제품 소개", height=80)
             with c2:
-                stock_qty = st.number_input("협찬 가능 재고 수량 *", min_value=0, step=1)
+                stock_qty = st.number_input("입점 가능 재고 수량 *", min_value=0, step=1)
                 item_img = st.file_uploader("제품 이미지", type=["jpg","jpeg","png","webp"])
             submitted = st.form_submit_button("✅ 제품 등록", use_container_width=True, type="primary")
 
@@ -217,7 +217,7 @@ if role == 'BRAND' and not is_master:
         conn.close()
 
         if df_items.empty:
-            st.info("아직 등록된 협찬 제품이 없습니다.")
+            st.info("아직 등록된 입점 제품이 없습니다.")
         else:
             for _, row in df_items.iterrows():
                 with st.container():
@@ -227,13 +227,13 @@ if role == 'BRAND' and not is_master:
                     with c2:
                         st.markdown(f"**[#{row['id']}] {row['item_name']}**")
                         st.caption(row['description'] or "설명 없음")
-                        st.markdown(f"📦 협찬 가능 재고: **{row['stock_qty']}개**")
+                        st.markdown(f"📦 입점 가능 재고: **{row['stock_qty']}개**")
                     st.divider()
 
     # ── TAB2: 호스트 숙소 탐색 ──────────────────
     with tab2:
         st.subheader("🏠 호스트 숙소 탐색")
-        st.caption("협찬 제품을 비치할 숙소를 확인하세요.")
+        st.caption("입점 제품을 비치할 숙소를 확인하세요.")
         conn = database.get_db_connection()
         df_venues = pd.read_sql_query("""
             SELECT v.id, h.name as host_name, h.id as host_id,
@@ -261,10 +261,10 @@ if role == 'BRAND' and not is_master:
                     if v['description']:
                         st.caption(v['description'])
 
-    # ── TAB3: 협찬 보내기 ──────────────────────
+    # ── TAB3: 입점 보내기 ──────────────────────
     with tab3:
-        st.subheader("📤 호스트에게 협찬 보내기")
-        st.caption("비치할 제품과 수량을 선택해 원하는 숙소 호스트에게 협찬을 제안하세요.")
+        st.subheader("📤 호스트에게 입점 보내기")
+        st.caption("비치할 제품과 수량을 선택해 원하는 숙소 호스트에게 입점을 제안하세요.")
 
         conn = database.get_db_connection()
         # 내 제품 목록
@@ -283,7 +283,7 @@ if role == 'BRAND' and not is_master:
         conn.close()
 
         if my_items.empty:
-            st.warning("협찬 가능한 제품이 없습니다. 먼저 제품을 등록해 주세요.")
+            st.warning("입점 가능한 제품이 없습니다. 먼저 제품을 등록해 주세요.")
         elif host_venues.empty:
             st.warning("아직 숙소 정보를 등록한 호스트가 없습니다.")
         else:
@@ -291,11 +291,11 @@ if role == 'BRAND' and not is_master:
                 item_options = {f"[#{r['id']}] {r['item_name']} (재고 {r['stock_qty']}개)": r['id'] for _, r in my_items.iterrows()}
                 host_options = {f"{r['name']} — 📍{r['location'] or '위치 미입력'}": r['id'] for _, r in host_venues.iterrows()}
 
-                sel_item_label = st.selectbox("협찬할 제품 선택", list(item_options.keys()))
-                sel_host_label = st.selectbox("협찬받을 호스트 선택", list(host_options.keys()))
-                qty = st.number_input("협찬 수량", min_value=1, step=1)
+                sel_item_label = st.selectbox("입점할 제품 선택", list(item_options.keys()))
+                sel_host_label = st.selectbox("입점받을 호스트 선택", list(host_options.keys()))
+                qty = st.number_input("입점 수량", min_value=1, step=1)
                 message = st.text_area("호스트에게 전할 메시지 (선택)", height=80)
-                send = st.form_submit_button("📤 협찬 제안 보내기", use_container_width=True, type="primary")
+                send = st.form_submit_button("📤 입점 제안 보내기", use_container_width=True, type="primary")
 
             if send:
                 item_id  = item_options[sel_item_label]
@@ -308,22 +308,22 @@ if role == 'BRAND' and not is_master:
                              if database.DATABASE_URL else
                              'UPDATE brand_items SET stock_qty=stock_qty-? WHERE id=?')
                     cursor.execute(q_dec, (qty, item_id))
-                    # 협찬 내역 추가
+                    # 입점 내역 추가
                     q_ins = ('INSERT INTO sponsorships (brand_id,host_id,brand_item_id,qty,message,status) VALUES (%s,%s,%s,%s,%s,%s)'
                              if database.DATABASE_URL else
                              'INSERT INTO sponsorships (brand_id,host_id,brand_item_id,qty,message,status) VALUES (?,?,?,?,?,?)')
                     cursor.execute(q_ins, (host_id, h_id, item_id, qty, message, 'PENDING'))
                     conn.commit()
-                    st.success("✅ 협찬 제안이 전송되었습니다!")
+                    st.success("✅ 입점 제안이 전송되었습니다!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"오류: {e}")
                 finally:
                     conn.close()
 
-    # ── TAB4: 협찬 현황 ────────────────────────
+    # ── TAB4: 입점 현황 ────────────────────────
     with tab4:
-        st.subheader("📊 협찬 현황")
+        st.subheader("📊 입점 현황")
         conn = database.get_db_connection()
         q = ("""
             SELECT s.id, h.name as 호스트, bi.item_name as 제품, s.qty as 수량,
@@ -343,7 +343,7 @@ if role == 'BRAND' and not is_master:
         df_sp = pd.read_sql_query(q, conn, params=(host_id,))
         conn.close()
         if df_sp.empty:
-            st.info("아직 협찬 내역이 없습니다.")
+            st.info("아직 입점 내역이 없습니다.")
         else:
             st.dataframe(df_sp.drop(columns=['id']), use_container_width=True, hide_index=True)
 
@@ -352,9 +352,9 @@ if role == 'BRAND' and not is_master:
 # ─────────────────────────────────────────
 # HOST 페이지 + MASTER 공통
 # ─────────────────────────────────────────
-tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 프로필", "🎁 협찬 신청"]
+tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 프로필", "🎁 입점 신청"]
 if is_master:
-    tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 탐색", "🎁 협찬 현황", "👥 사용자 관리", "💰 정산"]
+    tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 탐색", "🎁 입점 현황", "👥 사용자 관리", "💰 정산"]
 
 tab_list = st.tabs(tabs_list)
 
@@ -492,7 +492,7 @@ with tab_list[2]:
     else:
         # 호스트: 내 숙소 프로필 등록·수정
         st.subheader("🏠 내 숙소 프로필")
-        st.caption("숙소 위치와 내부 사진을 등록하면 협찬업체가 협찬 제품을 제안할 수 있습니다.")
+        st.caption("숙소 위치와 내부 사진을 등록하면 입점업체가 입점 제품을 제안할 수 있습니다.")
 
         # 기존 데이터 불러오기
         conn = database.get_db_connection()
@@ -544,11 +544,11 @@ with tab_list[2]:
             with cp2: show_img(existing['image2'])
 
 # ═══════════════════════════════════════
-# TAB 3 — HOST: 협찬 신청 / MASTER: 협찬 전체 현황
+# TAB 3 — HOST: 입점 신청 / MASTER: 입점 전체 현황
 # ═══════════════════════════════════════
 with tab_list[3]:
     if is_master:
-        st.subheader("🎁 전체 협찬 현황")
+        st.subheader("🎁 전체 입점 현황")
         conn = database.get_db_connection()
         df_all_sp = pd.read_sql_query("""
             SELECT s.id, hb.name as 업체, hh.name as 호스트,
@@ -561,13 +561,13 @@ with tab_list[3]:
         """, conn)
         conn.close()
         if df_all_sp.empty:
-            st.info("협찬 내역이 없습니다.")
+            st.info("입점 내역이 없습니다.")
         else:
             st.dataframe(df_all_sp.drop(columns=['id']), use_container_width=True, hide_index=True)
     else:
-        # 호스트: 협찬 신청 탭
-        st.subheader("🎁 협찬 신청")
-        st.caption("협찬업체가 등록한 제품을 확인하고 협찬을 신청하세요. 체험 후 게스트에게 QR 주문을 유도할 수 있습니다.")
+        # 호스트: 입점 신청 탭
+        st.subheader("🎁 입점 신청")
+        st.caption("입점업체가 등록한 제품을 확인하고 입점을 신청하세요. 체험 후 게스트에게 QR 주문을 유도할 수 있습니다.")
 
         conn = database.get_db_connection()
         df_all_items = pd.read_sql_query("""
@@ -578,7 +578,7 @@ with tab_list[3]:
         conn.close()
 
         if df_all_items.empty:
-            st.info("현재 협찬 신청 가능한 제품이 없습니다.")
+            st.info("현재 입점 신청 가능한 제품이 없습니다.")
         else:
             # 카드형 UI
             for i in range(0, len(df_all_items), 2):
@@ -591,14 +591,14 @@ with tab_list[3]:
                             st.markdown(f"**{item['item_name']}**")
                             st.caption(f"🏷️ 공급업체: {item['brand_name']}")
                             st.caption(item['description'] or "")
-                            st.markdown(f"📦 잔여 협찬 수량: **{item['stock_qty']}개**")
+                            st.markdown(f"📦 잔여 입점 수량: **{item['stock_qty']}개**")
 
                             key_prefix = f"apply_{item['id']}"
                             qty_key = f"{key_prefix}_qty"
                             btn_key = f"{key_prefix}_btn"
 
                             req_qty = st.number_input("신청 수량", min_value=1, max_value=int(item['stock_qty']), step=1, key=qty_key)
-                            if st.button(f"🎁 협찬 신청", key=btn_key, use_container_width=True, type="primary"):
+                            if st.button(f"🎁 입점 신청", key=btn_key, use_container_width=True, type="primary"):
                                 conn2 = database.get_db_connection()
                                 cursor2 = conn2.cursor()
                                 try:
@@ -611,7 +611,7 @@ with tab_list[3]:
                                              'INSERT INTO sponsorships (brand_id,host_id,brand_item_id,qty,status) VALUES (?,?,?,?,?)')
                                     cursor2.execute(q_ins, (None, host_id, item['id'], req_qty, 'REQUESTED'))
                                     conn2.commit()
-                                    st.success(f"✅ '{item['item_name']}' {req_qty}개 협찬 신청 완료!")
+                                    st.success(f"✅ '{item['item_name']}' {req_qty}개 입점 신청 완료!")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"오류: {e}")
@@ -619,9 +619,9 @@ with tab_list[3]:
                                     conn2.close()
                         st.markdown("")
 
-        # 내가 신청한 협찬 목록
+        # 내가 신청한 입점 목록
         st.markdown("---")
-        st.markdown("#### 📋 내 협찬 신청 현황")
+        st.markdown("#### 📋 내 입점 신청 현황")
         conn = database.get_db_connection()
         q = ('SELECT bi.item_name as 제품, s.qty as 수량, s.status as 상태, s.created_at as 신청일시 FROM sponsorships s JOIN brand_items bi ON s.brand_item_id=bi.id WHERE s.host_id=%s ORDER BY s.id DESC'
              if database.DATABASE_URL else
@@ -629,7 +629,7 @@ with tab_list[3]:
         df_my_sp = pd.read_sql_query(q, conn, params=(host_id,))
         conn.close()
         if df_my_sp.empty:
-            st.info("신청한 협찬이 없습니다.")
+            st.info("신청한 입점이 없습니다.")
         else:
             st.dataframe(df_my_sp, use_container_width=True, hide_index=True)
 

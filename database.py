@@ -97,7 +97,7 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
-        # 협찬업체가 등록한 협찬 가능 제품
+        # 입점업체가 등록한 입점 가능 제품
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS brand_items (
             id SERIAL PRIMARY KEY,
@@ -109,7 +109,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
-        # 협찬 내역: 업체가 호스트에게 협찬 결정
+        # 입점 내역: 업체가 호스트에게 입점 결정
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS sponsorships (
             id SERIAL PRIMARY KEY,
