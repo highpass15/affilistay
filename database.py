@@ -109,7 +109,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
-        # 입점 내역: 업체가 호스트에게 입점 결정
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS sponsorships (
             id SERIAL PRIMARY KEY,
@@ -119,6 +118,24 @@ def init_db():
             qty INTEGER DEFAULT 1,
             message TEXT,
             status TEXT DEFAULT 'PENDING',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        # 홈페이지 홈페이지 파트너 신청 문의
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS inquiries (
+            id SERIAL PRIMARY KEY,
+            inquiry_type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            contact TEXT NOT NULL,
+            email TEXT NOT NULL,
+            company_name TEXT,
+            job_title TEXT,
+            location TEXT,
+            platform TEXT,
+            category TEXT,
+            message TEXT,
+            status TEXT DEFAULT 'UNREAD',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -176,6 +193,23 @@ def init_db():
             brand_id INTEGER, host_id INTEGER, brand_item_id INTEGER,
             qty INTEGER DEFAULT 1, message TEXT,
             status TEXT DEFAULT 'PENDING',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS inquiries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inquiry_type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            contact TEXT NOT NULL,
+            email TEXT NOT NULL,
+            company_name TEXT,
+            job_title TEXT,
+            location TEXT,
+            platform TEXT,
+            category TEXT,
+            message TEXT,
+            status TEXT DEFAULT 'UNREAD',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)

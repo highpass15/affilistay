@@ -354,7 +354,7 @@ if role == 'BRAND' and not is_master:
 # ─────────────────────────────────────────
 tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 프로필", "🎁 입점 신청"]
 if is_master:
-    tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 탐색", "🎁 입점 현황", "👥 사용자 관리", "💰 정산"]
+    tabs_list = ["🛍️ 상품 & QR", "📦 주문 현황", "🏠 숙소 탐색", "🎁 입점 현황", "👥 사용자 관리", "💰 정산", "📩 문의사항"]
 
 tab_list = st.tabs(tabs_list)
 
@@ -687,3 +687,40 @@ if is_master and len(tab_list) > 5:
         else:
             st.info("정산 데이터 없음")
         conn.close()
+
+# ═══════════════════════════════════════
+# MASTER ONLY: 문의사항 (TAB 6)
+# ═══════════════════════════════════════
+if is_master and len(tab_list) > 6:
+    with tab_list[6]:
+        st.subheader("📩 홈페이지 파트너 신청 문의사항")
+        st.caption("랜딩 페이지의 '지금 시작하기' 단계별 폼을 통해 접수된 입점/호스트 문의 내역입니다.")
+        
+        conn = database.get_db_connection()
+        date_func = "TO_CHAR(created_at,'YYYY-MM-DD HH24:MI')" if database.DATABASE_URL else "strftime('%Y-%m-%d %H:%M',created_at)"
+        
+        q_inq = f"""
+            SELECT id, 
+                   CASE WHEN inquiry_type='host' THEN '🏠 호스트' ELSE '🛍️ 브랜드' END as "구분",
+                   name as "신청인 이름",
+                   COALESCE(company_name, '') as "업체명",
+                   contact as "연락처",
+                   email as "이메일",
+                   COALESCE(location, '') || COALESCE(platform, '') as "기타 정보",
+                   COALESCE(category, '') as "카테고리",
+                   message as "문의 세부내용",
+                   {date_func} as "접수일시"
+            FROM inquiries
+            ORDER BY id DESC
+        """
+        
+        try:
+            df_inq = pd.read_sql_query(q_inq, conn)
+            if df_inq.empty:
+                st.info("새로 접수된 문의 내역이 없습니다.")
+            else:
+                st.dataframe(df_inq.drop(columns=['id']), use_container_width=True, hide_index=True)
+        except Exception as e:
+            st.error("테이블 조회 오류 (DB가 갱신 중일 수 있습니다.)")
+        finally:
+            conn.close()

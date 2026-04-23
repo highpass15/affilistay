@@ -85,6 +85,38 @@ async def read_root(request: Request, qr: str = Query(default=None)):
 async def health_check():
     return {"status": "ok"}
 
+# ─────────────────────────────────────────
+# 파트너 문의 API
+# ─────────────────────────────────────────
+@app.post("/api/inquiry")
+async def receive_inquiry(
+    inquiry_type: str = Form(...),
+    name: str = Form(...),
+    contact: str = Form(...),
+    email: str = Form(...),
+    company_name: str = Form(default=""),
+    job_title: str = Form(default=""),
+    location: str = Form(default=""),
+    platform: str = Form(default=""),
+    category: str = Form(default=""),
+    message: str = Form(default="")
+):
+    conn = get_db_connection()
+    if _is_pg():
+        with conn.cursor() as cur:
+            cur.execute('''
+                INSERT INTO inquiries (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message))
+    else:
+        conn.execute('''
+            INSERT INTO inquiries (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "성공적으로 접수되었습니다."}
+
 
 # ─────────────────────────────────────────
 # 숙소 쇼룸 메인 페이지
