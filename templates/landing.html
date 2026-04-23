@@ -72,7 +72,7 @@
         </div>
         
         <div class="flex items-center space-x-4 md:space-x-8">
-            <a href="{{ admin_url }}" class="text-[9px] font-bold border border-black/10 px-5 py-2.5 md:px-7 md:py-3 rounded-full hover:bg-black hover:text-white transition-all uppercase tracking-[0.2em]">Partner Access</a>
+            <button onclick="openSignup()" class="text-[9px] font-bold border border-black/10 px-5 py-2.5 md:px-7 md:py-3 rounded-full hover:bg-black hover:text-white transition-all uppercase tracking-[0.2em] cursor-pointer">Partner Access</button>
         </div>
     </nav>
 
@@ -227,7 +227,7 @@
             </div>
             
             <div class="mt-24 md:mt-32 text-center reveal">
-                <a href="{{ admin_url }}" class="bg-black text-white px-12 md:px-16 py-5 md:py-6 rounded-full text-[10px] font-bold tracking-[0.4em] hover:bg-accent transition-all duration-500 shadow-lg">BECOME A PARTNER</a>
+                <button onclick="openSignup()" class="bg-black text-white px-12 md:px-16 py-5 md:py-6 rounded-full text-[10px] font-bold tracking-[0.4em] hover:bg-accent transition-all duration-500 shadow-lg cursor-pointer">BECOME A PARTNER</button>
             </div>
         </div>
     </section>
@@ -261,6 +261,60 @@
         </div>
     </footer>
 
+
+    <!-- Signup Overlay (Hidden by Default) -->
+    <div id="signupOverlay" class="fixed inset-0 z-[100] flex bg-white transform translate-x-full transition-transform duration-500 ease-in-out">
+        <!-- Close Button -->
+        <button onclick="closeSignup()" class="absolute top-8 right-8 z-[110] text-gray-500 hover:text-black">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        
+        <!-- Left Visual -->
+        <div class="hidden md:block w-[45%] h-full relative">
+            <img src="/static/hero.png" class="w-full h-full object-cover" alt="Interior">
+            <div class="absolute inset-0 bg-black/20"></div>
+            <div class="absolute top-10 left-10 text-white text-2xl font-bold tracking-[0.25em] uppercase z-10">AFFILISTAY</div>
+        </div>
+        
+        <!-- Right Form -->
+        <div class="w-full md:w-[55%] h-full overflow-y-auto px-8 md:px-24 py-16 flex flex-col justify-center relative">
+            <div class="w-full max-w-lg mx-auto mt-8 sm:mt-0">
+                <div class="flex justify-end mb-8"><span class="text-xs text-gray-400 font-bold uppercase tracking-widest">Step 1 of 2</span></div>
+                <h2 class="text-2xl md:text-3xl font-semibold mb-3 keep-all leading-snug tracking-tight">어필리스테이와 함께 제품을<br> 판매하고 추가 수익을 창출하세요.</h2>
+                <p class="text-gray-400 mb-10 text-sm md:text-base font-light keep-all">가입비 없음. 구독료 없음. 숨겨져 있는 조건 없음.</p>
+                
+                <p class="font-bold mb-6 text-[13px] text-gray-800">회원님의 주요 비즈니스는 무엇인가요? *</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
+                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🏠</span>
+                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">숙박/공간 호스트</span>
+                    </button>
+                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
+                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🏢</span>
+                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">부티크 호텔</span>
+                    </button>
+                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
+                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">✨</span>
+                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">인테리어 디자이너</span>
+                    </button>
+                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
+                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🔑</span>
+                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">자산/건물 관리자</span>
+                    </button>
+                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left sm:col-span-2 bg-white" onclick="selectBusinessOption(this)">
+                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🛍️</span>
+                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">협찬업체/브랜드</span>
+                    </button>
+                </div>
+                
+                <div class="flex justify-end pb-8">
+                    <button id="nextStepBtn" disabled class="bg-black text-white px-8 py-3.5 rounded-full text-[11px] font-bold tracking-[0.3em] uppercase disabled:opacity-20 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors shadow-lg">다음 단계로</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const reveals = document.querySelectorAll('.reveal');
         const observer = new IntersectionObserver((entries) => {
@@ -272,6 +326,31 @@
             const nav = document.getElementById('navbar');
             if (window.scrollY > 10) nav.classList.add('scrolled');
             else nav.classList.remove('scrolled');
+        });
+
+        /* Signup Overlay Modal Logic */
+        function openSignup() {
+            document.getElementById('signupOverlay').classList.remove('translate-x-full');
+            document.body.style.overflow = 'hidden'; // Scroll 방지
+        }
+        function closeSignup() {
+            document.getElementById('signupOverlay').classList.add('translate-x-full');
+            document.body.style.overflow = '';
+        }
+        function selectBusinessOption(btn) {
+            const allBtns = document.querySelectorAll('.option-btn');
+            allBtns.forEach(el => {
+                el.classList.remove('border-black', 'ring-1', 'ring-black');
+                el.classList.add('border-gray-200');
+            });
+            btn.classList.remove('border-gray-200');
+            btn.classList.add('border-black', 'ring-1', 'ring-black');
+            document.getElementById('nextStepBtn').disabled = false;
+        }
+        
+        document.getElementById('nextStepBtn').addEventListener('click', () => {
+            // 실제 어드민 가입 링크나 다음 스텝으로 이동
+            window.location.href = "{{ admin_url }}";
         });
     </script>
 </body>
