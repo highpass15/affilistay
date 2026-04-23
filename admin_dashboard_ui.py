@@ -643,9 +643,9 @@ with tab_list[4]:
             with cp2: show_img(existing['image2'])
 
 # ═══════════════════════════════════════
-# TAB 3 — HOST: 입점 신청 / MASTER: 입점 전체 현황
+# TAB 5 — HOST: 입점 신청 / MASTER: 입점 전체 현황
 # ═══════════════════════════════════════
-with tab_list[3]:
+with tab_list[5]:
     if is_master:
         st.subheader("🎁 전체 입점 현황")
         conn = database.get_db_connection()

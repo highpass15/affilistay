@@ -428,8 +428,7 @@
             <a href="/shop/{{ host.qr_code_id }}" class="host-card">
                 <div class="host-img-wrap">
                     {% if host.venue_image %}
-                        <!-- 향후 업로드될 이미지 URL 반영 -->
-                        <img src="{{ host.venue_image }}" alt="{{ host.host_name }}">
+                        <img src="data:image/jpeg;base64,{{ host.venue_image }}" alt="{{ host.host_name }}">
                     {% else %}
                         <!-- 이미지가 없는 경우 더미 노출 방지용 깔끔한 Placeholder -->
                         <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.1; font-size:48px;">🏡</div>
