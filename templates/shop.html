@@ -288,11 +288,10 @@
             overflow: hidden;
         }
 
-        .product-price {
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
+        .price-row { display: flex; align-items: center; gap: 6px; }
+        .product-price { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+        .discount-pct { font-size: 15px; font-weight: 700; color: #FF4D4D; }
+        .orig-price { font-size: 11px; color: var(--text-muted); text-decoration: line-through; }
 
         /* ── 비어있는 상태 ── */
         .empty-state {
@@ -442,12 +441,14 @@
                             <div class="product-info">
                                 <div class="product-brand">{{ product.brand_name }}</div>
                                 <div class="product-name">{{ product.product_name }}</div>
-                                <div class="product-price">
+                                <div class="price-row">
                                     {% if product.original_price and product.original_price > product.price %}
-                                        {% set discount = ((product.original_price - product.price) / product.original_price * 100)|int %}
-                                        <span style="font-size:12px; color:#E35D5B; margin-right:4px;">{{ discount }}%</span>
+                                    <span class="discount-pct">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}%</span>
                                     {% endif %}
-                                    {{ "{:,}".format(product.price) }}원
+                                    <span class="product-price">{{ "{:,}".format(product.price) }}원</span>
+                                    {% if product.original_price and product.original_price > product.price %}
+                                    <span class="orig-price">{{ "{:,}".format(product.original_price) }}원</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </a>
@@ -486,12 +487,14 @@
                         <div class="product-info">
                             <div class="product-brand">{{ product.brand_name }}</div>
                             <div class="product-name">{{ product.product_name }}</div>
-                            <div class="product-price">
+                            <div class="price-row">
                                 {% if product.original_price and product.original_price > product.price %}
-                                    {% set discount = ((product.original_price - product.price) / product.original_price * 100)|int %}
-                                    <span style="font-size:12px; color:#E35D5B; margin-right:4px;">{{ discount }}%</span>
+                                <span class="discount-pct">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}%</span>
                                 {% endif %}
-                                {{ "{:,}".format(product.price) }}원
+                                <span class="product-price">{{ "{:,}".format(product.price) }}원</span>
+                                {% if product.original_price and product.original_price > product.price %}
+                                <span class="orig-price">{{ "{:,}".format(product.original_price) }}원</span>
+                                {% endif %}
                             </div>
                         </div>
                     </a>
