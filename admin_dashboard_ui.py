@@ -668,24 +668,32 @@ if is_master and len(tab_list) > 4:
 if is_master and len(tab_list) > 5:
     with tab_list[5]:
         st.title("💰 정산 관리 시스템")
-        st.markdown("<p style='color:#888'>판매가 기준 <b>플랫폼 20% / 호스트 10%</b> 자동 계산</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#888'>수익 구조: <b>(정가 - 판매가)의 50%</b>를 호스트와 플랫폼이 각각 배분</p>", unsafe_allow_html=True)
         conn = database.get_db_connection()
         date_func = "TO_CHAR(o.created_at,'MM/DD HH24:MI')" if database.DATABASE_URL else "strftime('%m/%d %H:%M',o.created_at)"
         q = f"""
             SELECT o.id, {date_func} as "일시", h.name as "호스트",
-                   p.product_name as "상품", o.total_amount as "판매가", o.settlement_status as "상태"
+                   p.product_name as "상품", p.original_price as "정가", o.total_amount as "판매가", o.settlement_status as "상태"
             FROM orders o JOIN products p ON o.product_id=p.id
             JOIN hosts h ON p.owner_id=h.id ORDER BY o.id DESC
         """
         df_s = pd.read_sql_query(q, conn)
         if not df_s.empty:
-            df_s["플랫폼(20%)"] = (df_s["판매가"]*0.20).astype(int)
-            df_s["호스트(10%)"] = (df_s["판매가"]*0.10).astype(int)
-            pending = df_s[df_s["상태"]=="PENDING"]["판매가"].sum()
+            def calc_settlement(row, pct=0.5):
+                gap = (row["정가"] - row["판매가"]) if row["정가"] and row["정가"] > row["판매가"] else 0
+                return int(gap * pct)
+            
+            # 쿼리에 original_price 추가 필요
+            df_s["플랫폼(50%)"] = df_s.apply(lambda r: calc_settlement(r, 0.5), axis=1)
+            df_s["호스트(50%)"] = df_s.apply(lambda r: calc_settlement(r, 0.5), axis=1)
+            pending_sale = df_s[df_s["상태"]=="PENDING"]["판매가"].sum()
+            pending_platform = df_s[df_s["상태"]=="PENDING"]["플랫폼(50%)"].sum()
+            pending_host = df_s[df_s["상태"]=="PENDING"]["호스트(50%)"].sum()
+            
             c1,c2,c3 = st.columns(3)
-            c1.metric("정산 대기", f"{pending:,}원")
-            c2.metric("플랫폼 예상수익", f"{int(pending*0.20):,}원")
-            c3.metric("호스트 지급예정", f"{int(pending*0.10):,}원")
+            c1.metric("정산 대기 매출", f"{pending_sale:,}원")
+            c2.metric("플랫폼 예상수익 (50%)", f"{pending_platform:,}원")
+            c3.metric("호스트 지급예정 (50%)", f"{pending_host:,}원")
             st.markdown("---")
             st.dataframe(df_s.drop(columns=["id"]), use_container_width=True, hide_index=True)
             st.subheader("상태 업데이트")
