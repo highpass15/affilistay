@@ -162,7 +162,15 @@ def render_tab_qr(host_id, is_master):
         '거실': 'living_room', '침실': 'bedroom', '주방': 'kitchen', '화장실': 'bathroom',
     }
     PROD_CAT_MAP = {
-        '🏷️ 가구': 'furniture', '💡 조명': 'lighting', '🛏️ 침구': 'bedding', '🛁 주방/욕실용품': 'kitchenware', '🧸 생활/소품': 'lifestyle'
+        '🛋️ 가구': 'furniture',
+        '🧶 패브릭': 'fabric',
+        '📺 가전·디지털': 'appliance',
+        '🍳 주방용품': 'kitchenware',
+        '🥯 식품': 'food',
+        '🪴 데코·식물': 'deco',
+        '💡 조명': 'lighting',
+        '📦 수납·정리': 'storage',
+        '🛁 생활용품': 'lifestyle'
     }
     with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
         c1, c2 = st.columns(2)

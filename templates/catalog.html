@@ -323,9 +323,12 @@
                     <span class="tab-icon">🏠</span> 전체
                 </a>
                 {% for key, name in prod_categories.items() %}
-                {% set icon = {'furniture': '🛋️', 'lighting': '💡', 'bedding': '🛏️', 'kitchenware': '🍱', 'lifestyle': '🧸'} %}
+                {% set icon = {
+                    'furniture': '🛋️', 'fabric': '🧶', 'appliance': '📺', 'kitchenware': '🍳', 
+                    'food': '🥯', 'deco': '🪴', 'lighting': '💡', 'storage': '📦', 'lifestyle': '🛁'
+                } %}
                 <a href="/catalog?category={{ key }}" class="category-tab {% if active_category == key %}active{% endif %}">
-                    <span class="tab-icon">{{ icon[key] or '📦' }}</span> {{ name }}
+                    <span class="tab-icon">{{ icon[key] or '🏷️' }}</span> {{ name }}
                 </a>
                 {% endfor %}
             </aside>

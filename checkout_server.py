@@ -20,11 +20,15 @@ ROOM_CATEGORIES = {
 }
 
 PRODUCT_CATEGORIES = {
-    'furniture': '가구',
-    'lighting': '조명',
-    'bedding': '침구',
-    'kitchenware': '주방용품',
-    'lifestyle': '생활/소품'
+    'furniture': '🛋️ 가구',
+    'fabric': '🧶 패브릭',
+    'appliance': '📺 가전·디지털',
+    'kitchenware': '🍳 주방용품',
+    'food': '🥯 식품',
+    'deco': '🪴 데코·식물',
+    'lighting': '💡 조명',
+    'storage': '📦 수납·정리',
+    'lifestyle': '🛁 생활용품'
 }
 
 # 정적 파일(이미지 등) 서비스 설정
@@ -324,6 +328,7 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
             "options": options,
             "qr_code_id": qr_code_id,
             "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
+            "product_category_label": PRODUCT_CATEGORIES.get(product.get('product_category', ''), ''),
             "cross_sell_products": cross_sell_products,
         }
     )

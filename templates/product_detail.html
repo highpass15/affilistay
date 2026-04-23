@@ -522,9 +522,14 @@
 
     <!-- 제품 정보 -->
     <section class="product-details slide-up delay-1">
-        {% if room_label %}
-        <span class="product-badge">{{ room_label }}</span>
-        {% endif %}
+        <div style="display: flex; gap: 6px; margin-bottom: 24px;">
+            {% if product_category_label %}
+            <span class="product-badge" style="background: var(--accent); color: white; border: none;">{{ product_category_label }}</span>
+            {% endif %}
+            {% if room_label %}
+            <span class="product-badge">{{ room_label }}</span>
+            {% endif %}
+        </div>
         <div class="brand-name">{{ product.brand_name }}</div>
         <h1 class="product-name">{{ product.product_name }}</h1>
 
