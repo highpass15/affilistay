@@ -62,6 +62,7 @@ def init_db():
             brand_name TEXT NOT NULL,
             product_name TEXT NOT NULL,
             price INTEGER NOT NULL,
+            original_price INTEGER DEFAULT 0,
             qr_code_id TEXT UNIQUE NOT NULL,
             owner_id INTEGER REFERENCES hosts(id),
             room_category TEXT DEFAULT 'living_room',
@@ -135,10 +136,17 @@ def init_db():
             platform TEXT,
             category TEXT,
             message TEXT,
-            status TEXT DEFAULT 'UNREAD',
+            status TEXT DEFAULT 'PENDING',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+
+        # 컬럼 마이그레이션 (기존 DB 구조 업데이트)
+        try:
+            cursor.execute("ALTER TABLE products ADD COLUMN original_price INTEGER DEFAULT 0")
+        except Exception:
+            pass
+
     else:
         # SQLite
         cursor.execute("""
@@ -155,6 +163,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             brand_name TEXT, product_name TEXT, price INTEGER,
+            original_price INTEGER DEFAULT 0,
             qr_code_id TEXT UNIQUE, owner_id INTEGER,
             room_category TEXT DEFAULT 'living_room',
             description TEXT, image_url TEXT,
@@ -209,10 +218,16 @@ def init_db():
             platform TEXT,
             category TEXT,
             message TEXT,
-            status TEXT DEFAULT 'UNREAD',
+            status TEXT DEFAULT 'PENDING',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+
+        # 컬럼 마이그레이션 (기존 DB 구조 업데이트)
+        try:
+            cursor.execute("ALTER TABLE products ADD COLUMN original_price INTEGER DEFAULT 0")
+        except Exception:
+            pass
 
     # 마스터 계정 초기화
     master_id = 'jwchoi1207'

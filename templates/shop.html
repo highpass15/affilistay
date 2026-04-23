@@ -442,7 +442,13 @@
                             <div class="product-info">
                                 <div class="product-brand">{{ product.brand_name }}</div>
                                 <div class="product-name">{{ product.product_name }}</div>
-                                <div class="product-price">{{ "{:,}".format(product.price) }}원</div>
+                                <div class="product-price">
+                                    {% if product.original_price and product.original_price > product.price %}
+                                        {% set discount = ((product.original_price - product.price) / product.original_price * 100)|int %}
+                                        <span style="font-size:12px; color:#E35D5B; margin-right:4px;">{{ discount }}%</span>
+                                    {% endif %}
+                                    {{ "{:,}".format(product.price) }}원
+                                </div>
                             </div>
                         </a>
                         {% endfor %}
@@ -480,7 +486,13 @@
                         <div class="product-info">
                             <div class="product-brand">{{ product.brand_name }}</div>
                             <div class="product-name">{{ product.product_name }}</div>
-                            <div class="product-price">{{ "{:,}".format(product.price) }}원</div>
+                            <div class="product-price">
+                                {% if product.original_price and product.original_price > product.price %}
+                                    {% set discount = ((product.original_price - product.price) / product.original_price * 100)|int %}
+                                    <span style="font-size:12px; color:#E35D5B; margin-right:4px;">{{ discount }}%</span>
+                                {% endif %}
+                                {{ "{:,}".format(product.price) }}원
+                            </div>
                         </div>
                     </a>
                     {% endfor %}

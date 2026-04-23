@@ -168,24 +168,26 @@ def render_tab_qr(host_id, is_master):
             product_name = st.text_input("제품명 *")
             room_label   = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
         with c2:
-            price = st.number_input("판매가격 (원) *", min_value=0, step=1000, format="%d")
+        with c2:
+            original_price = st.number_input("정가 (원) *", min_value=0, step=1000, format="%d")
+            price = st.number_input("할인가 (판매가격) *", min_value=0, step=1000, format="%d")
             prod_description = st.text_area("제품 설명 (선택)", height=80)
-            prod_image = st.file_uploader("제품 이미지", type=["jpg","jpeg","png","webp"])
+            prod_image = st.file_uploader("제품 이미지 *", type=["jpg","jpeg","png","webp"])
         submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
 
     if submitted:
-        if not brand_name or not product_name or price <= 0:
-            st.error("모든 항목을 입력해 주세요.")
+        if not brand_name or not product_name or price <= 0 or original_price <= 0 or not prod_image:
+            st.error("모든 항목(정가, 판매가격, 제품 이미지 포함)을 입력해 주세요.")
         else:
             qr_id = str(uuid.uuid4())[:12]
             url   = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
-            img_b64 = database.file_to_base64(prod_image) if prod_image else None
+            img_b64 = database.file_to_base64(prod_image)
             conn = database.get_db_connection()
             try:
-                q = ('INSERT INTO products (brand_name,product_name,price,qr_code_id,owner_id,room_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
+                q = ('INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)'
                      if database.DATABASE_URL else
-                     'INSERT INTO products (brand_name,product_name,price,qr_code_id,owner_id,room_category,description,image_url) VALUES (?,?,?,?,?,?,?,?)')
-                conn.cursor().execute(q, (brand_name, product_name, price, qr_id, host_id, ROOM_MAP[room_label], prod_description or None, img_b64))
+                     'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,description,image_url) VALUES (?,?,?,?,?,?,?,?,?)')
+                conn.cursor().execute(q, (brand_name, product_name, price, original_price, qr_id, host_id, ROOM_MAP[room_label], prod_description or None, img_b64))
                 conn.commit()
                 st.success(f"✅ '{product_name}' 등록 완료!")
                 buf = make_qr(url)
@@ -205,11 +207,11 @@ def render_tab_qr(host_id, is_master):
     st.subheader("📋 전체/내 제품 목록")
     conn = database.get_db_connection()
     if is_master:
-        df_p = pd.read_sql_query("SELECT p.id,p.brand_name,p.product_name,p.price,p.room_category,p.qr_code_id,h.name as owner FROM products p LEFT JOIN hosts h ON p.owner_id=h.id ORDER BY p.id DESC", conn)
+        df_p = pd.read_sql_query("SELECT p.id,p.brand_name,p.product_name,p.original_price,p.price,p.room_category,p.qr_code_id,h.name as owner FROM products p LEFT JOIN hosts h ON p.owner_id=h.id ORDER BY p.id DESC", conn)
     else:
-        q = ('SELECT id,brand_name,product_name,price,room_category,qr_code_id FROM products WHERE owner_id=%s ORDER BY id DESC'
+        q = ('SELECT id,brand_name,product_name,original_price,price,room_category,qr_code_id FROM products WHERE owner_id=%s ORDER BY id DESC'
              if database.DATABASE_URL else
-             'SELECT id,brand_name,product_name,price,room_category,qr_code_id FROM products WHERE owner_id=? ORDER BY id DESC')
+             'SELECT id,brand_name,product_name,original_price,price,room_category,qr_code_id FROM products WHERE owner_id=? ORDER BY id DESC')
         df_p = pd.read_sql_query(q, conn, params=(host_id,))
     conn.close()
 
