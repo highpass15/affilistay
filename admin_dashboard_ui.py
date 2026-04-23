@@ -8,7 +8,7 @@ import os
 import time
 
 st.set_page_config(
-    page_title="AffiliStay | Portal",
+    page_title="AffiliStay 파트너 센터",
     page_icon="🛋️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -142,8 +142,8 @@ is_master = st.session_state['is_master']
 host_id   = st.session_state['host_id']
 uname     = st.session_state['name']
 
-ROLE_LABELS = {"HOST": "호스트", "BRAND": "입점업체", "GUEST": "게스트"}
-role_display = "MASTER" if is_master else ROLE_LABELS.get(role, role)
+ROLE_LABELS = {"HOST": "숙소 호스트", "BRAND": "입점사(브랜드)", "GUEST": "게스트"}
+role_display = "MASTER" if is_master else ROLE_LABELS.get(role, "파트너")
 
 with st.sidebar:
     st.markdown(f"### AFFILISTAY.")
