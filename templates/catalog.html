@@ -328,7 +328,8 @@
                     'food': '🥯', 'deco': '🪴', 'lighting': '💡', 'storage': '📦', 'lifestyle': '🛁'
                 } %}
                 <a href="/catalog?category={{ key }}" class="category-tab {% if active_category == key %}active{% endif %}">
-                    <span class="tab-icon">{{ icon[key] or '🏷️' }}</span> {{ name }}
+                    {% set has_emoji = (name.startswith(('🛋️','🧶','📺','🍳','🥯','🪴','💡','📦','🛁'))) if name else False %}
+                    <span class="tab-icon">{{ icon[key] if not has_emoji else '' }}</span> {{ name }}
                 </a>
                 {% endfor %}
             </aside>
