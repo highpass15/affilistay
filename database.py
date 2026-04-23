@@ -109,6 +109,10 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id),
             customer_name TEXT NOT NULL,
             phone_number TEXT NOT NULL,
             shipping_address TEXT NOT NULL,
@@ -116,6 +120,7 @@ def init_db():
             total_amount INTEGER NOT NULL,
             payment_status TEXT DEFAULT 'PAID',
             settlement_status TEXT DEFAULT 'PENDING',
+            selected_options TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
