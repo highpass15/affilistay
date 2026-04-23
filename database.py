@@ -68,8 +68,25 @@ def init_db():
             room_category TEXT DEFAULT 'living_room',
             product_category TEXT DEFAULT 'lifestyle',
             description TEXT,
+            detailed_description TEXT,
             image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_images (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            image_data TEXT NOT NULL,
+            sort_order INTEGER DEFAULT 0
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_options (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            values TEXT NOT NULL -- 콤마로 구분된 값들
         )
         """)
         cursor.execute("""
@@ -243,10 +260,10 @@ def init_db():
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS room_category TEXT DEFAULT 'living_room'",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT",
-            "ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT",
-            "ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price INTEGER",
-            "ALTER TABLE products ADD COLUMN IF NOT EXISTS product_category TEXT DEFAULT 'lifestyle'",
-            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'PENDING'",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS detailed_description TEXT",
+            "CREATE TABLE IF NOT EXISTS product_images (id SERIAL PRIMARY KEY, product_id INTEGER, image_data TEXT, sort_order INTEGER DEFAULT 0)",
+            "CREATE TABLE IF NOT EXISTS product_options (id SERIAL PRIMARY KEY, product_id INTEGER, name TEXT, values TEXT)",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS selected_options TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT",
         ]
         for sql in migrations:

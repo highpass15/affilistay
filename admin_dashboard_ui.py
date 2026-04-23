@@ -174,23 +174,51 @@ def render_tab_qr(host_id, is_master):
         with c2:
             original_price = st.number_input("정가 (할인 전 가격) *", min_value=0, step=1000, format="%d")
             price = st.number_input("판매가 (실제 결제 금액) *", min_value=0, step=1000, format="%d")
-            prod_description = st.text_area("제품 설명 (선택)", height=80)
-            prod_image = st.file_uploader("제품 이미지 * (필수)", type=["jpg","jpeg","png","webp"])
+            prod_description = st.text_input("간결한 한줄 설명 (리스트 노출용)", placeholder="예: 구름처럼 포근한 조명")
+            prod_images = st.file_uploader("제품 이미지들 * (첫 이미지가 메인)", type=["jpg","jpeg","png","webp"], accept_multiple_files=True)
+        
+        st.markdown("**🔍 상세 정보 및 옵션 설정**")
+        detailed_description = st.text_area("제품 상세 상세설명 (상세페이지 노출)", placeholder="제품의 소재, 특징 등을 자세히 적어주세요. (줄바꿈 가능)", height=120)
+        options_raw = st.text_area("제품 옵션 (형식: 옵션명: 값1, 값2)", placeholder="예: 색상: 화이트, 블랙\n사이즈: S, M, L", height=80)
         submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
 
     if submitted:
-        if not brand_name or not product_name or price <= 0 or not prod_image:
-            st.error("모든 항목(제품 이미지 포함)을 필수 전송해 주세요.")
+        if not brand_name or not product_name or price <= 0 or not prod_images:
+            st.error("브랜드명, 제품명, 가격, 그리고 최소 한 장의 이미지를 등록해 주세요.")
         else:
             qr_id = str(uuid.uuid4())[:12]
             url   = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
-            img_b64 = database.file_to_base64(prod_image) if prod_image else None
+            main_img_b64 = database.file_to_base64(prod_images[0])
             conn = database.get_db_connection()
             try:
-                q = ('INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
+                cursor = conn.cursor()
+                # 1. 메인 제품 정보 저장
+                q = ('INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id'
                      if database.DATABASE_URL else
-                     'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?)')
-                conn.cursor().execute(q, (brand_name, product_name, price, original_price or price, qr_id, host_id, ROOM_MAP[room_label], PROD_CAT_MAP[prod_cat_label], prod_description or None, img_b64))
+                     'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+                
+                cursor.execute(q, (brand_name, product_name, price, original_price or price, qr_id, host_id, ROOM_MAP[room_label], PROD_CAT_MAP[prod_cat_label], prod_description or None, detailed_description or None, main_img_b64))
+                
+                new_product_id = cursor.fetchone()[0] if database.DATABASE_URL else cursor.lastrowid
+                
+                # 2. 추가 이미지 저장 (전체 이미지 저장)
+                for i, img_file in enumerate(prod_images):
+                    img_data = database.file_to_base64(img_file)
+                    q_img = ('INSERT INTO product_images (product_id, image_data, sort_order) VALUES (%s,%s,%s)'
+                            if database.DATABASE_URL else
+                            'INSERT INTO product_images (product_id, image_data, sort_order) VALUES (?,?,?)')
+                    cursor.execute(q_img, (new_product_id, img_data, i))
+
+                # 3. 옵션 저장
+                if options_raw:
+                    lines = [line.strip() for line in options_raw.split('\n') if ':' in line]
+                    for line in lines:
+                        opt_name, opt_vals = [x.strip() for x in line.split(':', 1)]
+                        q_opt = ('INSERT INTO product_options (product_id, name, values) VALUES (%s,%s,%s)'
+                                if database.DATABASE_URL else
+                                'INSERT INTO product_options (product_id, name, values) VALUES (?,?,?)')
+                        cursor.execute(q_opt, (new_product_id, opt_name, opt_vals))
+
                 conn.commit()
                 st.success(f"✅ '{product_name}' 등록 완료!")
                 buf = make_qr(url)

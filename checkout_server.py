@@ -283,6 +283,29 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
             status_code=404
         )
 
+    # 추가 이미지 조회
+    images = _fetch_all(
+        conn,
+        "SELECT image_data FROM product_images WHERE product_id = %s ORDER BY sort_order",
+        "SELECT image_data FROM product_images WHERE product_id = ? ORDER BY sort_order",
+        (product_id,)
+    )
+    
+    # 옵션 조회
+    options_db = _fetch_all(
+        conn,
+        "SELECT name, values FROM product_options WHERE product_id = %s",
+        "SELECT name, values FROM product_options WHERE product_id = ?",
+        (product_id,)
+    )
+    # 옵션 값들을 리스트로 변환
+    options = []
+    for opt in options_db:
+        options.append({
+            'name': opt['name'],
+            'values': [v.strip() for v in opt['values'].split(',')]
+        })
+
     cross_sell_products = _fetch_all(
         conn,
         "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != %s ORDER BY RANDOM() LIMIT 4",
@@ -297,6 +320,8 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
         name="product_detail.html",
         context={
             "product": product,
+            "images": images if images else [{'image_data': product['image_url']}],
+            "options": options,
             "qr_code_id": qr_code_id,
             "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
             "cross_sell_products": cross_sell_products,
@@ -332,12 +357,17 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
     
     conn.close()
 
+    # 선택된 옵션 파싱 (쿼리 스트링에서)
+    params = dict(request.query_params)
+    selected_options_str = ", ".join([f"{k}: {v}" for k, v in params.items()])
+
     return templates.TemplateResponse(
         request=request,
         name="order_form.html",
         context={
             "product": product,
             "qr_code_id": qr_code_id,
+            "selected_options": selected_options_str,
             "cross_sell_products": cross_sell_products,
         }
     )
@@ -354,6 +384,7 @@ async def process_order(
     phone_number: str = Form(...),
     shipping_address: str = Form(...),
     delivery_note: str = Form(default=""),
+    selected_options: str = Form(default=""),
 ):
     """
     주문 처리 → orders 테이블 INSERT →
@@ -367,17 +398,17 @@ async def process_order(
             product = cur.fetchone()
             if product:
                 cur.execute('''
-                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount)
-                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-                ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1]))
+                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options))
                 order_id = cur.fetchone()[0]
     else:
         product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
         if product:
             cursor = conn.execute('''
-                INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (product['id'], customer_name, phone_number, shipping_address, delivery_note, product['price']))
+                INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (product['id'], customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options))
             order_id = cursor.lastrowid
 
     conn.commit()

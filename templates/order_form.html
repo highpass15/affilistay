@@ -419,6 +419,9 @@
                 <div class="summary-brand">{{ product.brand_name }}</div>
                 <div class="summary-name">{{ product.product_name }}</div>
                 <div class="summary-price">{{ "{:,}".format(product.price) }}원</div>
+                {% if selected_options %}
+                    <div style="font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 4px;">{{ selected_options }}</div>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -440,6 +443,7 @@
 
         <form action="/shop/{{ qr_code_id }}/order" method="post" id="order-form">
             <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="selected_options" value="{{ selected_options }}">
 
             <div class="form-group">
                 <label class="form-label" for="customer_name">

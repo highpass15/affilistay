@@ -91,14 +91,42 @@
             width: 100%;
             padding-top: 100%;
             background: #F0EFEC;
-            overflow: hidden;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            display: flex;
+            scrollbar-width: none;
         }
+        .product-image-wrap::-webkit-scrollbar { display: none; }
 
-        .product-image-wrap img {
+        .product-slide {
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
             object-fit: cover;
+            scroll-snap-align: start;
+            flex: 0 0 100%;
+            position: relative;
+        }
+
+        .carousel-dots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transition: all 0.3s;
+        }
+        .dot.active {
+            background: white;
+            transform: scale(1.2);
         }
 
         .product-image-placeholder {
@@ -213,14 +241,67 @@
             color: var(--text-secondary);
         }
 
+        /* ── 옵션 선택 ── */
+        .options-section {
+            margin-bottom: 32px;
+        }
+        .option-group {
+            margin-bottom: 20px;
+        }
+        .option-name {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: block;
+        }
+        .option-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .option-btn {
+            padding: 10px 18px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .option-btn.selected {
+            border-color: var(--text-primary);
+            background: var(--text-primary);
+            color: white;
+        }
+
         /* ── 제품 설명 ── */
         .product-description {
             font-size: 14px;
             line-height: 1.8;
             color: var(--text-secondary);
             font-weight: 300;
-            margin-bottom: 32px;
+            margin-bottom: 40px;
             word-break: keep-all;
+        }
+        .detailed-context {
+            border-top: 1px solid var(--border);
+            padding-top: 40px;
+            margin-top: 40px;
+        }
+        .detailed-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: -0.01em;
+        }
+        .detailed-content {
+            font-size: 14px;
+            line-height: 1.9;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
         }
 
         /* ── CTA 버튼 ── */
@@ -423,16 +504,18 @@
         </div>
     </nav>
 
-    <!-- 제품 이미지 -->
+    <!-- 제품 이미지 (캐러셀) -->
     <section class="product-image-section slide-up">
-        <div class="product-image-wrap">
-            {% if product.image_url %}
-                <img src="data:image/jpeg;base64,{{ product.image_url }}" alt="{{ product.product_name }}">
-            {% else %}
-                <div class="product-image-placeholder">
-                    <div class="ph-icon">📦</div>
-                    <span class="ph-text">{{ product.brand_name }}</span>
-                </div>
+        <div class="product-image-wrap" id="image-carousel">
+            {% for img in images %}
+                <img src="data:image/jpeg;base64,{{ img.image_data }}" class="product-slide" alt="">
+            {% endfor %}
+            {% if images|length > 1 %}
+            <div class="carousel-dots">
+                {% for _ in images %}
+                <div class="dot {% if loop.first %}active{% endif %}"></div>
+                {% endfor %}
+            </div>
             {% endif %}
         </div>
     </section>
@@ -462,6 +545,30 @@
         {% if product.description %}
         <div class="product-description">
             {{ product.description }}
+        </div>
+        {% endif %}
+
+        <!-- 옵션 선택 -->
+        {% if options %}
+        <div class="options-section">
+            {% for opt in options %}
+            <div class="option-group" data-option-name="{{ opt.name }}">
+                <span class="option-name">{{ opt.name }}</span>
+                <div class="option-values">
+                    {% for val in opt.values %}
+                    <button class="option-btn" onclick="selectOption(this, '{{ opt.name }}', '{{ val }}')">{{ val }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- 상세 정보 -->
+        {% if product.detailed_description %}
+        <div class="detailed-context">
+            <h3 class="detailed-title">제품 상세 정보</h3>
+            <div class="detailed-content">{{ product.detailed_description }}</div>
         </div>
         {% endif %}
     </section>
@@ -504,11 +611,44 @@
                 {% endif %}
                 <span class="sticky-price">{{ "{:,}".format(product.price) }}원</span>
             </div>
-            <a href="/shop/{{ qr_code_id }}/order/{{ product.id }}" class="sticky-buy-btn">
+            <a href="/shop/{{ qr_code_id }}/order/{{ product.id }}" class="sticky-buy-btn" id="buy-submit">
                 구매하기
             </a>
         </div>
     </div>
 
+    <script>
+        // 캐러셀 닷 업데이트
+        const carousel = document.getElementById('image-carousel');
+        const dots = document.querySelectorAll('.dot');
+        if (carousel && dots.length > 0) {
+            carousel.addEventListener('scroll', () => {
+                const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === index);
+                });
+            });
+        }
+
+        // 옵션 선택 로직
+        const selectedOptions = {};
+        function selectOption(btn, name, value) {
+            const group = btn.closest('.option-values');
+            group.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedOptions[name] = value;
+            
+            // 구매 링크에 옵션 쿼리 추가 (또는 상태 유지)
+            updateBuyLink();
+        }
+
+        function updateBuyLink() {
+            const buyBtn = document.getElementById('buy-submit');
+            if (!buyBtn) return;
+            const params = new URLSearchParams(selectedOptions).toString();
+            const baseUrl = buyBtn.getAttribute('href').split('?')[0];
+            buyBtn.setAttribute('href', baseUrl + (params ? '?' + params : ''));
+        }
+    </script>
 </body>
 </html>
