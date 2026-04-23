@@ -14,8 +14,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# DB 초기화 (캐시 적용하여 서버 시작 시 1회만 실행)
+@st.cache_resource
+def initialize_platform():
+    database.init_db()
+    return True
 
-database.init_db()
+initialize_platform()
 
 CHECKOUT_BASE_URL = "https://affilistay-showroom.onrender.com"
 
