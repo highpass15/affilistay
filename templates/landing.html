@@ -273,7 +273,7 @@
         
         <!-- Left Visual -->
         <div class="hidden md:block w-[45%] h-full relative">
-            <img src="/static/qr_idea_2.png" class="w-full h-full object-cover" alt="Interior">
+            <img src="/static/qr_card_landscape.png" class="w-full h-full object-cover" alt="Interior">
             <div class="absolute inset-0 bg-black/20"></div>
             <div class="absolute top-10 left-10 text-white text-2xl font-bold tracking-[0.25em] uppercase z-10">AFFILISTAY</div>
         </div>
@@ -419,6 +419,11 @@
 
         /* Signup Overlay Modal Logic */
         function openSignup(preselect = null) {
+            // 모바일 뒤로가기 버튼 제어를 위한 URL 해시 추가 (Popstate 연동)
+            if (window.location.hash !== '#signup') {
+                history.pushState({ modalOpen: true }, '', '#signup');
+            }
+
             // 새롭게 팝업을 열때마다 Step 1으로 초기화
             if (typeof goBackToStep1 === 'function') goBackToStep1();
 
@@ -435,9 +440,25 @@
             }
         }
         function closeSignup() {
-            document.getElementById('signupOverlay').classList.add('translate-x-full');
-            document.body.style.overflow = '';
+            if (window.location.hash === '#signup') {
+                // 뒤로가기 호출로 popstate 이벤트를 발생시키며 모달 닫기
+                history.back();
+            } else {
+                document.getElementById('signupOverlay').classList.add('translate-x-full');
+                document.body.style.overflow = '';
+            }
         }
+
+        // 스마트폰의 물리 라우팅/뒤로가기 버튼 감지
+        window.addEventListener('popstate', (e) => {
+            if (window.location.hash !== '#signup') {
+                document.getElementById('signupOverlay').classList.add('translate-x-full');
+                document.body.style.overflow = '';
+            } else {
+                document.getElementById('signupOverlay').classList.remove('translate-x-full');
+                document.body.style.overflow = 'hidden';
+            }
+        });
         let selectedBusinessType = '';
 
         function selectBusinessOption(btn) {
