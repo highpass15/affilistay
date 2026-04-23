@@ -142,8 +142,8 @@ async def catalog_page(request: Request, category: str = Query(default=None)):
         
     hosts = _fetch_all(
         conn,
-        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id FROM hosts h JOIN products p ON h.id = p.owner_id GROUP BY h.id, h.name",
-        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id FROM hosts h JOIN products p ON h.id = p.owner_id GROUP BY h.id, h.name"
+        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1",
+        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1"
     )
 
     conn.close()
