@@ -7,6 +7,7 @@ from io import BytesIO
 import database
 import os
 import time
+import fcm_service
 
 st.set_page_config(
     page_title="AffiliStay 파트너 센터",
@@ -302,17 +303,80 @@ def render_tab_orders(host_id, is_master):
     st.subheader("📦 주문 현황")
     conn = database.get_db_connection()
     if is_master:
-        df_o = pd.read_sql_query("SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,p.brand_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id ORDER BY o.id DESC", conn)
+        df_o = pd.read_sql_query("""
+            SELECT o.id, o.customer_name, o.phone_number, o.shipping_address, o.delivery_note, 
+                   p.product_name, p.brand_name, o.total_amount, o.currency, o.exchange_rate,
+                   o.paypal_order_id, o.payment_status, o.settlement_status, o.shipping_status, o.fcm_token, o.created_at 
+            FROM orders o JOIN products p ON o.product_id = p.id 
+            ORDER BY o.id DESC
+        """, conn)
     else:
-        q = ('SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id WHERE p.owner_id=%s ORDER BY o.id DESC'
-             if database.DATABASE_URL else
-             'SELECT o.id,o.customer_name,o.phone_number,o.shipping_address,o.delivery_note,p.product_name,o.total_amount,o.payment_status,o.settlement_status,o.created_at FROM orders o JOIN products p ON o.product_id=p.id WHERE p.owner_id=? ORDER BY o.id DESC')
+        q = ('''
+            SELECT o.id, o.customer_name, o.phone_number, o.shipping_address, o.delivery_note, 
+                   p.product_name, o.total_amount, o.currency, o.exchange_rate,
+                   o.paypal_order_id, o.payment_status, o.settlement_status, o.shipping_status, o.fcm_token, o.created_at 
+            FROM orders o JOIN products p ON o.product_id = p.id 
+            WHERE p.owner_id = %s ORDER BY o.id DESC
+        ''' if database.DATABASE_URL else '''
+            SELECT o.id, o.customer_name, o.phone_number, o.shipping_address, o.delivery_note, 
+                   p.product_name, o.total_amount, o.currency, o.exchange_rate,
+                   o.paypal_order_id, o.payment_status, o.settlement_status, o.shipping_status, o.fcm_token, o.created_at 
+            FROM orders o JOIN products p ON o.product_id = p.id 
+            WHERE p.owner_id = ? ORDER BY o.id DESC
+        ''')
         df_o = pd.read_sql_query(q, conn, params=(host_id,))
     conn.close()
     if df_o.empty:
         st.info("아직 고객 주문이 없습니다.")
     else:
-        st.dataframe(df_o, use_container_width=True, hide_index=True)
+        # 가독성 개선
+        df_o['total_amount'] = df_o.apply(lambda x: f"{x['total_amount']:,}원 ({x['currency']})", axis=1)
+        st.dataframe(df_o.drop(columns=['fcm_token']), use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        st.markdown("#### 🚚 배송 상태 업데이트 및 알림톡(푸시) 발송")
+        
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c1:
+            selected_order_id = st.selectbox("주문 선택", df_o['id'].tolist(), 
+                                             format_func=lambda x: f"주문 #{x} - {df_o[df_o['id']==x]['customer_name'].values[0]}")
+        with c2:
+            current_status = df_o[df_o['id']==selected_order_id]['shipping_status'].values[0]
+            new_status = st.selectbox("상태 변경", ["PREPARING", "SHIPPED", "DELIVERED"], 
+                                      index=["PREPARING", "SHIPPED", "DELIVERED"].index(current_status) if current_status in ["PREPARING", "SHIPPED", "DELIVERED"] else 0)
+        with c3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("상태 업데이트 및 알림 전송", use_container_width=True, type="primary"):
+                conn2 = database.get_db_connection()
+                curs = conn2.cursor()
+                q_up = ('UPDATE orders SET shipping_status=%s WHERE id=%s'
+                        if database.DATABASE_URL else
+                        'UPDATE orders SET shipping_status=? WHERE id=?')
+                curs.execute(q_up, (new_status, selected_order_id))
+                conn2.commit()
+                conn2.close()
+                
+                # 푸시 알림 전송 (SHIPPED 로 변경 시)
+                if new_status == "SHIPPED" and current_status != "SHIPPED":
+                    fcm_token = df_o[df_o['id']==selected_order_id]['fcm_token'].values[0]
+                    if fcm_token:
+                        success = fcm_service.send_push_notification(
+                            token=fcm_token,
+                            title="배송 시작 안내",
+                            body=f"고객님의 주문(#{selected_order_id}) 상품이 배송을 시작했습니다. 곧 도착할 예정입니다!",
+                            data={"order_id": str(selected_order_id), "type": "shipping_started"}
+                        )
+                        if success:
+                            st.success(f"주문 #{selected_order_id} 배송 상태 업데이트 및 푸시 알림 전송 완료!")
+                        else:
+                            st.warning(f"주문 #{selected_order_id} 배송 상태는 업데이트되었으나 푸시 알림 전송에 실패했습니다.")
+                    else:
+                        st.success(f"주문 #{selected_order_id} 배송 상태 업데이트 완료 (푸시 알림 토큰이 없어 발송되지 않음).")
+                else:
+                    st.success(f"주문 #{selected_order_id} 배송 상태가 {new_status}로 업데이트되었습니다.")
+                
+                time.sleep(1.5)
+                st.rerun()
 
 
 # ─────────────────────────────────────────

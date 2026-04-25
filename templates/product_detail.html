@@ -583,6 +583,37 @@
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
     </style>
+    <!-- 트래킹 및 세션 스크립트 -->
+    <script>
+        function getSessionId() {
+            let sessionId = sessionStorage.getItem('affilistay_session_id');
+            if (!sessionId) {
+                sessionId = 'sess_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                sessionStorage.setItem('affilistay_session_id', sessionId);
+            }
+            return sessionId;
+        }
+
+        const pageEnterTime = new Date();
+        const sessionId = getSessionId();
+
+        window.addEventListener('beforeunload', function() {
+            const pageLeaveTime = new Date();
+            const durationSeconds = Math.round((pageLeaveTime - pageEnterTime) / 1000);
+            
+            const data = {
+                session_id: sessionId,
+                product_id: {{ product.id }},
+                host_id: {{ product.owner_id if product.owner_id else 'null' }},
+                page_url: window.location.href,
+                enter_time: pageEnterTime.toISOString(),
+                duration_seconds: durationSeconds
+            };
+
+            // beacon을 통해 브라우저가 닫힐 때도 안정적으로 서버에 전송
+            navigator.sendBeacon('/api/track/page_view', JSON.stringify(data));
+        });
+    </script>
 </head>
 <body>
 

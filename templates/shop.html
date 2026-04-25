@@ -296,17 +296,10 @@
         .discount-pct { font-size: 15px; font-weight: 700; color: #FF4D4D; }
         .orig-price { font-size: 11px; color: var(--text-muted); text-decoration: line-through; }
 
-        /* ── 비어있는 상태 ── */
+        /* ── 빈 상태 ── */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .empty-state .empty-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
             opacity: 0.3;
         }
 
@@ -377,6 +370,36 @@
             .product-grid { gap: 18px; }
         }
     </style>
+    <!-- 트래킹 및 세션 스크립트 -->
+    <script>
+        function getSessionId() {
+            let sessionId = sessionStorage.getItem('affilistay_session_id');
+            if (!sessionId) {
+                sessionId = 'sess_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                sessionStorage.setItem('affilistay_session_id', sessionId);
+            }
+            return sessionId;
+        }
+
+        const pageEnterTime = new Date();
+        const sessionId = getSessionId();
+
+        window.addEventListener('beforeunload', function() {
+            const pageLeaveTime = new Date();
+            const durationSeconds = Math.round((pageLeaveTime - pageEnterTime) / 1000);
+            
+            const data = {
+                session_id: sessionId,
+                product_id: null,
+                host_id: {{ host_id if host_id else 'null' }},
+                page_url: window.location.href,
+                enter_time: pageEnterTime.toISOString(),
+                duration_seconds: durationSeconds
+            };
+
+            navigator.sendBeacon('/api/track/page_view', JSON.stringify(data));
+        });
+    </script>
 </head>
 <body>
 

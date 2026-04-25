@@ -3,8 +3,22 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from database import get_db_connection
+from database import get_db_connection, init_db
 import os
+import httpx
+import time
+from typing import Dict
+from pydantic import BaseModel
+from datetime import datetime
+import fcm_service
+
+class PageViewEvent(BaseModel):
+    session_id: str
+    product_id: int = None
+    host_id: int = None
+    page_url: str
+    duration_seconds: int
+    enter_time: str
 
 app = FastAPI(title="AffiliStay Showroom Platform")
 
@@ -40,6 +54,42 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 templates = Jinja2Templates(directory=template_dir)
+
+# ─────────────────────────────────────────
+# 실시간 환율 관리 (Frankfurter API 사용)
+# ─────────────────────────────────────────
+EXCHANGE_RATES_CACHE = {
+    "timestamp": 0,
+    "rates": {"USD": 0.00072, "JPY": 0.11, "CNY": 0.0052}, # 기본값 (업데이트 실패 시 대비)
+}
+
+async def get_exchange_rates() -> Dict:
+    """KRW 기준 최신 환율을 가져오고 1시간 동안 캐싱합니다."""
+    now = time.time()
+    if now - EXCHANGE_RATES_CACHE["timestamp"] < 3600: # 1시간
+        return EXCHANGE_RATES_CACHE["rates"]
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            # KRW 기준 환율 가져오기
+            resp = await client.get("https://api.frankfurter.app/latest?from=KRW")
+            if resp.status_code == 200:
+                data = resp.json()
+                rates = data.get("rates", {})
+                # USD, JPY, CNY 필터링 (없으면 기존 캐시 유지)
+                for c in ["USD", "JPY", "CNY"]:
+                    if c in rates:
+                        EXCHANGE_RATES_CACHE["rates"][c] = rates[c]
+                EXCHANGE_RATES_CACHE["timestamp"] = now
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch exchange rates: {e}")
+        
+    return EXCHANGE_RATES_CACHE["rates"]
+
+@app.get("/api/exchange-rates")
+async def api_get_rates():
+    rates = await get_exchange_rates()
+    return {"status": "success", "base": "KRW", "rates": rates}
 
 # ─────────────────────────────────────────
 # 헬퍼 함수: DB 호환 쿼리 실행
@@ -155,8 +205,8 @@ async def catalog_page(request: Request, category: str = Query(default=None)):
         
     hosts = _fetch_all(
         conn,
-        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1",
-        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1"
+        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, v.image2 as venue_image2, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1, v.image2",
+        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, v.image2 as venue_image2, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1, v.image2"
     )
 
     conn.close()
@@ -400,7 +450,7 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
 # ─────────────────────────────────────────
 # 주문 처리 API
 # ─────────────────────────────────────────
-@app.post("/shop/{qr_code_id}/order", response_class=HTMLResponse)
+@app.post("/shop/{qr_code_id}/order")
 async def process_order(
     qr_code_id: str,
     product_id: int = Form(...),
@@ -409,6 +459,8 @@ async def process_order(
     shipping_address: str = Form(...),
     delivery_note: str = Form(default=""),
     selected_options: str = Form(default=""),
+    fcm_token: str = Form(default=""),
+    session_id: str = Form(default=""),
 ):
     """
     주문 처리 → orders 테이블 INSERT →
@@ -418,21 +470,21 @@ async def process_order(
 
     if _is_pg():
         with conn.cursor() as cur:
-            cur.execute('SELECT id, price FROM products WHERE id = %s', (product_id,))
+            cur.execute('SELECT id, price, product_name FROM products WHERE id = %s', (product_id,))
             product = cur.fetchone()
             if product:
                 cur.execute('''
-                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-                ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options))
+                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
                 order_id = cur.fetchone()[0]
     else:
         product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
         if product:
             cursor = conn.execute('''
-                INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (product['id'], customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options))
+                INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (product['id'], customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options, fcm_token, session_id))
             order_id = cursor.lastrowid
 
     conn.commit()
@@ -441,7 +493,50 @@ async def process_order(
     if not product:
         return HTMLResponse(content="<h1>제품을 찾을 수 없습니다</h1>", status_code=404)
 
-    return RedirectResponse(url=f"/order-complete/{order_id}?qr={qr_code_id}", status_code=303)
+    return {"status": "success", "order_id": order_id}
+
+@app.post("/api/paypal/capture")
+async def capture_paypal_payment(request: Request):
+    """페이팔 결제 완료 후 서버에서 최종 검증 및 상태 업데이트"""
+    data = await request.json()
+    order_id = data.get("order_id")
+    paypal_order_id = data.get("paypal_order_id")
+    currency = data.get("currency", "KRW")
+    exchange_rate = data.get("exchange_rate", 1.0)
+
+    conn = get_db_connection()
+    if _is_pg():
+        with conn.cursor() as cur:
+            cur.execute('''
+                UPDATE orders SET paypal_order_id = %s, payment_status = 'PAID', currency = %s, exchange_rate = %s
+                WHERE id = %s RETURNING fcm_token
+            ''', (paypal_order_id, currency, exchange_rate, order_id))
+            fcm_token = cur.fetchone()[0]
+    else:
+        conn.execute('''
+            UPDATE orders SET paypal_order_id = ?, payment_status = 'PAID', currency = ?, exchange_rate = ?
+            WHERE id = ?
+        ''', (paypal_order_id, currency, exchange_rate, order_id))
+        fcm_token_row = conn.execute('SELECT fcm_token FROM orders WHERE id = ?', (order_id,)).fetchone()
+        fcm_token = fcm_token_row[0] if fcm_token_row else None
+    
+    conn.commit()
+    conn.close()
+    
+    # Supabase 동기화 (기존 로직 유지)
+    import database
+    database.sync_order_to_supabase(order_id)
+    
+    # 결제 완료 FCM 푸시 알림 전송
+    if fcm_token:
+        fcm_service.send_push_notification(
+            token=fcm_token,
+            title="결제 완료 안내",
+            body=f"고객님의 주문(#{order_id}) 결제가 완료되었습니다. 곧 배송 준비를 시작하겠습니다.",
+            data={"order_id": str(order_id), "type": "payment_complete"}
+        )
+    
+    return {"status": "success"}
 
 
 # ─────────────────────────────────────────
@@ -486,10 +581,45 @@ async def legacy_checkout(request: Request, qr_code_id: str):
 
 
 if __name__ == "__main__":
-    import database
-    database.init_db()
-    print("[SERVER] AffiliStay Showroom Server is running on port 8000...")
+    init_db()
+    # fcm_service.py 의 의존성을 안전하게 임포트 
+    try:
+        import fcm_service
+        # fcm_service.init_firebase() # 서비스 워커에서 이미 초기화
+    except Exception as e:
+        print(f"FCM Init Error: {e}")
+        
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# ─────────────────────────────────────────
+# ── 웹사이트 방문 체류 시간 및 고객 트래킹 API ──
+# ─────────────────────────────────────────
+@app.post("/api/track/page_view")
+async def track_page_view(event: PageViewEvent):
+    """
+    프론트엔드에서 beforeunload 이벤트를 통해 체류 시간(duration_seconds)을 기록함.
+    """
+    conn = get_db_connection()
+    try:
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute('''
+                    INSERT INTO page_views (session_id, product_id, host_id, page_url, enter_time, duration_seconds)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (event.session_id, event.product_id, event.host_id, event.page_url, event.enter_time, event.duration_seconds))
+        else:
+            conn.execute('''
+                INSERT INTO page_views (session_id, product_id, host_id, page_url, enter_time, duration_seconds)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (event.session_id, event.product_id, event.host_id, event.page_url, event.enter_time, event.duration_seconds))
+        conn.commit()
+    except Exception as e:
+        print(f"Tracking error: {e}")
+    finally:
+        conn.close()
+    return {"status": "success"}
+
 # ─────────────────────────────────────────
 # 리뷰/문의 제출 처리
 # ─────────────────────────────────────────

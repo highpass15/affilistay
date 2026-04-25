@@ -6,6 +6,15 @@
     <title>주문하기 | {{ product.product_name }}</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PayPal SDK (Currency will be updated dynamically) -->
+    <!-- [중요] 실제 결제를 받으려면 'test'를 PayPal Developer Dashboard에서 발급받은 'Client ID'로 변경해야 합니다. -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AZPz2kh73FYiUM_7ouwZQNSQ4svbgeyQQSPChClTg5p2RFXmVkngJEmOcSZmOgGYKUect6t2eK9nF88W&currency=USD"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -147,6 +156,30 @@
             font-size: 17px;
             font-weight: 600;
             letter-spacing: -0.02em;
+        }
+
+        /* ── 통화 선택기 ── */
+        .currency-selector {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .currency-btn {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: white;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .currency-btn.active {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
         }
 
         /* ── 배송비 안내 ── */
@@ -418,9 +451,17 @@
             <div class="summary-info">
                 <div class="summary-brand">{{ product.brand_name }}</div>
                 <div class="summary-name">{{ product.product_name }}</div>
-                <div class="summary-price">{{ "{:,}".format(product.price) }}원</div>
+                <div class="summary-price" id="display-price">{{ "{:,}".format(product.price) }}원</div>
+                
+                <div class="currency-selector">
+                    <button type="button" class="currency-btn active" data-currency="KRW">KRW</button>
+                    <button type="button" class="currency-btn" data-currency="USD">USD</button>
+                    <button type="button" class="currency-btn" data-currency="JPY">JPY</button>
+                    <button type="button" class="currency-btn" data-currency="CNY">CNY</button>
+                </div>
+
                 {% if selected_options %}
-                    <div style="font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 4px;">{{ selected_options }}</div>
+                    <div style="font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 8px;">{{ selected_options }}</div>
                 {% endif %}
             </div>
         </div>
@@ -444,6 +485,8 @@
         <form action="/shop/{{ qr_code_id }}/order" method="post" id="order-form">
             <input type="hidden" name="product_id" value="{{ product.id }}">
             <input type="hidden" name="selected_options" value="{{ selected_options }}">
+            <input type="hidden" name="fcm_token" id="fcm_token" value="">
+            <input type="hidden" name="session_id" id="session_id" value="">
 
             <div class="form-group">
                 <label class="form-label" for="customer_name">
@@ -482,10 +525,12 @@
             </div>
 
             <div class="submit-section">
-                <button type="submit" class="submit-btn" id="submit-order">
-                    주문 확인
+                <!-- 기존 일반 제출 버튼은 숨기고 페이팔 버튼만 노출 -->
+                <div id="paypal-button-container" style="margin-bottom: 16px;"></div>
+                <button type="submit" class="submit-btn" id="submit-order" style="display: none;">
+                    주문 확인 (결제로 이동)
                 </button>
-                <p class="submit-sub">주문 확인 시 브랜드사에서 직배송됩니다</p>
+                <p class="submit-sub">페이팔 결제 시 실시간 환율이 적용됩니다</p>
             </div>
         </form>
     </section>
@@ -518,25 +563,172 @@
     {% endif %}
 
     <script>
-        // 전화번호 자동 포맷팅 (010-0000-0000)
-        const phoneInput = document.getElementById('phone_number');
-        phoneInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/[^0-9]/g, '');
-            if (value.length > 3 && value.length <= 7) {
-                value = value.slice(0, 3) + '-' + value.slice(3);
-            } else if (value.length > 7) {
-                value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7, 11);
+        // ── 환율 및 통화 관리 ──
+        const basePrice = {{ product.price }};
+        let currentCurrency = 'KRW';
+        let exchangeRates = { USD: 0, JPY: 0, CNY: 0 };
+        let currentRate = 1.0;
+
+        async function fetchRates() {
+            try {
+                const res = await fetch('/api/exchange-rates');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    exchangeRates = data.rates;
+                }
+            } catch (e) { console.error("환율 로드 실패", e); }
+        }
+
+        function updatePrice() {
+            const displayPrice = document.getElementById('display-price');
+            if (currentCurrency === 'KRW') {
+                displayPrice.textContent = basePrice.toLocaleString() + '원';
+                currentRate = 1.0;
+            } else {
+                currentRate = exchangeRates[currentCurrency] || 0;
+                if (currentRate > 0) {
+                    const converted = (basePrice * currentRate).toFixed(2);
+                    const symbols = { USD: '$', JPY: '¥', CNY: '¥' };
+                    displayPrice.textContent = symbols[currentCurrency] + converted;
+                }
             }
-            e.target.value = value;
+        }
+
+        document.querySelectorAll('.currency-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.currency-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCurrency = btn.dataset.currency;
+                updatePrice();
+            });
         });
 
-        // 폼 중복 제출 방지
-        const form = document.getElementById('order-form');
-        const submitBtn = document.getElementById('submit-order');
-        form.addEventListener('submit', function() {
-            submitBtn.disabled = true;
-            submitBtn.textContent = '주문 처리 중...';
-        });
+        // ── Firebase 초기화 (플레이스홀더) ──
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "affilistay.firebaseapp.com",
+            projectId: "affilistay",
+            storageBucket: "affilistay.appspot.com",
+            messagingSenderId: "YOUR_ID",
+            appId: "YOUR_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        let messaging;
+        try {
+            messaging = firebase.messaging();
+        } catch (e) { console.log("Firebase Messaging not supported.", e); }
+
+        async function requestPushPermission() {
+            if (!messaging) return;
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // 실제 서비스 시 Firebase Console에서 발급받은 VAPID 키 필요
+                    const token = await messaging.getToken({ vapidKey: "YOUR_PUBLIC_VAPID_KEY_HERE" });
+                    if (token) {
+                        document.getElementById('fcm_token').value = token;
+                        console.log("FCM Token acquired.");
+                    }
+                }
+            } catch (error) {
+                console.log("Push permission denied or error:", error);
+            }
+        }
+
+        // ── 페이팔 버튼 초기화 ──
+        paypal.Buttons({
+            createOrder: async function(data, actions) {
+                // 1. 먼저 서버에 주문 내역 저장 (PENDING 상태)
+                const formData = new FormData(document.getElementById('order-form'));
+                const response = await fetch(document.getElementById('order-form').action, {
+                    method: 'POST',
+                    body: formData
+                });
+                const orderData = await response.json();
+                
+                if (orderData.status !== 'success') {
+                    alert('주문 생성 중 오류가 발생했습니다.');
+                    return;
+                }
+
+                window.currentOrderId = orderData.order_id;
+
+                // 2. 페이팔 주문 생성
+                let checkoutCurrency = currentCurrency;
+                let checkoutRate = currentRate;
+                
+                if (currentCurrency === 'KRW') {
+                    // 페이팔은 원화(KRW)를 지원하지 않으므로, 강제로 달러(USD)로 변환하여 승인 요청
+                    checkoutCurrency = 'USD';
+                    checkoutRate = exchangeRates['USD'] || 0.00072; // API 실패 시 대비 기본값
+                }
+
+                const finalAmount = (basePrice * checkoutRate).toFixed(2);
+                
+                return actions.order.create({
+                    purchase_units: [{
+                        amount: {
+                            currency_code: checkoutCurrency,
+                            value: finalAmount
+                        },
+                        custom_id: orderData.order_id.toString()
+                    }]
+                });
+            },
+            onApprove: function(data, actions) {
+                return actions.order.capture().then(async function(details) {
+                    // 3. 결제 완료 후 서버에 알림
+                    await fetch('/api/paypal/capture', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            order_id: window.currentOrderId,
+                            paypal_order_id: data.orderID,
+                            currency: currentCurrency,
+                            exchange_rate: currentRate
+                        })
+                    });
+
+                    // 4. Firebase 실시간 업데이트
+                    db.collection("orders").doc(window.currentOrderId.toString()).set({
+                        status: "PAID",
+                        paypal_id: data.orderID,
+                        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+
+                    // 5. 완료 페이지 이동
+                    window.location.href = `/order-complete/${window.currentOrderId}?qr={{ qr_code_id }}`;
+                });
+            }
+        }).render('#paypal-button-container');
+
+        // 초기 로드
+        window.onload = async () => {
+            // 세션 ID 주입
+            let sessId = sessionStorage.getItem('affilistay_session_id');
+            if (!sessId) {
+                sessId = 'sess_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                sessionStorage.setItem('affilistay_session_id', sessId);
+            }
+            document.getElementById('session_id').value = sessId;
+
+            await fetchRates();
+            await requestPushPermission(); // 푸시 권한 요청
+            
+            // 전화번호 포맷팅 등 기존 로직
+            const phoneInput = document.getElementById('phone_number');
+            phoneInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, '');
+                if (value.length > 3 && value.length <= 7) {
+                    value = value.slice(0, 3) + '-' + value.slice(3);
+                } else if (value.length > 7) {
+                    value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7, 11);
+                }
+                e.target.value = value;
+            });
+        };
     </script>
 
 </body>

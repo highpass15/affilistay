@@ -250,12 +250,56 @@
             position: relative;
             margin-bottom: 16px;
         }
-        .host-img-wrap img {
+        /* 캐러셀 (가로 스크롤) 스타일 */
+        .host-img-carousel {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .host-img-carousel::-webkit-scrollbar { display: none; }
+        
+        .host-img-slide {
+            flex: 0 0 100%;
+            height: 100%;
+            scroll-snap-align: start;
+            position: relative;
+        }
+        .host-img-slide img {
             width: 100%; height: 100%;
             object-fit: cover;
             transition: transform 0.8s ease;
         }
-        .host-card:hover .host-img-wrap img { transform: scale(1.03); }
+        .host-card:hover .host-img-slide img { transform: scale(1.03); }
+        
+        /* 인디케이터 (점) */
+        .host-img-indicators {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .host-img-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .host-img-dot.active {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.2);
+        }
+
         .host-header-row {
             display: flex;
             justify-content: space-between;
@@ -427,10 +471,29 @@
             {% for host in hosts %}
             <a href="/shop/{{ host.qr_code_id }}" class="host-card">
                 <div class="host-img-wrap">
-                    {% if host.venue_image %}
-                        <img src="data:image/jpeg;base64,{{ host.venue_image }}" alt="{{ host.host_name }}">
+                    {% if host.venue_image or host.venue_image2 %}
+                        <div class="host-img-carousel" id="carousel-{{ host.id }}" onscroll="updateDots({{ host.id }})">
+                            {% if host.venue_image %}
+                            <div class="host-img-slide">
+                                <img src="data:image/jpeg;base64,{{ host.venue_image }}" alt="{{ host.host_name }}">
+                            </div>
+                            {% endif %}
+                            {% if host.venue_image2 %}
+                            <div class="host-img-slide">
+                                <img src="data:image/jpeg;base64,{{ host.venue_image2 }}" alt="{{ host.host_name }}">
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 인디케이터 표시 -->
+                        {% if host.venue_image and host.venue_image2 %}
+                        <div class="host-img-indicators" id="dots-{{ host.id }}">
+                            <div class="host-img-dot active"></div>
+                            <div class="host-img-dot"></div>
+                        </div>
+                        {% endif %}
                     {% else %}
-                        <!-- 이미지가 없는 경우 더미 노출 방지용 깔끔한 Placeholder -->
+                        <!-- 이미지가 없는 경우 -->
                         <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.1; font-size:48px;">🏡</div>
                     {% endif %}
                 </div>
@@ -450,7 +513,6 @@
         {% endif %}
     </div>
 
-    <script>
         function switchTab(viewId, element) {
             // Update tabs
             document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
@@ -459,6 +521,27 @@
             // Update views
             document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
+        }
+
+        function updateDots(hostId) {
+            const carousel = document.getElementById('carousel-' + hostId);
+            const dotsContainer = document.getElementById('dots-' + hostId);
+            if (!carousel || !dotsContainer) return;
+            
+            // 스크롤 위치를 기준으로 현재 슬라이드 계산
+            const scrollLeft = carousel.scrollLeft;
+            const slideWidth = carousel.clientWidth;
+            const currentIndex = Math.round(scrollLeft / slideWidth);
+            
+            // 점 상태 업데이트
+            const dots = dotsContainer.children;
+            for (let i = 0; i < dots.length; i++) {
+                if (i === currentIndex) {
+                    dots[i].classList.add('active');
+                } else {
+                    dots[i].classList.remove('active');
+                }
+            }
         }
     </script>
 </body>

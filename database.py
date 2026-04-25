@@ -118,8 +118,13 @@ def init_db():
             shipping_address TEXT NOT NULL,
             delivery_note TEXT,
             total_amount INTEGER NOT NULL,
-            payment_status TEXT DEFAULT 'PAID',
+            currency TEXT DEFAULT 'KRW',
+            exchange_rate REAL DEFAULT 1.0,
+            paypal_order_id TEXT,
+            payment_status TEXT DEFAULT 'PENDING',
             settlement_status TEXT DEFAULT 'PENDING',
+            shipping_status TEXT DEFAULT 'PREPARING',
+            fcm_token TEXT,
             selected_options TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -179,7 +184,20 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        # 고객 방문 및 체류 시간 기록용
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS page_views (
+            id SERIAL PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            product_id INTEGER,
+            host_id INTEGER,
+            page_url TEXT,
+            enter_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            duration_seconds INTEGER DEFAULT 0
+        )
+        """)
     else:
+
         # SQLite
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS hosts (
@@ -208,8 +226,12 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER, customer_name TEXT, phone_number TEXT,
             shipping_address TEXT, delivery_note TEXT, total_amount INTEGER,
-            payment_status TEXT DEFAULT 'PAID',
+            currency TEXT DEFAULT 'KRW', exchange_rate REAL DEFAULT 1.0,
+            paypal_order_id TEXT,
+            payment_status TEXT DEFAULT 'PENDING',
             settlement_status TEXT DEFAULT 'PENDING',
+            shipping_status TEXT DEFAULT 'PREPARING',
+            fcm_token TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -256,7 +278,20 @@ def init_db():
         )
         """)
 
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS page_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            product_id INTEGER,
+            host_id INTEGER,
+            page_url TEXT,
+            enter_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            duration_seconds INTEGER DEFAULT 0
+        )
+        """)
+
     # 마스터 계정 초기화
+
     master_id = 'jwchoi1207'
     master_pw = 'b3356choi!'
     if DATABASE_URL:
@@ -284,12 +319,27 @@ def init_db():
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS detailed_description TEXT",
             "CREATE TABLE IF NOT EXISTS product_images (id SERIAL PRIMARY KEY, product_id INTEGER, image_data TEXT, sort_order INTEGER DEFAULT 0)",
             "CREATE TABLE IF NOT EXISTS product_options (id SERIAL PRIMARY KEY, product_id INTEGER, name TEXT, values TEXT)",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'KRW'",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS exchange_rate REAL DEFAULT 1.0",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS paypal_order_id TEXT",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_status TEXT DEFAULT 'PREPARING'",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS selected_options TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT",
             "CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, rating INTEGER, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS product_inquiries (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, type TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         ]
         for sql in migrations:
+            try:
+                cursor.execute(sql)
+            except Exception:
+                pass
+    else:
+        sqlite_migrations = [
+            "ALTER TABLE orders ADD COLUMN session_id TEXT"
+        ]
+        for sql in sqlite_migrations:
             try:
                 cursor.execute(sql)
             except Exception:
