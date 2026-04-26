@@ -471,7 +471,9 @@ async def process_order(
     session_id: str = Form(default=""),
 ):
     """주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
-    conn = get_db_connection()
+    import traceback
+    try:
+        conn = get_db_connection()
 
     if _is_pg():
         with conn.cursor() as cur:
@@ -567,6 +569,9 @@ async def process_order(
             return RedirectResponse(url=approve_link, status_code=303)
         else:
             return HTMLResponse(content="<h1>No PayPal approve link found</h1>", status_code=500)
+    except Exception as e:
+        import traceback
+        return HTMLResponse(content=f"<pre>{traceback.format_exc()}</pre>", status_code=500)
 
 @app.get("/api/paypal/return")
 async def paypal_return(
