@@ -459,6 +459,7 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
 # ─────────────────────────────────────────
 @app.post("/shop/{qr_code_id}/order")
 async def process_order(
+    request: Request,
     qr_code_id: str,
     product_id: int = Form(...),
     customer_name: str = Form(...),
@@ -469,10 +470,7 @@ async def process_order(
     fcm_token: str = Form(default=""),
     session_id: str = Form(default=""),
 ):
-    """
-    주문 처리 → orders 테이블 INSERT →
-    관리자 주문현황/정산 탭에 자동 반영
-    """
+    """주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
     conn = get_db_connection()
 
     if _is_pg():
@@ -500,108 +498,167 @@ async def process_order(
     if not product:
         return HTMLResponse(content="<h1>제품을 찾을 수 없습니다</h1>", status_code=404)
 
-    return {"status": "success", "order_id": order_id}
+    # ── PayPal 결제 링크 생성 ──
+    rates = await get_exchange_rates()
+    usd_rate = rates.get("USD", 0.00072)
+    amount_krw = product['price'] if not _is_pg() else product[1]
+    final_amount_usd = round(amount_krw * usd_rate, 2)
 
-async def verify_paypal_order(paypal_order_id: str) -> bool:
-    """PayPal API와 직접 통신하여 실제 결제가 완료되었는지 검증합니다."""
-    if not PAYPAL_CLIENT_ID or not PAYPAL_SECRET:
-        print("[ERROR] PayPal credentials missing.")
-        return False
+    auth_string = f"{PAYPAL_CLIENT_ID}:{PAYPAL_SECRET}"
+    b64_auth = base64.b64encode(auth_string.encode()).decode()
 
-    try:
+    async with httpx.AsyncClient() as client:
         # 1. 엑세스 토큰 발급
-        auth_string = f"{PAYPAL_CLIENT_ID}:{PAYPAL_SECRET}"
-        b64_auth = base64.b64encode(auth_string.encode()).decode()
+        token_resp = await client.post(
+            f"{PAYPAL_API_BASE}/v1/oauth2/token",
+            data={"grant_type": "client_credentials"},
+            headers={
+                "Authorization": f"Basic {b64_auth}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        )
+        if token_resp.status_code != 200:
+            return HTMLResponse(content="<h1>PayPal API Error</h1>", status_code=500)
+            
+        access_token = token_resp.json().get("access_token")
+
+        # 2. 페이팔 오더 생성
+        base_url = str(request.base_url).rstrip("/")
+        if "onrender.com" in base_url:
+            base_url = base_url.replace("http://", "https://")
+
+        order_payload = {
+            "intent": "CAPTURE",
+            "purchase_units": [{
+                "amount": {
+                    "currency_code": "USD",
+                    "value": str(final_amount_usd)
+                },
+                "custom_id": str(order_id)
+            }],
+            "application_context": {
+                "return_url": f"{base_url}/api/paypal/return?order_id={order_id}&qr_code_id={qr_code_id}&currency=USD&exchange_rate={usd_rate}",
+                "cancel_url": f"{base_url}/shop/{qr_code_id}",
+                "user_action": "PAY_NOW"
+            }
+        }
         
-        async with httpx.AsyncClient() as client:
-            token_resp = await client.post(
-                f"{PAYPAL_API_BASE}/v1/oauth2/token",
-                data={"grant_type": "client_credentials"},
-                headers={
-                    "Authorization": f"Basic {b64_auth}",
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-            )
-            
-            if token_resp.status_code != 200:
-                print(f"[ERROR] Failed to get PayPal token: {token_resp.text}")
-                return False
-                
-            access_token = token_resp.json().get("access_token")
-            
-            # 2. 오더(결제) 상태 확인
-            order_resp = await client.get(
-                f"{PAYPAL_API_BASE}/v2/checkout/orders/{paypal_order_id}",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json"
-                }
-            )
-            
-            if order_resp.status_code == 200:
-                order_data = order_resp.json()
-                status = order_data.get("status")
-                if status == "COMPLETED":
-                    print(f"[SUCCESS] PayPal order verified successfully: {paypal_order_id}")
-                    return True
-                else:
-                    print(f"[WARNING] PayPal order status is not COMPLETED: {status}")
-            else:
-                print(f"[ERROR] Failed to verify PayPal order: {order_resp.text}")
-                
-    except Exception as e:
-        print(f"[ERROR] Exception during PayPal verification: {e}")
+        order_resp = await client.post(
+            f"{PAYPAL_API_BASE}/v2/checkout/orders",
+            json=order_payload,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+        )
         
-    return False
+        if order_resp.status_code not in (200, 201):
+            return HTMLResponse(content=f"<h1>PayPal Order Error: {order_resp.text}</h1>", status_code=500)
+            
+        order_data = order_resp.json()
+        
+        approve_link = None
+        for link in order_data.get("links", []):
+            if link.get("rel") == "approve":
+                approve_link = link.get("href")
+                break
+                
+        if approve_link:
+            return RedirectResponse(url=approve_link, status_code=303)
+        else:
+            return HTMLResponse(content="<h1>No PayPal approve link found</h1>", status_code=500)
 
-@app.post("/api/paypal/capture")
-async def capture_paypal_payment(request: Request):
-    """페이팔 결제 완료 후 서버에서 최종 검증 및 상태 업데이트"""
-    data = await request.json()
-    order_id = data.get("order_id")
-    paypal_order_id = data.get("paypal_order_id")
-    currency = data.get("currency", "KRW")
-    exchange_rate = data.get("exchange_rate", 1.0)
-
-    # 1. PayPal 본사 서버와 통신하여 실제 결제가 완료되었는지 2중 검증 (보안)
-    is_valid = await verify_paypal_order(paypal_order_id)
-    if not is_valid:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Invalid or unverified PayPal order.")
-
+@app.get("/api/paypal/return")
+async def paypal_return(
+    request: Request,
+    token: str = Query(...), 
+    order_id: int = Query(...),
+    qr_code_id: str = Query(...),
+    currency: str = Query(default="USD"),
+    exchange_rate: float = Query(default=1.0)
+):
+    """페이팔 결제 완료 후 사용자가 돌아오는 엔드포인트"""
+    paypal_order_id = token
+    
+    if not PAYPAL_CLIENT_ID or not PAYPAL_SECRET:
+        return HTMLResponse(content="<h1>PayPal credentials missing</h1>", status_code=500)
+        
+    auth_string = f"{PAYPAL_CLIENT_ID}:{PAYPAL_SECRET}"
+    b64_auth = base64.b64encode(auth_string.encode()).decode()
+    
+    async with httpx.AsyncClient() as client:
+        # 1. 토큰 발급
+        token_resp = await client.post(
+            f"{PAYPAL_API_BASE}/v1/oauth2/token",
+            data={"grant_type": "client_credentials"},
+            headers={
+                "Authorization": f"Basic {b64_auth}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        )
+        if token_resp.status_code != 200:
+            return HTMLResponse(content="<h1>Failed to authenticate with PayPal</h1>", status_code=500)
+            
+        access_token = token_resp.json().get("access_token")
+        
+        # 2. 결제 캡처 (최종 출금 승인)
+        capture_resp = await client.post(
+            f"{PAYPAL_API_BASE}/v2/checkout/orders/{paypal_order_id}/capture",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+        )
+        
+        if capture_resp.status_code not in (200, 201):
+            return HTMLResponse(content=f"<h1>PayPal Capture Error: {capture_resp.text}</h1>", status_code=500)
+            
+        capture_data = capture_resp.json()
+        status = capture_data.get("status")
+        
+        if status != "COMPLETED":
+            return HTMLResponse(content=f"<h1>PayPal Capture Not Completed: {status}</h1>", status_code=400)
+            
+    # 3. DB 업데이트
     conn = get_db_connection()
+    fcm_token = None
     if _is_pg():
         with conn.cursor() as cur:
             cur.execute('''
                 UPDATE orders SET paypal_order_id = %s, payment_status = 'PAID', currency = %s, exchange_rate = %s
                 WHERE id = %s RETURNING fcm_token
             ''', (paypal_order_id, currency, exchange_rate, order_id))
-            fcm_token = cur.fetchone()[0]
+            row = cur.fetchone()
+            if row: fcm_token = row[0]
     else:
         conn.execute('''
             UPDATE orders SET paypal_order_id = ?, payment_status = 'PAID', currency = ?, exchange_rate = ?
             WHERE id = ?
         ''', (paypal_order_id, currency, exchange_rate, order_id))
-        fcm_token_row = conn.execute('SELECT fcm_token FROM orders WHERE id = ?', (order_id,)).fetchone()
-        fcm_token = fcm_token_row[0] if fcm_token_row else None
+        row = conn.execute('SELECT fcm_token FROM orders WHERE id = ?', (order_id,)).fetchone()
+        if row: fcm_token = row[0]
     
     conn.commit()
     conn.close()
     
-    # Supabase 동기화 (기존 로직 유지)
+    # 4. Supabase 동기화
     import database
     database.sync_order_to_supabase(order_id)
     
-    # 결제 완료 FCM 푸시 알림 전송
+    # 5. 푸시 알림 전송
     if fcm_token:
-        fcm_service.send_push_notification(
-            token=fcm_token,
-            title="결제 완료 안내",
-            body=f"고객님의 주문(#{order_id}) 결제가 완료되었습니다. 곧 배송 준비를 시작하겠습니다.",
-            data={"order_id": str(order_id), "type": "payment_complete"}
-        )
-    
-    return {"status": "success"}
+        try:
+            fcm_service.send_push_notification(
+                token=fcm_token,
+                title="결제 완료 안내",
+                body=f"고객님의 주문(#{order_id}) 결제가 완료되었습니다. 곧 배송 준비를 시작하겠습니다.",
+                data={"order_id": str(order_id), "type": "payment_complete"}
+            )
+        except Exception as e:
+            print(f"FCM Push Error: {e}")
+            
+    # 6. 완료 페이지로 이동
+    return RedirectResponse(url=f"/order-complete/{order_id}?qr={qr_code_id}", status_code=303)
 
 
 # ─────────────────────────────────────────

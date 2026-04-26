@@ -7,10 +7,6 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- PayPal SDK (Currency will be updated dynamically) -->
-    <!-- [중요] 실제 결제를 받으려면 'test'를 PayPal Developer Dashboard에서 발급받은 'Client ID'로 변경해야 합니다. -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AZPz2kh73FYiUM_7ouwZQNSQ4svbgeyQQSPChClTg5p2RFXmVkngJEmOcSZmOgGYKUect6t2eK9nF88W&currency=USD"></script>
-    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -525,9 +521,8 @@
             </div>
 
             <div class="submit-section">
-                <!-- 기존 일반 제출 버튼은 숨기고 페이팔 버튼만 노출 -->
-                <div id="paypal-button-container" style="margin-bottom: 16px;"></div>
-                <button type="submit" class="submit-btn" id="submit-order" style="display: none;">
+                <!-- PayPal Checkout Redirect Button -->
+                <button type="submit" class="submit-btn" id="submit-order">
                     주문 확인 (결제로 이동)
                 </button>
                 <p class="submit-sub">페이팔 결제 시 실시간 환율이 적용됩니다</p>
@@ -636,74 +631,6 @@
                 console.log("Push permission denied or error:", error);
             }
         }
-
-        // ── 페이팔 버튼 초기화 ──
-        paypal.Buttons({
-            createOrder: async function(data, actions) {
-                // 1. 먼저 서버에 주문 내역 저장 (PENDING 상태)
-                const formData = new FormData(document.getElementById('order-form'));
-                const response = await fetch(document.getElementById('order-form').action, {
-                    method: 'POST',
-                    body: formData
-                });
-                const orderData = await response.json();
-                
-                if (orderData.status !== 'success') {
-                    alert('주문 생성 중 오류가 발생했습니다.');
-                    return;
-                }
-
-                window.currentOrderId = orderData.order_id;
-
-                // 2. 페이팔 주문 생성
-                let checkoutCurrency = currentCurrency;
-                let checkoutRate = currentRate;
-                
-                if (currentCurrency === 'KRW') {
-                    // 페이팔은 원화(KRW)를 지원하지 않으므로, 강제로 달러(USD)로 변환하여 승인 요청
-                    checkoutCurrency = 'USD';
-                    checkoutRate = exchangeRates['USD'] || 0.00072; // API 실패 시 대비 기본값
-                }
-
-                const finalAmount = (basePrice * checkoutRate).toFixed(2);
-                
-                return actions.order.create({
-                    purchase_units: [{
-                        amount: {
-                            currency_code: checkoutCurrency,
-                            value: finalAmount
-                        },
-                        custom_id: orderData.order_id.toString()
-                    }]
-                });
-            },
-            onApprove: function(data, actions) {
-                return actions.order.capture().then(async function(details) {
-                    // 3. 결제 완료 후 서버에 알림
-                    await fetch('/api/paypal/capture', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            order_id: window.currentOrderId,
-                            paypal_order_id: data.orderID,
-                            currency: currentCurrency,
-                            exchange_rate: currentRate
-                        })
-                    });
-
-                    // 4. Firebase 실시간 업데이트
-                    db.collection("orders").doc(window.currentOrderId.toString()).set({
-                        status: "PAID",
-                        paypal_id: data.orderID,
-                        updated_at: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-
-                    // 5. 완료 페이지 이동
-                    window.location.href = `/order-complete/${window.currentOrderId}?qr={{ qr_code_id }}`;
-                });
-            }
-        }).render('#paypal-button-container');
-
         // 초기 로드
         window.onload = async () => {
             // 세션 ID 주입
