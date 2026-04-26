@@ -29,6 +29,27 @@ class PageViewEvent(BaseModel):
 
 app = FastAPI(title="AffiliStay Showroom Platform")
 
+@app.on_event("startup")
+def run_migrations():
+    """앱 시작 시 누락된 데이터베이스 컬럼을 자동 추가합니다."""
+    from database import _is_pg
+    conn = get_db_connection()
+    try:
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+            conn.commit()
+        else:
+            try:
+                conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
+                conn.commit()
+            except:
+                pass
+    except Exception as e:
+        print(f"[Migration Error] {e}")
+    finally:
+        conn.close()
+
 # 클라우드 어드민 주소를 고정하여 즉시 연결되도록 합니다.
 ADMIN_URL = 'https://affilistay-admin.onrender.com/'
 
@@ -478,15 +499,11 @@ async def process_order(
             cur.execute('SELECT id, price, product_name FROM products WHERE id = %s', (product_id,))
             product = cur.fetchone()
             if product:
-                try:
-                    cur.execute('''
-                        INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                    ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
-                    order_id = cur.fetchone()[0]
-                except Exception as e:
-                    import traceback
-                    return HTMLResponse(content=f"<h1>DB Insert Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
+                cur.execute('''
+                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
+                order_id = cur.fetchone()[0]
     else:
         product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
         if product:
@@ -511,17 +528,16 @@ async def process_order(
     auth_string = f"{PAYPAL_CLIENT_ID}:{PAYPAL_SECRET}"
     b64_auth = base64.b64encode(auth_string.encode()).decode()
 
-    try:
-        async with httpx.AsyncClient() as client:
-            # 1. 엑세스 토큰 발급
-            token_resp = await client.post(
-                f"{PAYPAL_API_BASE}/v1/oauth2/token",
-                data={"grant_type": "client_credentials"},
-                headers={
-                    "Authorization": f"Basic {b64_auth}",
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-            )
+    async with httpx.AsyncClient() as client:
+        # 1. 엑세스 토큰 발급
+        token_resp = await client.post(
+            f"{PAYPAL_API_BASE}/v1/oauth2/token",
+            data={"grant_type": "client_credentials"},
+            headers={
+                "Authorization": f"Basic {b64_auth}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        )
         if token_resp.status_code != 200:
             return HTMLResponse(content="<h1>PayPal API Error</h1>", status_code=500)
             
@@ -572,9 +588,6 @@ async def process_order(
             return RedirectResponse(url=approve_link, status_code=303)
         else:
             return HTMLResponse(content="<h1>No PayPal approve link found</h1>", status_code=500)
-    except Exception as e:
-        import traceback
-        return HTMLResponse(content=f"<h1>PayPal API Exception</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 @app.get("/api/paypal/return")
 async def paypal_return(
