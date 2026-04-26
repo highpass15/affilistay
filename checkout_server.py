@@ -11,6 +11,13 @@ from typing import Dict
 from pydantic import BaseModel
 from datetime import datetime
 import fcm_service
+import base64
+from dotenv import load_dotenv
+
+load_dotenv()
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+PAYPAL_SECRET = os.getenv("PAYPAL_SECRET")
+PAYPAL_API_BASE = "https://api-m.sandbox.paypal.com" # Use live API base in production
 
 class PageViewEvent(BaseModel):
     session_id: str
@@ -495,6 +502,58 @@ async def process_order(
 
     return {"status": "success", "order_id": order_id}
 
+async def verify_paypal_order(paypal_order_id: str) -> bool:
+    """PayPal API와 직접 통신하여 실제 결제가 완료되었는지 검증합니다."""
+    if not PAYPAL_CLIENT_ID or not PAYPAL_SECRET:
+        print("[ERROR] PayPal credentials missing.")
+        return False
+
+    try:
+        # 1. 엑세스 토큰 발급
+        auth_string = f"{PAYPAL_CLIENT_ID}:{PAYPAL_SECRET}"
+        b64_auth = base64.b64encode(auth_string.encode()).decode()
+        
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post(
+                f"{PAYPAL_API_BASE}/v1/oauth2/token",
+                data={"grant_type": "client_credentials"},
+                headers={
+                    "Authorization": f"Basic {b64_auth}",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            )
+            
+            if token_resp.status_code != 200:
+                print(f"[ERROR] Failed to get PayPal token: {token_resp.text}")
+                return False
+                
+            access_token = token_resp.json().get("access_token")
+            
+            # 2. 오더(결제) 상태 확인
+            order_resp = await client.get(
+                f"{PAYPAL_API_BASE}/v2/checkout/orders/{paypal_order_id}",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            if order_resp.status_code == 200:
+                order_data = order_resp.json()
+                status = order_data.get("status")
+                if status == "COMPLETED":
+                    print(f"[SUCCESS] PayPal order verified successfully: {paypal_order_id}")
+                    return True
+                else:
+                    print(f"[WARNING] PayPal order status is not COMPLETED: {status}")
+            else:
+                print(f"[ERROR] Failed to verify PayPal order: {order_resp.text}")
+                
+    except Exception as e:
+        print(f"[ERROR] Exception during PayPal verification: {e}")
+        
+    return False
+
 @app.post("/api/paypal/capture")
 async def capture_paypal_payment(request: Request):
     """페이팔 결제 완료 후 서버에서 최종 검증 및 상태 업데이트"""
@@ -503,6 +562,12 @@ async def capture_paypal_payment(request: Request):
     paypal_order_id = data.get("paypal_order_id")
     currency = data.get("currency", "KRW")
     exchange_rate = data.get("exchange_rate", 1.0)
+
+    # 1. PayPal 본사 서버와 통신하여 실제 결제가 완료되었는지 2중 검증 (보안)
+    is_valid = await verify_paypal_order(paypal_order_id)
+    if not is_valid:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid or unverified PayPal order.")
 
     conn = get_db_connection()
     if _is_pg():
