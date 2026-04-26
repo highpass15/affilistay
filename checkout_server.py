@@ -32,7 +32,6 @@ app = FastAPI(title="AffiliStay Showroom Platform")
 @app.on_event("startup")
 def run_migrations():
     """앱 시작 시 누락된 데이터베이스 컬럼을 자동 추가합니다."""
-    from database import _is_pg
     conn = get_db_connection()
     try:
         if _is_pg():
@@ -57,7 +56,6 @@ ADMIN_URL = 'https://affilistay-admin.onrender.com/'
 def force_migrate():
     conn = get_db_connection()
     try:
-        from database import _is_pg
         if _is_pg():
             with conn.cursor() as cur:
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
