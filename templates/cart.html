@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>장바구니 | AFFILISTAY</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #FAF9F6;
+            --bg-card: #FFFFFF;
+            --text-primary: #1A1A1A;
+            --text-secondary: #7A7672;
+            --text-muted: #B0AAA3;
+            --accent: #B0A295;
+            --border: #EEEDEA;
+            --radius: 16px;
+        }
+        body {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            padding-bottom: 120px;
+        }
+        .detail-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(250, 249, 246, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+        }
+        .detail-nav-inner {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .back-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--bg-card); border: 1px solid var(--border);
+            text-decoration: none; color: var(--text-primary); font-size: 18px;
+        }
+        .nav-title {
+            font-size: 12px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted);
+        }
+        
+        .cart-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .cart-item {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 16px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .item-img {
+            width: 80px; height: 80px; border-radius: 10px; background: #F0EFEC; overflow: hidden; flex-shrink: 0;
+        }
+        .item-img img { width: 100%; height: 100%; object-fit: cover; }
+        .item-info { flex: 1; }
+        .item-brand { font-size: 10px; color: var(--accent); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+        .item-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; line-height: 1.3; }
+        .item-option { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; background: #F8F8F8; padding: 4px 8px; border-radius: 6px; display: inline-block; }
+        .item-price { font-size: 15px; font-weight: 600; }
+        
+        .qty-control {
+            display: flex; align-items: center; gap: 12px; margin-top: 10px;
+        }
+        .qty-btn {
+            width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border);
+            background: white; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .qty-num { font-size: 13px; font-weight: 500; }
+        
+        .remove-btn {
+            position: absolute; top: 16px; right: 16px; font-size: 18px; color: var(--text-muted); cursor: pointer; border: none; background: transparent;
+        }
+        
+        .empty-cart { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+        
+        .summary-box {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+        }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: var(--text-secondary); }
+        .summary-row.total { font-weight: 700; color: var(--text-primary); font-size: 18px; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border); }
+        
+        .checkout-btn {
+            position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            padding: 16px 20px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border);
+            z-index: 200;
+        }
+        .checkout-btn-inner { max-width: 600px; margin: 0 auto; }
+        .checkout-btn button {
+            width: 100%; padding: 18px; background: var(--text-primary); color: white; border: none; border-radius: 12px; font-family: 'Outfit'; font-size: 16px; font-weight: 600; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav class="detail-nav">
+        <div class="detail-nav-inner">
+            <a href="/shop/{{ qr_code_id }}" class="back-btn">←</a>
+            <span class="nav-title">장바구니</span>
+        </div>
+    </nav>
+
+    <div class="cart-container" id="cart-container">
+        <!-- JS 렌더링 -->
+    </div>
+
+    <div class="checkout-btn" id="checkout-section" style="display:none;">
+        <div class="checkout-btn-inner">
+            <button onclick="goToOrder()" id="checkout-button">주문하기</button>
+        </div>
+    </div>
+
+    <script>
+        function loadCart() {
+            const container = document.getElementById('cart-container');
+            const checkoutSection = document.getElementById('checkout-section');
+            let cart = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
+            
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-cart">
+                        <div class="empty-icon">🛒</div>
+                        <h3 style="font-size:16px; font-weight:500; margin-bottom:12px; color:var(--text-primary);">장바구니가 비어있습니다.</h3>
+                        <p style="font-size:13px;">마음에 드는 상품을 담아보세요.</p>
+                        <a href="/shop/{{ qr_code_id }}" style="display:inline-block; margin-top:24px; padding:12px 24px; background:var(--text-primary); color:white; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600;">쇼핑 계속하기</a>
+                    </div>
+                `;
+                checkoutSection.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            let totalItemPrice = 0;
+
+            cart.forEach((item, index) => {
+                const imgTag = item.image ? `<img src="data:image/jpeg;base64,${item.image}" alt="">` : '';
+                const optionsStr = Object.entries(item.options || {}).map(([k,v]) => `${k}: ${v}`).join(' / ');
+                const optionHtml = optionsStr ? `<div class="item-option">${optionsStr}</div>` : '';
+                
+                totalItemPrice += item.price * item.quantity;
+
+                html += `
+                <div class="cart-item">
+                    <button class="remove-btn" onclick="removeItem(${index})">×</button>
+                    <div class="item-img">${imgTag}</div>
+                    <div class="item-info">
+                        <div class="item-brand">${item.brand}</div>
+                        <div class="item-name">${item.name}</div>
+                        ${optionHtml}
+                        <div class="item-price">${(item.price).toLocaleString()}원</div>
+                        
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+                            <span class="qty-num">${item.quantity}</span>
+                            <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+
+            // Summary
+            html += `
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span>총 상품금액</span>
+                    <span>${totalItemPrice.toLocaleString()}원</span>
+                </div>
+                <div class="summary-row">
+                    <span>총 배송비</span>
+                    <span>무료 (조건부)</span>
+                </div>
+                <div class="summary-row total">
+                    <span>결제 예정 금액</span>
+                    <span>${totalItemPrice.toLocaleString()}원</span>
+                </div>
+            </div>
+            `;
+
+            container.innerHTML = html;
+            checkoutSection.style.display = 'block';
+            document.getElementById('checkout-button').innerText = `${totalItemPrice.toLocaleString()}원 주문하기`;
+        }
+
+        function updateQty(index, delta) {
+            let cart = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
+            if(cart[index]) {
+                cart[index].quantity += delta;
+                if(cart[index].quantity < 1) cart[index].quantity = 1;
+                localStorage.setItem('affilistay_cart', JSON.stringify(cart));
+                loadCart();
+            }
+        }
+
+        function removeItem(index) {
+            let cart = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
+            cart.splice(index, 1);
+            localStorage.setItem('affilistay_cart', JSON.stringify(cart));
+            loadCart();
+        }
+
+        function goToOrder() {
+            window.location.href = `/shop/{{ qr_code_id }}/order_cart`;
+        }
+
+        window.addEventListener('load', loadCart);
+    </script>
+</body>
+</html>

@@ -317,5 +317,11 @@
 
     </div>
 
+    {% if clear_cart %}
+    <script>
+        localStorage.removeItem('affilistay_cart');
+    </script>
+    {% endif %}
+
 </body>
 </html>

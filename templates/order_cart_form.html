@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문서 | AFFILISTAY</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@200;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- PortOne (iamport) SDK -->
+    <script src="https://cdn.iamport.kr/v1/iamport.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #F5F5F5;
+            --bg-card: #FFFFFF;
+            --text-primary: #2F3438;
+            --text-secondary: #828C94;
+            --text-muted: #C2C8CC;
+            --primary: #35C5F0; /* 오늘의집 블루 */
+            --primary-hover: #11B0DF;
+            --border: #EAEDEF;
+            --kakao: #FEE500;
+            --naver: #03C75A;
+            --toss: #3182F6;
+            --payco: #EA3323;
+            --red: #FF7777;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 90px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--bg);
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        .order-header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 56px;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .btn-close {
+            position: absolute;
+            left: 16px;
+            font-size: 24px;
+            color: var(--text-primary);
+            text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* ── Sections ── */
+        .section-box {
+            background: var(--bg-card);
+            margin-bottom: 12px;
+            padding: 24px 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .btn-text {
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 700;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* ── 배송지 ── */
+        .address-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge-default {
+            font-size: 11px;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-weight: 500;
+        }
+        .address-detail {
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        .address-phone {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .delivery-request {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 15px;
+            color: var(--text-primary);
+            outline: none;
+            background: white;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232F3438%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px top 50%;
+            background-size: 10px auto;
+        }
+
+        /* ── 주문상품 ── */
+        .order-item {
+            display: flex;
+            gap: 16px;
+            padding: 20px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .item-brand-header {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .free-shipping {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .item-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 6px;
+            background: #F5F5F5;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .item-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        .item-info { flex: 1; }
+        .item-name { font-size: 15px; font-weight: 400; line-height: 1.4; margin-bottom: 4px; }
+        .item-option { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+        .item-coupon { font-size: 12px; color: var(--red); font-weight: 500; margin-bottom: 6px; }
+        .item-price-wrap { display: flex; align-items: baseline; gap: 6px; }
+        .item-price { font-size: 18px; font-weight: 700; }
+        .item-origin-price { font-size: 14px; color: var(--text-muted); text-decoration: line-through; }
+        .item-qty { font-size: 14px; color: var(--text-secondary); border-left: 1px solid var(--border); padding-left: 6px; margin-left: 2px;}
+
+        /* ── 결제수단 ── */
+        .payment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .payment-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: border 0.2s;
+        }
+
+        .payment-label:hover, .payment-label:has(input:checked) {
+            border-color: var(--primary);
+        }
+
+        .payment-label input[type="radio"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            margin: 0;
+            position: relative;
+        }
+
+        .payment-label input[type="radio"]:checked {
+            border-color: var(--primary);
+        }
+        .payment-label input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .pay-icon {
+            font-size: 14px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pay-badge {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .pay-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            margin-left: 32px;
+        }
+
+        .pg-logos span {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+        }
+
+        /* ── Sticky Bottom Button ── */
+        .bottom-action {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid var(--border);
+            z-index: 200;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 18px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Forms Elements */
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        .form-input:focus { border-color: var(--primary); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 헤더 -->
+    <header class="order-header" style="max-width: 600px; margin: 0 auto;">
+        <a href="javascript:history.back()" class="btn-close">✕</a>
+        <h1 class="header-title">주문서</h1>
+    </header>
+
+    <form id="order-form" method="POST" action="/shop/{{ qr_code_id }}/order_cart">
+        <input type="hidden" name="items_json" id="items_json" value="">
+        <input type="hidden" name="session_id" id="session_id" value="">
+        <input type="hidden" name="fcm_token" id="fcm_token" value="">
+        
+        <!-- 배송지 섹션 -->
+        <section class="section-box">
+            <div class="section-header">
+                <h2 class="section-title">배송지</h2>
+                <button type="button" class="btn-text">변경</button>
+            </div>
+            
+            <div id="address-display">
+                <!-- If logged in, show default address, else show inputs. We will show inputs by default for MVP unless populated -->
+                <div style="margin-bottom: 16px;">
+                    <input type="text" name="customer_name" class="form-input" placeholder="수령인 이름" required>
+                    <input type="tel" name="phone_number" id="phone_number" class="form-input" placeholder="휴대폰 번호 (-없이 입력)" required>
+                    <input type="text" name="shipping_address" class="form-input" placeholder="상세 주소 입력" required>
+                </div>
+            </div>
+
+            <select name="delivery_note" class="delivery-request">
+                <option value="부재시 문앞에 놓아주세요">부재시 문앞에 놓아주세요</option>
+                <option value="경비실에 맡겨주세요">경비실에 맡겨주세요</option>
+                <option value="택배함에 넣어주세요">택배함에 넣어주세요</option>
+                <option value="직접 수령하겠습니다">직접 수령하겠습니다</option>
+            </select>
+        </section>
+
+        <!-- 주문자 정보 -->
+        <section class="section-box" style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="section-title" style="margin:0; font-size:16px;">주문자</h2>
+            <div style="font-size:15px; color:var(--text-primary);">입력하신 정보 반영</div>
+        </section>
+
+        <!-- 주문상품 섹션 -->
+        <section class="section-box">
+            <div class="section-header" style="margin-bottom:0;">
+                <h2 class="section-title">주문상품 <span id="cart-count">0</span>건</h2>
+                <button type="button" class="btn-text" style="color:var(--text-secondary); border:1px solid var(--border); padding:6px 10px; border-radius:4px;">쿠폰 변경</button>
+            </div>
+            
+            <div id="cart-items-container">
+                <!-- JS로 렌더링됨 -->
+            </div>
+        </section>
+
+        <!-- 결제수단 섹션 (바텀 시트로 이동됨) -->
+        <input type="hidden" name="payment_method" id="selected_payment_method" value="">
+
+        <!-- 하단 고정 결제 버튼 -->
+        <div class="bottom-action" style="max-width: 600px; margin: 0 auto;">
+            <button type="button" class="btn-submit" onclick="openPaymentSheet()">
+                <span id="display-total">0</span>원 결제하기
+            </button>
+        </div>
+    </form>
+
+    <!-- 결제수단 선택 바텀 시트 -->
+    <style>
+        .payment-sheet-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .payment-sheet {
+            background: #fff;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 32px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .payment-sheet.open {
+            transform: translateY(0);
+        }
+        .pg-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #fff;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .pg-btn:active { background: #f9f9f9; transform: scale(0.98); }
+        .pg-logos span {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            margin-right: 12px;
+        }
+        .pg-name { font-size: 16px; font-weight: 600; flex: 1; }
+        .pg-badge { font-size: 12px; color: var(--primary); font-weight: 500; background: rgba(53, 197, 240, 0.1); padding: 4px 8px; border-radius: 4px; }
+    </style>
+
+    <div id="payment-modal" class="payment-sheet-overlay" onclick="closePaymentSheet(event)">
+        <div class="payment-sheet" id="payment-sheet" onclick="event.stopPropagation()">
+            <div style="width:40px; height:4px; background:#ddd; border-radius:2px; margin: 0 auto 24px;"></div>
+            <h3 style="font-size:18px; font-weight:700; margin-bottom:20px; text-align:center;">결제수단 선택</h3>
+            
+            <button type="button" class="pg-btn" onclick="executePayment('kakaopay')">
+                <div class="pg-logos"><span style="background:var(--kakao); color:#381E1F;">pay</span></div>
+                <div class="pg-name">카카오페이</div>
+                <div class="pg-badge">간편결제</div>
+            </button>
+            <button type="button" class="pg-btn" onclick="executePayment('tosspay')">
+                <div class="pg-logos"><span style="background:var(--toss);">toss</span></div>
+                <div class="pg-name">토스페이</div>
+            </button>
+            <button type="button" class="pg-btn" onclick="executePayment('naverpay')">
+                <div class="pg-logos"><span style="background:var(--naver);">N pay</span></div>
+                <div class="pg-name">네이버페이</div>
+                <div class="pg-badge" style="color:var(--naver); background:rgba(3,199,90,0.1);">적립</div>
+            </button>
+            <button type="button" class="pg-btn" onclick="executePayment('card')">
+                <div class="pg-logos"><span style="background:#2F3438;">CARD</span></div>
+                <div class="pg-name">신용/체크카드</div>
+            </button>
+            <button type="button" class="pg-btn" onclick="executePayment('paypal')">
+                <div class="pg-logos"><span style="background:#003087;">PayPal</span></div>
+                <div class="pg-name">PayPal (해외결제)</div>
+            </button>
+        </div>
+    </div>
+</div>
+    <script>
+        // ── 장바구니 데이터 렌더링 ──
+        let cartItems = [];
+        let basePrice = 0;
+
+        function renderCart() {
+            cartItems = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
+            if (cartItems.length === 0) {
+                alert('장바구니가 비어있습니다.');
+                window.location.href = '/shop/{{ qr_code_id }}';
+                return;
+            }
+
+            document.getElementById('items_json').value = JSON.stringify(cartItems);
+            document.getElementById('cart-count').innerText = cartItems.length;
+            
+            let html = '';
+            basePrice = 0;
+            
+            cartItems.forEach(item => {
+                const imgTag = item.image ? `<img src="data:image/jpeg;base64,${item.image}" alt="">` : '<div style="background:#eee;width:100%;height:100%;"></div>';
+                const optionsStr = Object.entries(item.options || {}).map(([k,v]) => `${k}: ${v}`).join(' / ');
+                const optionHtml = optionsStr ? `<div class="item-option">${optionsStr}</div>` : '';
+                
+                const itemTotal = item.price * item.quantity;
+                basePrice += itemTotal;
+                
+                // 가짜 원가 (MVP용 할인율 15% 적용 예시)
+                const fakeOriginalPrice = Math.round(itemTotal * 1.15);
+
+                html += `
+                <div style="padding-top:20px; margin-top:20px; border-top:1px solid var(--border);">
+                    <div class="item-brand-header">
+                        <span>${item.brand}</span>
+                        <span class="free-shipping">무료배송</span>
+                    </div>
+                    <div class="order-item" style="border-top:none; padding-top:0;">
+                        <div class="item-img">${imgTag}</div>
+                        <div class="item-info">
+                            <div class="item-name">[오늘의집 단독] ${item.name}</div>
+                            ${optionHtml}
+                            <div class="item-coupon">15% 쿠폰 적용중 (자동적용)</div>
+                            <div class="item-price-wrap">
+                                <span class="item-price">${itemTotal.toLocaleString()}원</span>
+                                <span class="item-origin-price">${fakeOriginalPrice.toLocaleString()}원</span>
+                                <span class="item-qty">${item.quantity}개</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            
+            document.getElementById('cart-items-container').innerHTML = html;
+            document.getElementById('display-total').innerText = basePrice.toLocaleString();
+        }
+
+        // ── 결제 수단 및 PortOne (iamport) 연동 ──
+        const form = document.getElementById('order-form');
+        
+        // PortOne 가맹점 식별코드 (현재는 예시용 테스트 코드)
+        // 실제 운영 시 관리자 페이지에서 발급받은 식별코드로 변경해야 합니다.
+        IMP.init('imp_test_12345678'); 
+
+        function openPaymentSheet() {
+            // 결제 전 폼 유효성 검사 (HTML5 validation)
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const overlay = document.getElementById('payment-modal');
+            const sheet = document.getElementById('payment-sheet');
+            if(overlay && sheet) {
+                overlay.style.display = 'flex';
+                void sheet.offsetWidth; // trigger reflow
+                sheet.classList.add('open');
+            }
+        }
+
+        function closePaymentSheet(event) {
+            if (event && event.target.id !== 'payment-modal') return;
+            const overlay = document.getElementById('payment-modal');
+            const sheet = document.getElementById('payment-sheet');
+            if(overlay && sheet) {
+                sheet.classList.remove('open');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        function executePayment(method) {
+            // 바텀 시트 닫기
+            closePaymentSheet();
+            
+            document.getElementById('selected_payment_method').value = method;
+            
+            const customerName = document.querySelector('input[name="customer_name"]').value;
+            const phoneNumber = document.querySelector('input[name="phone_number"]').value;
+            const address = document.querySelector('input[name="shipping_address"]').value;
+
+            // PayPal 선택 시 기존 서버 라우트로 폼 제출 (백엔드에서 PayPal 생성 후 리다이렉트)
+            if (method === 'paypal') {
+                form.submit();
+                return;
+            }
+
+            // 국내 PG 선택 시 PortOne 호출
+            const pgMap = {
+                'kakaopay': 'kakaopay',
+                'tosspay': 'tosspay',
+                'naverpay': 'naverpay',
+                'payco': 'payco',
+                'card': 'html5_inicis' // 나이스페이 또는 이니시스
+            };
+
+            const pg_provider = pgMap[method] || 'html5_inicis';
+            const merchant_uid = "order_" + new Date().getTime(); // 고유 주문번호 생성
+
+            IMP.request_pay({
+                pg: pg_provider,
+                pay_method: method === 'card' ? 'card' : 'point',
+                merchant_uid: merchant_uid,
+                name: cartItems.length > 1 ? `${cartItems[0].name} 외 ${cartItems.length - 1}건` : cartItems[0].name,
+                amount: basePrice,
+                buyer_email: "test@example.com", // 필요 시 수집
+                buyer_name: customerName,
+                buyer_tel: phoneNumber,
+                buyer_addr: address,
+                buyer_postcode: "00000"
+            }, function (rsp) {
+                if (rsp.success) {
+                    // 결제 성공 시 서버에 검증 요청
+                    verifyPayment(rsp.imp_uid, merchant_uid, method);
+                } else {
+                    alert("결제에 실패하였습니다. 에러 내용: " +  rsp.error_msg);
+                }
+            });
+        }
+
+        async function verifyPayment(imp_uid, merchant_uid) {
+            try {
+                const response = await fetch('/api/portone/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        imp_uid: imp_uid,
+                        merchant_uid: merchant_uid,
+                        qr_code_id: '{{ qr_code_id }}',
+                        items: cartItems,
+                        customer_name: document.querySelector('input[name="customer_name"]').value,
+                        phone_number: document.querySelector('input[name="phone_number"]').value,
+                        shipping_address: document.querySelector('input[name="shipping_address"]').value,
+                        delivery_note: document.querySelector('select[name="delivery_note"]').value,
+                        payment_method: document.getElementById('selected_payment_method').value
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // 결제 성공 후 리다이렉트
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert('결제 검증 실패: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('서버 통신 중 오류가 발생했습니다.');
+            }
+        }
+
+        // ── 초기 로드 및 FCM ──
+        window.onload = async () => {
+            let sessId = sessionStorage.getItem('affilistay_session_id');
+            if (!sessId) {
+                sessId = 'sess_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                sessionStorage.setItem('affilistay_session_id', sessId);
+            }
+            document.getElementById('session_id').value = sessId;
+
+            renderCart();
+
+            // 폰 번호 포매팅
+            const phoneInput = document.getElementById('phone_number');
+            if(phoneInput) {
+                phoneInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/[^0-9]/g, '');
+                    if (value.length > 3 && value.length <= 7) {
+                        value = value.slice(0, 3) + '-' + value.slice(3);
+                    } else if (value.length > 7) {
+                        value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7, 11);
+                    }
+                    e.target.value = value;
+                });
+            }
+        };
+    </script>
+</body>
+</html>

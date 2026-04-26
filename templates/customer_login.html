@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 | AFFILISTAY</title>
+    <!-- Use Outfit for english and Noto Sans KR for Korean to match the UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@200;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #FAFAFA;
+            --primary: #35C5F0; /* 오늘의집 블루 색상 */
+            --primary-hover: #11B0DF;
+            --text-main: #2F3438;
+            --text-sub: #828C94;
+            --border: #DBDDF0;
+            --kakao: #FEE500;
+            --naver: #03C75A;
+            --facebook: #3B5998;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 40px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 12px 12px 0 12px;
+            display: inline-block;
+        }
+
+        .input-group {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            font-size: 15px;
+            color: var(--text-main);
+            outline: none;
+        }
+
+        .input-group input:not(:last-child) {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .input-group input::placeholder {
+            color: #C2C8CC;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .btn-login:hover {
+            background: var(--primary-hover);
+        }
+
+        .auth-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .auth-links a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .sns-login-title {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-bottom: 16px;
+        }
+
+        .sns-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .sns-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            transition: transform 0.2s;
+        }
+
+        .sns-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-kakao {
+            background: var(--kakao);
+            color: #381E1F;
+        }
+        
+        .btn-naver {
+            background: var(--naver);
+        }
+
+        .btn-facebook {
+            background: var(--facebook);
+        }
+
+        .trouble-link {
+            display: block;
+            margin-top: 30px;
+            font-size: 13px;
+            color: var(--text-sub);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <div class="logo">
+        <span class="logo-icon"></span>
+        어필리스테이
+    </div>
+
+    <form method="POST" action="/customer/login">
+        <!-- Return URL to redirect back after login -->
+        <input type="hidden" name="return_url" value="{{ return_url }}">
+        
+        <div class="input-group">
+            <input type="email" name="email" placeholder="이메일" required>
+            <input type="password" name="password" placeholder="비밀번호" required>
+        </div>
+
+        <button type="submit" class="btn-login">로그인</button>
+    </form>
+
+    <div class="auth-links">
+        <a href="#">비밀번호 재설정</a>
+        <a href="#">회원가입</a>
+    </div>
+
+    <div class="sns-login-title">SNS계정으로 간편 로그인/회원가입</div>
+    
+    <div class="sns-buttons">
+        <a href="/customer/login/sns/facebook?return_url={{ return_url }}" class="sns-btn btn-facebook">f</a>
+        <a href="/customer/login/sns/kakao?return_url={{ return_url }}" class="sns-btn btn-kakao">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3c-5.52 0-10 3.51-10 7.84 0 2.8 1.84 5.23 4.6 6.55-.26 1.05-1 3.8-1.04 4.02-.05.3.1.37.3.24.16-.11 2.5-1.72 3.51-2.42.84.14 1.71.21 2.63.21 5.52 0 10-3.51 10-7.84C22 6.51 17.52 3 12 3"/>
+            </svg>
+        </a>
+        <a href="/customer/login/sns/naver?return_url={{ return_url }}" class="sns-btn btn-naver">N</a>
+    </div>
+
+    <a href="#" class="trouble-link">로그인에 문제가 있으신가요?</a>
+</div>
+
+</body>
+</html>

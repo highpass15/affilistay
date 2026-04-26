@@ -109,10 +109,25 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        # ── 신규: 고객 테이블 (SNS 로그인 등) ────────────────────────
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT, -- 일반 로그인용 (SNS 로그인의 경우 NULL일 수 있음)
+            name TEXT,
+            phone TEXT,
+            default_address TEXT,
+            provider TEXT DEFAULT 'email', -- email, kakao, naver, facebook
+            provider_id TEXT, -- SNS 고유 ID
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id SERIAL PRIMARY KEY,
             product_id INTEGER REFERENCES products(id),
+            customer_id INTEGER REFERENCES customers(id), -- 로그인한 경우
             customer_name TEXT NOT NULL,
             phone_number TEXT NOT NULL,
             shipping_address TEXT NOT NULL,
@@ -121,6 +136,8 @@ def init_db():
             currency TEXT DEFAULT 'KRW',
             exchange_rate REAL DEFAULT 1.0,
             paypal_order_id TEXT,
+            payment_method TEXT DEFAULT 'paypal', -- paypal, kakaopay, tosspay, naverpay, card, vbank
+            imp_uid TEXT, -- 포트원 결제 고유번호
             payment_status TEXT DEFAULT 'PENDING',
             settlement_status TEXT DEFAULT 'PENDING',
             shipping_status TEXT DEFAULT 'PREPARING',
@@ -222,16 +239,34 @@ def init_db():
         )
         """)
         cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT,
+            name TEXT,
+            phone TEXT,
+            default_address TEXT,
+            provider TEXT DEFAULT 'email',
+            provider_id TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER, customer_name TEXT, phone_number TEXT,
+            product_id INTEGER,
+            customer_id INTEGER,
+            customer_name TEXT, phone_number TEXT,
             shipping_address TEXT, delivery_note TEXT, total_amount INTEGER,
             currency TEXT DEFAULT 'KRW', exchange_rate REAL DEFAULT 1.0,
             paypal_order_id TEXT,
+            payment_method TEXT DEFAULT 'paypal',
+            imp_uid TEXT,
             payment_status TEXT DEFAULT 'PENDING',
             settlement_status TEXT DEFAULT 'PENDING',
             shipping_status TEXT DEFAULT 'PREPARING',
             fcm_token TEXT,
+            selected_options TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
