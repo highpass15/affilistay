@@ -625,6 +625,21 @@ async def order_complete(request: Request, order_id: int, qr: str = Query(defaul
 
     conn.close()
 
+    if not order:
+        return HTMLResponse(content="<h1 style='text-align:center; margin-top:50px;'>주문 내역을 찾을 수 없습니다.</h1>", status_code=404)
+        
+    if order.get('payment_status') != 'PAID':
+        return HTMLResponse(
+            content=f"""
+            <div style='text-align:center; font-family:sans-serif; margin-top:50px;'>
+                <h2>결제가 아직 완료되지 않았습니다 🚫</h2>
+                <p>정상적인 페이팔 결제 과정을 거치지 않은 주문이거나, 아직 처리 중입니다.</p>
+                <a href='/shop/{qr}' style='display:inline-block; margin-top:20px; padding:10px 20px; background:#000; color:#fff; text-decoration:none; border-radius:5px;'>쇼룸으로 돌아가기</a>
+            </div>
+            """, 
+            status_code=403
+        )
+
     return templates.TemplateResponse(
         request=request,
         name="order_complete.html",
