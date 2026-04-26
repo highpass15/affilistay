@@ -37,10 +37,12 @@ def run_migrations():
         if _is_pg():
             with conn.cursor() as cur:
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT")
             conn.commit()
         else:
             try:
                 conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
+                conn.execute("ALTER TABLE orders ADD COLUMN session_id TEXT")
                 conn.commit()
             except:
                 pass
@@ -59,10 +61,15 @@ def force_migrate():
         if _is_pg():
             with conn.cursor() as cur:
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT")
             conn.commit()
             return {"status": "success", "msg": "pg migrated"}
         else:
-            conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
+            try:
+                conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
+                conn.execute("ALTER TABLE orders ADD COLUMN session_id TEXT")
+            except:
+                pass
             conn.commit()
             return {"status": "success", "msg": "sqlite migrated"}
     except Exception as e:
