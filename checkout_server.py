@@ -53,6 +53,26 @@ def run_migrations():
 # 클라우드 어드민 주소를 고정하여 즉시 연결되도록 합니다.
 ADMIN_URL = 'https://affilistay-admin.onrender.com/'
 
+@app.get("/api/force-migrate")
+def force_migrate():
+    conn = get_db_connection()
+    try:
+        from database import _is_pg
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+            conn.commit()
+            return {"status": "success", "msg": "pg migrated"}
+        else:
+            conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
+            conn.commit()
+            return {"status": "success", "msg": "sqlite migrated"}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "msg": str(e), "traceback": traceback.format_exc()}
+    finally:
+        conn.close()
+
 # 카테고리 한글 매핑
 ROOM_CATEGORIES = {
     'living_room': '거실',
