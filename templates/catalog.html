@@ -3,547 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AFFILISTAY | Showroom Catalog</title>
-    <meta name="description" content="어필리스테이에 등록된 모든 프리미엄 제품과 감성 숙소를 탐색하세요.">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>AFFILISTAY | Catalog</title>
+    <meta name="description" content="어필리스테이 입점 제품과 쇼룸 숙소를 제품별 또는 숙소별로 둘러보세요.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ── 기본 리셋 ── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        
         :root {
-            --bg: #FAF9F6;
-            --bg-card: #FFFFFF;
-            --text-primary: #1A1A1A;
-            --text-secondary: #7A7672;
-            --text-muted: #B0AAA3;
-            --accent: #B0A295;
-            --accent-dark: #8A7E73;
-            --border: #EEEDEA;
-            --radius: 16px;
-            --shadow-sm: 0 2px 12px rgba(0,0,0,0.04);
-            --shadow-md: 0 8px 32px rgba(0,0,0,0.06);
+            --bg: #f6f2eb;
+            --surface: #fbf8f3;
+            --card: #ffffff;
+            --line: rgba(24, 22, 18, 0.08);
+            --text: #1c1813;
+            --muted: #72685f;
+            --soft: #b39a82;
+            --soft-2: #ebe2d7;
         }
-
         body {
-            font-family: 'Outfit', -apple-system, sans-serif;
+            font-family: "Outfit", sans-serif;
             background: var(--bg);
-            color: var(--text-primary);
-            -webkit-font-smoothing: antialiased;
-            min-height: 100vh;
+            color: var(--text);
+            letter-spacing: 0;
         }
-
-        /* ── 헤더 ── */
-        .shop-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(250, 249, 246, 0.92);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            padding: 16px 20px;
-        }
-        .shop-header-inner {
-            max-width: 600px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .shop-logo {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.25em;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            text-decoration: none;
-        }
-        .shop-host-badge {
-            font-size: 10px;
-            font-weight: 500;
-            color: var(--text-muted);
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-        }
-
-        /* ── 히어로 섹션 ── */
-        .shop-hero {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 32px 20px 24px;
-        }
-        .shop-hero h1 {
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            line-height: 1.3;
-            margin-bottom: 8px;
-        }
-        .shop-hero p {
-            font-size: 13px;
-            color: var(--text-secondary);
-            font-weight: 300;
-            line-height: 1.6;
-        }
-
-        /* ── 메인 탭 (카테고리 vs 숙소) ── */
-        .main-tabs {
-            max-width: 600px;
-            margin: 0 auto 20px;
-            padding: 0 20px;
-            display: flex;
-            gap: 12px;
-        }
-        .main-tab {
-            flex: 1;
-            text-align: center;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid var(--border);
-            background: var(--bg-card);
-            color: var(--text-secondary);
-        }
-        .main-tab.active {
-            background: var(--text-primary);
-            color: white;
-            border-color: var(--text-primary);
-        }
-
-        /* ── 서브 카테고리 사이드바 (제품 보기 시) ── */
-        .catalog-layout {
-            display: flex;
-            max-width: 900px;
-            margin: 0 auto;
-            gap: 40px;
-            padding: 20px;
-            align-items: flex-start;
-        }
-
-        .category-sidebar {
-            flex: 0 0 140px;
-            position: sticky;
-            top: 100px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .category-tab {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s;
-            border: 1.5px solid var(--border);
-            background: var(--bg-card);
-            color: var(--text-secondary);
-        }
-
-        .category-tab:hover {
-            border-color: var(--accent);
-            transform: translateX(4px);
-        }
-        .category-tab.active {
-            background: var(--text-primary);
-            color: white;
-            border-color: var(--text-primary);
-        }
-        .category-tab .tab-icon { font-size: 16px; }
-
-        /* 모바일 대응: 사이드바 -> 상단 가로 스크롤 */
-        @media (max-width: 768px) {
-            .catalog-layout { flex-direction: column; gap: 20px; padding: 0 20px; }
-            .category-sidebar { 
-                flex: none; 
-                position: static; 
-                flex-direction: row; 
-                overflow-x: auto; 
-                width: 100%;
-                padding-bottom: 12px;
-                scrollbar-width: none;
-            }
-            .category-sidebar::-webkit-scrollbar { display: none; }
-            .category-tab { white-space: nowrap; padding: 10px 18px; border-radius: 100px; }
-            .category-tab:hover { transform: none; }
-            .category-main { width: 100%; }
-        }
-
-        /* ── 제품 그리드 ── */
-        .category-main {
-            flex: 1;
-        }
-        .category-section {
-            padding: 0 0 32px;
-        }
-        .category-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-            padding-top: 8px;
-        }
-        .category-title h2 { font-size: 18px; font-weight: 600; }
-        .category-title .cat-line { flex: 1; height: 1px; background: var(--border); }
-        .category-title .cat-count { font-size: 11px; color: var(--text-muted); }
-        
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 14px;
-        }
-        .product-card {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            overflow: hidden;
-            text-decoration: none;
-            color: inherit;
-            border: 1px solid var(--border);
-            transition: transform 0.2s;
-        }
-        .product-card:active { transform: scale(0.98); }
-        .product-img-wrap { width: 100%; padding-top: 110%; background: #F3F2EF; position: relative; }
-        .product-img-wrap img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .product-info { padding: 14px; }
-        .product-brand { font-size: 10px; font-weight: 600; color: var(--accent-dark); margin-bottom: 4px; }
-        .product-name { font-size: 13px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 6px; height: 34px; }
-        .price-row { display: flex; align-items: center; gap: 6px; }
-        .product-price { font-size: 14px; font-weight: 600; }
-        .discount-pct { font-size: 14px; font-weight: 700; color: #FF4D4D; }
-        .orig-price { font-size: 11px; color: var(--text-muted); text-decoration: line-through; }
-
-        /* ── 호스트 카탈로그 갤러리 (미노안 스타일) ── */
-        .host-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 32px;
-            padding-top: 10px;
-        }
-        @media (min-width: 600px) {
-            .host-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-        }
-        .host-card {
-            display: flex;
-            flex-direction: column;
-            text-decoration: none;
-            color: inherit;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .host-card:active { transform: scale(0.98); }
-        .host-img-wrap {
-            width: 100%;
-            height: 240px;
-            background: #F0EFEC;
-            border-radius: 6px;
-            overflow: hidden;
-            position: relative;
-            margin-bottom: 16px;
-        }
-        /* 캐러셀 (가로 스크롤) 스타일 */
-        .host-img-carousel {
-            display: flex;
-            width: 100%;
-            height: 100%;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-        }
-        .host-img-carousel::-webkit-scrollbar { display: none; }
-        
-        .host-img-slide {
-            flex: 0 0 100%;
-            height: 100%;
-            scroll-snap-align: start;
-            position: relative;
-        }
-        .host-img-slide img {
-            width: 100%; height: 100%;
-            object-fit: cover;
-            transition: transform 0.8s ease;
-        }
-        .host-card:hover .host-img-slide img { transform: scale(1.03); }
-        
-        /* 인디케이터 (점) */
-        .host-img-indicators {
-            position: absolute;
-            bottom: 10px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 5px;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            opacity: 0.24;
             pointer-events: none;
-            z-index: 10;
         }
-        .host-img-dot {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.4);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            transition: all 0.2s;
+        .shell { position: relative; z-index: 1; }
+        .blur-nav {
+            background: rgba(251, 248, 243, 0.86);
+            backdrop-filter: blur(18px);
         }
-        .host-img-dot.active {
-            background: rgba(255, 255, 255, 1);
-            transform: scale(1.2);
+        .filter-scroll::-webkit-scrollbar { display: none; }
+        .filter-scroll { scrollbar-width: none; }
+        .product-card:hover, .space-card:hover {
+            transform: translateY(-4px);
+            transition: 0.22s ease;
         }
-
-        .host-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-        .host-location {
-            font-size: 14px;
-            color: var(--text-secondary);
-            font-weight: 400;
-        }
-        .host-count {
-            font-size: 13px;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .host-name {
-            font-size: 20px;
-            font-weight: 500;
-            color: var(--text-primary);
-            letter-spacing: -0.02em;
-        }
-
-        /* ── 페이드인 ── */
-        .fade-in { opacity: 0; transform: translateY(16px); animation: fadeInUp 0.5s ease forwards; }
-        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-
-        /* ── 빈 상태 ── */
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-        
-        /* 탭 표시/숨김 */
-        .view-content { display: none; }
-        .view-content.active { display: block; }
-
     </style>
 </head>
 <body>
-
-    <header class="shop-header">
-        <div class="shop-header-inner">
-            <a href="/" class="shop-logo">AFFILISTAY</a>
-            <span class="shop-host-badge">GLOBAL SHOWROOM</span>
-        </div>
-    </header>
-
-    <section class="shop-hero fade-in">
-        <h1>공간을 깨우는<br>컬렉션 탐색</h1>
-        <p>전국 주요 감성 숙소에 입점된 프리미엄 제품들을 한번에 둘러보고, 내 취향에 고스란히 옮겨보세요.</p>
-    </section>
-
-    <!-- 메인 탭 -->
-    <div class="main-tabs fade-in" style="animation-delay: 0.1s">
-        <div class="main-tab active" onclick="switchTab('products', this)">📦 품목별 탐색</div>
-        <div class="main-tab" onclick="switchTab('hosts', this)">🏡 쇼룸별 탐색</div>
-    </div>
-
-    <!-- [View 1] 카테고리별 제품 보기 -->
-    <div id="view-products" class="view-content active">
-        <div class="catalog-layout">
-            <!-- 좌측 사이드바 -->
-            <aside class="category-sidebar fade-in" style="animation-delay: 0.15s">
-                <a href="/catalog" class="category-tab {% if not active_category %}active{% endif %}">
-                    <span class="tab-icon">🏠</span> 전체
-                </a>
-                {% for key, name in prod_categories.items() %}
-                {% set icon = {
-                    'furniture': '🛋️', 'fabric': '🧶', 'appliance': '📺', 'kitchenware': '🍳', 
-                    'food': '🥯', 'deco': '🪴', 'lighting': '💡', 'storage': '📦', 'lifestyle': '🛁'
-                } %}
-                <a href="/catalog?category={{ key }}" class="category-tab {% if active_category == key %}active{% endif %}">
-                    {% set has_emoji = (name.startswith(('🛋️','🧶','📺','🍳','🥯','🪴','💡','📦','🛁'))) if name else False %}
-                    <span class="tab-icon">{{ icon[key] if not has_emoji else '' }}</span> {{ name }}
-                </a>
-                {% endfor %}
-            </aside>
-
-            <!-- 우측 제품 리스트 -->
-            <div class="category-main">
-                {% if categorized_by_item %}
-                    {% if active_category %}
-                        {% if active_category in categorized_by_item %}
-                            {% set cat = categorized_by_item[active_category] %}
-                            <section class="category-section fade-in" style="animation-delay: 0.2s">
-                                <div class="category-title">
-                                    <h2>{{ cat.name }}</h2>
-                                    <div class="cat-line"></div>
-                                    <span class="cat-count">{{ cat.products|length }}개</span>
-                                </div>
-                                <div class="product-grid">
-                                    {% for product in cat.products %}
-                                    <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="product-card fade-in">
-                                        <div class="product-img-wrap">
-                                            {% if product.image_url %}
-                                                <img src="data:image/jpeg;base64,{{ product.image_url }}" alt="">
-                                            {% else %}
-                                                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.2;font-size:32px;">📦</div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="product-info">
-                                            <div class="product-brand">{{ product.brand_name }}</div>
-                                            <div class="product-name">{{ product.product_name }}</div>
-                                            <div class="price-row">
-                                                {% if product.original_price and product.original_price > product.price %}
-                                                <span class="discount-pct">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}%</span>
-                                                {% endif %}
-                                                <span class="product-price">{{ "{:,}".format(product.price) }}원</span>
-                                                {% if product.original_price and product.original_price > product.price %}
-                                                <span class="orig-price">{{ "{:,}".format(product.original_price) }}원</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </a>
-                                    {% endfor %}
-                                </div>
-                            </section>
-                        {% else %}
-                            <div class="empty-state">해당 카테고리에 등록된 제품이 없습니다.</div>
-                        {% endif %}
-                    {% else %}
-                        {% for cat_key, cat_data in categorized_by_item.items() %}
-                        <section class="category-section fade-in" style="animation-delay: 0.2s">
-                            <div class="category-title">
-                                <h2>{{ cat_data.name }}</h2>
-                                <div class="cat-line"></div>
-                                <span class="cat-count">{{ cat_data.products|length }}개</span>
-                            </div>
-                            <div class="product-grid">
-                                {% for product in cat_data.products %}
-                                <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="product-card fade-in">
-                                    <div class="product-img-wrap">
-                                        {% if product.image_url %}
-                                            <img src="data:image/jpeg;base64,{{ product.image_url }}" alt="">
-                                        {% else %}
-                                            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.2;font-size:32px;">📦</div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="product-info">
-                                        <div class="product-brand">{{ product.brand_name }}</div>
-                                        <div class="product-name">{{ product.product_name }}</div>
-                                        <div class="price-row">
-                                            {% if product.original_price and product.original_price > product.price %}
-                                            <span class="discount-pct">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}%</span>
-                                            {% endif %}
-                                            <span class="product-price">{{ "{:,}".format(product.price) }}원</span>
-                                            {% if product.original_price and product.original_price > product.price %}
-                                            <span class="orig-price">{{ "{:,}".format(product.original_price) }}원</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </a>
-                                {% endfor %}
-                            </div>
-                        </section>
-                        {% endfor %}
-                    {% endif %}
-                {% else %}
-                    <div class="empty-state">아직 등록된 제품이 없습니다.</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- [View 2] 감성 숙소 카탈로그 (Minoan Style) -->
-    <div id="view-hosts" class="view-content category-section">
-        {% if hosts %}
-        <div class="host-grid fade-in">
-            {% for host in hosts %}
-            <a href="/shop/{{ host.qr_code_id }}" class="host-card">
-                <div class="host-img-wrap">
-                    {% if host.venue_image or host.venue_image2 %}
-                        <div class="host-img-carousel" id="carousel-{{ host.id }}" onscroll="updateDots({{ host.id }})">
-                            {% if host.venue_image %}
-                            <div class="host-img-slide">
-                                <img src="data:image/jpeg;base64,{{ host.venue_image }}" alt="{{ host.host_name }}">
-                            </div>
-                            {% endif %}
-                            {% if host.venue_image2 %}
-                            <div class="host-img-slide">
-                                <img src="data:image/jpeg;base64,{{ host.venue_image2 }}" alt="{{ host.host_name }}">
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- 인디케이터 표시 -->
-                        {% if host.venue_image and host.venue_image2 %}
-                        <div class="host-img-indicators" id="dots-{{ host.id }}">
-                            <div class="host-img-dot active"></div>
-                            <div class="host-img-dot"></div>
-                        </div>
-                        {% endif %}
-                    {% else %}
-                        <!-- 이미지가 없는 경우 -->
-                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.1; font-size:48px;">🏡</div>
-                    {% endif %}
-                </div>
-                <div class="host-header-row">
-                    <div class="host-location">{{ host.location or "Secret Curation Space" }}</div>
-                    <div class="host-count">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                        {{ host.product_count }}
+    <div class="shell min-h-screen">
+        <header class="blur-nav sticky top-0 z-40 border-b border-black/5">
+            <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="rounded-full border border-black/10 bg-white/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] transition hover:bg-white">
+                        Home
+                    </a>
+                    <div>
+                        <p class="text-lg font-semibold tracking-[0.28em] md:text-xl">AFFILISTAY</p>
+                        <p class="text-[11px] text-stone-400">Curated showroom catalog</p>
                     </div>
                 </div>
-                <div class="host-name">{{ host.host_name }}</div>
-            </a>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">아직 등록된 호스트가 없습니다.</div>
-        {% endif %}
+                <a href="{{ admin_url }}" class="hidden rounded-full border border-black/10 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] transition hover:bg-black hover:text-white md:inline-flex">
+                    Partner Access
+                </a>
+            </div>
+        </header>
+
+        <main class="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-10">
+            <section class="mb-8 md:mb-10">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Browse</p>
+                        <h1 class="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">입점 제품과 숙소 쇼룸을 한 번에 둘러보세요</h1>
+                        <p class="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)] md:text-[15px]">
+                            제품별로 빠르게 탐색하거나, 숙소별로 쇼룸의 분위기와 큐레이션 맥락까지 함께 볼 수 있도록 정리했습니다.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-6">
+                <div class="inline-flex rounded-full border border-black/8 bg-white/70 p-1">
+                    <a href="/catalog?view=products&category={{ category }}&room={{ room }}" class="rounded-full px-5 py-3 text-sm font-semibold transition {% if view == 'products' %}bg-black text-white{% else %}text-stone-500 hover:text-stone-900{% endif %}">
+                        제품별 보기
+                    </a>
+                    <a href="/catalog?view=spaces&category={{ category }}&room={{ room }}" class="rounded-full px-5 py-3 text-sm font-semibold transition {% if view == 'spaces' %}bg-black text-white{% else %}text-stone-500 hover:text-stone-900{% endif %}">
+                        숙소별 보기
+                    </a>
+                </div>
+            </section>
+
+            {% if view == 'products' %}
+            <section class="mb-6 space-y-4">
+                <div class="filter-scroll flex gap-3 overflow-x-auto pb-1">
+                    <a href="/catalog?view=products&category=all&room={{ room }}" class="whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == 'all' %}border-black bg-black text-white{% else %}border-black/8 bg-white/80 text-stone-600 hover:border-black/20 hover:text-stone-900{% endif %}">
+                        전체
+                    </a>
+                    {% for key, label in prod_categories.items() %}
+                    <a href="/catalog?view=products&category={{ key }}&room={{ room }}" class="whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == key %}border-black bg-black text-white{% else %}border-black/8 bg-white/80 text-stone-600 hover:border-black/20 hover:text-stone-900{% endif %}">
+                        {{ label }}
+                    </a>
+                    {% endfor %}
+                </div>
+                <div class="filter-scroll flex gap-3 overflow-x-auto pb-1">
+                    <a href="/catalog?view=products&category={{ category }}&room=all" class="whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == 'all' %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/80 text-stone-500 hover:border-black/20 hover:text-stone-900{% endif %}">
+                        전체
+                    </a>
+                    {% for key, label in room_categories.items() %}
+                    <a href="/catalog?view=products&category={{ category }}&room={{ key }}" class="whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == key %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/80 text-stone-500 hover:border-black/20 hover:text-stone-900{% endif %}">
+                        {{ label }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section>
+                {% if products %}
+                <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                    {% for product in products %}
+                    <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="product-card overflow-hidden rounded-[1.5rem] border border-black/6 bg-[var(--card)] shadow-[0_10px_30px_rgba(18,16,12,0.04)]">
+                        <div class="aspect-[0.9/1] bg-[#f0ebe4]">
+                            <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
+                        </div>
+                        <div class="p-4 md:p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">{{ product.brand_name }}</p>
+                                    <h2 class="mt-2 line-clamp-2 text-[15px] font-semibold leading-6 text-stone-900 md:text-base">{{ product.product_name }}</h2>
+                                </div>
+                                <span class="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] text-stone-500">{{ product.room_label }}</span>
+                            </div>
+                            {% if product.description %}
+                            <p class="mt-2 line-clamp-2 text-[13px] leading-6 text-[var(--muted)]">{{ product.description }}</p>
+                            {% endif %}
+                            <div class="mt-4 flex items-end justify-between gap-3">
+                                <div>
+                                    <div class="mb-1 flex items-center gap-2">
+                                        {% if product.discount_rate > 0 %}
+                                        <span class="text-sm font-semibold text-rose-500">{{ product.discount_rate }}%</span>
+                                        {% endif %}
+                                        {% if product.original_price and product.original_price > product.price %}
+                                        <p class="text-xs text-stone-400 line-through">{{ "{:,}".format(product.original_price) }}원</p>
+                                        {% endif %}
+                                    </div>
+                                    <p class="text-xl font-semibold tracking-tight">{{ "{:,}".format(product.price) }}원</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">{{ product.category_label }}</p>
+                                    <p class="mt-1 text-[12px] font-medium text-stone-600">{{ product.host_name }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="rounded-[1.75rem] border border-dashed border-black/10 bg-white/70 px-6 py-14 text-center">
+                    <p class="text-lg font-semibold">조건에 맞는 제품이 아직 없습니다.</p>
+                    <p class="mt-3 text-sm leading-7 text-[var(--muted)]">카테고리나 공간 필터를 바꿔 보거나, 조금 뒤 다시 확인해 주세요.</p>
+                </div>
+                {% endif %}
+            </section>
+            {% else %}
+            <section>
+                {% if has_space_data %}
+                <div class="grid gap-6 lg:grid-cols-2">
+                    {% for host in hosts %}
+                    <a href="{{ host.entry_path }}" class="space-card overflow-hidden rounded-[1.75rem] border border-black/6 bg-[var(--card)] shadow-[0_10px_30px_rgba(18,16,12,0.04)]">
+                        <div class="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
+                            <div class="aspect-[1/0.92] bg-[#eee7dd]">
+                                <img src="{% if host.venue_image %}data:image/jpeg;base64,{{ host.venue_image }}{% elif host.venue_image2 %}data:image/jpeg;base64,{{ host.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ host.host_name }}" class="h-full w-full object-cover">
+                            </div>
+                            <div class="flex flex-col justify-between p-5 md:p-6">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Showroom Stay</p>
+                                    <h2 class="mt-2 text-2xl font-semibold tracking-tight text-stone-900">{{ host.host_name }}</h2>
+                                    <p class="mt-2 text-sm text-stone-500">{{ host.location or "위치 준비 중" }}</p>
+                                    <p class="mt-4 line-clamp-3 text-[14px] leading-7 text-[var(--muted)]">
+                                        {{ host.description or "숙소에 비치된 제품을 실제 동선 안에서 경험해 보고, 마음에 드는 제품은 QR로 바로 이어서 둘러볼 수 있습니다." }}
+                                    </p>
+                                </div>
+                                <div class="mt-6 flex items-center justify-between">
+                                    <div class="rounded-full bg-[var(--soft-2)] px-3 py-2 text-[12px] font-medium text-stone-700">제품 {{ host.product_count }}개</div>
+                                    <span class="text-[12px] font-semibold uppercase tracking-[0.16em] text-stone-500">상세 쇼룸 보기</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="rounded-[1.75rem] border border-dashed border-black/10 bg-white/70 px-6 py-14 text-center">
+                    <p class="text-lg font-semibold">숙소별 쇼룸 뷰는 현재 정리 중입니다.</p>
+                    <p class="mt-3 text-sm leading-7 text-[var(--muted)]">운영 DB에 숙소 프로필과 이미지가 연결되면 이 화면에서 숙소별로 제품 큐레이션을 바로 둘러볼 수 있게 됩니다.</p>
+                    <div class="mt-6">
+                        <a href="/catalog?view=products" class="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800">제품별 보기로 이동</a>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+            {% endif %}
+        </main>
     </div>
-
-    <script>
-        function switchTab(viewId, element) {
-            // Update tabs
-            document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
-            element.classList.add('active');
-            
-            // Update views
-            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
-            document.getElementById('view-' + viewId).classList.add('active');
-        }
-
-        function updateDots(hostId) {
-            const carousel = document.getElementById('carousel-' + hostId);
-            const dotsContainer = document.getElementById('dots-' + hostId);
-            if (!carousel || !dotsContainer) return;
-            
-            // 스크롤 위치를 기준으로 현재 슬라이드 계산
-            const scrollLeft = carousel.scrollLeft;
-            const slideWidth = carousel.clientWidth;
-            const currentIndex = Math.round(scrollLeft / slideWidth);
-            
-            // 점 상태 업데이트
-            const dots = dotsContainer.children;
-            for (let i = 0; i < dots.length; i++) {
-                if (i === currentIndex) {
-                    dots[i].classList.add('active');
-                } else {
-                    dots[i].classList.remove('active');
-                }
-            }
-        }
-    </script>
 </body>
 </html>

@@ -343,6 +343,111 @@ def _fetch_one(conn, query_pg, query_sqlite, params=None):
         return dict(row) if row else None
 
 
+def _catalog_image_map(conn):
+    rows = _fetch_all(
+        conn,
+        "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
+        "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
+    )
+    image_map = {}
+    for row in rows:
+        image_map.setdefault(row["product_id"], row["image_data"])
+    return image_map
+
+
+def _decorate_catalog_products(products, image_map):
+    for product in products:
+        original_price = product.get("original_price") or product.get("price") or 0
+        price = product.get("price") or 0
+        product["primary_image"] = product.get("image_url") or image_map.get(product["id"])
+        product["room_label"] = ROOM_CATEGORIES.get(product.get("room_category"), "추천")
+        product["category_label"] = PRODUCT_CATEGORIES.get(product.get("product_category"), "큐레이션")
+        product["discount_rate"] = int(((original_price - price) / original_price) * 100) if original_price and original_price > price else 0
+    return products
+
+
+def _build_catalog_hosts(conn):
+    hosts = _fetch_all(
+        conn,
+        """
+        SELECT
+            h.id,
+            h.name as host_name,
+            MIN(p.qr_code_id) as qr_code_id,
+            v.location,
+            v.description,
+            v.image1 as venue_image,
+            v.image2 as venue_image2,
+            COUNT(p.id) as product_count
+        FROM hosts h
+        JOIN products p ON h.id = p.owner_id
+        LEFT JOIN host_venues v ON h.id = v.host_id
+        GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
+        ORDER BY product_count DESC, h.id DESC
+        """,
+        """
+        SELECT
+            h.id,
+            h.name as host_name,
+            MIN(p.qr_code_id) as qr_code_id,
+            v.location,
+            v.description,
+            v.image1 as venue_image,
+            v.image2 as venue_image2,
+            COUNT(p.id) as product_count
+        FROM hosts h
+        JOIN products p ON h.id = p.owner_id
+        LEFT JOIN host_venues v ON h.id = v.host_id
+        GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
+        ORDER BY product_count DESC, h.id DESC
+        """,
+    )
+    for host in hosts:
+        host["entry_path"] = f"/showrooms/{host['id']}"
+    return hosts
+
+
+def _build_showroom_context(conn, host_id):
+    showroom = _fetch_one(
+        conn,
+        """
+        SELECT
+            h.id,
+            h.name as host_name,
+            v.location,
+            v.description,
+            v.image1 as venue_image,
+            v.image2 as venue_image2
+        FROM hosts h
+        LEFT JOIN host_venues v ON h.id = v.host_id
+        WHERE h.id = %s
+        """,
+        """
+        SELECT
+            h.id,
+            h.name as host_name,
+            v.location,
+            v.description,
+            v.image1 as venue_image,
+            v.image2 as venue_image2
+        FROM hosts h
+        LEFT JOIN host_venues v ON h.id = v.host_id
+        WHERE h.id = ?
+        """,
+        (host_id,),
+    )
+    if not showroom:
+        return None, []
+
+    products = _fetch_all(
+        conn,
+        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id = %s ORDER BY p.room_category, p.id DESC",
+        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id = ? ORDER BY p.room_category, p.id DESC",
+        (host_id,),
+    )
+    return showroom, _decorate_catalog_products(products, _catalog_image_map(conn))
+
+
 # ─────────────────────────────────────────
 # 기본 라우트
 # ─────────────────────────────────────────
@@ -399,51 +504,74 @@ async def receive_inquiry(
 # 글로벌 카탈로그 (전체 룩북)
 # ─────────────────────────────────────────
 @app.get("/catalog", response_class=HTMLResponse)
-async def catalog_page(request: Request, category: str = Query(default=None)):
+async def catalog_page(
+    request: Request,
+    view: str = Query(default="products"),
+    category: str = Query(default="all"),
+    room: str = Query(default="all"),
+):
     """QR 접속 없이 플랫폼 전체 입점제품 및 숙소(호스트) 공간 구경"""
     conn = get_db_connection()
 
-    if category and category in PRODUCT_CATEGORIES:
+    if category != "all" and category in PRODUCT_CATEGORIES:
         products = _fetch_all(
             conn,
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id",
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id",
-            (category,)
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id DESC",
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id DESC",
+            (category,),
         )
     else:
         products = _fetch_all(
             conn,
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.product_category, p.id",
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.product_category, p.id"
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
+            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
         )
-        
-    hosts = _fetch_all(
-        conn,
-        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, v.image2 as venue_image2, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1, v.image2",
-        "SELECT h.id, h.name as host_name, MIN(p.qr_code_id) as qr_code_id, v.location, v.image1 as venue_image, v.image2 as venue_image2, COUNT(p.id) as product_count FROM hosts h JOIN products p ON h.id = p.owner_id LEFT JOIN host_venues v ON h.id = v.host_id GROUP BY h.id, h.name, v.location, v.image1, v.image2"
-    )
 
+    if room != "all" and room in ROOM_CATEGORIES:
+        products = [p for p in products if p.get("room_category") == room]
+
+    image_map = _catalog_image_map(conn)
+    products = _decorate_catalog_products(products, image_map)
+    hosts = _build_catalog_hosts(conn)
     conn.close()
 
-    categorized_by_item = {}
-    for cat_key, cat_name in PRODUCT_CATEGORIES.items():
-        cat_products = [p for p in products if p.get('product_category') == cat_key]
-        if cat_products:
-            categorized_by_item[cat_key] = {
-                'name': cat_name,
-                'products': cat_products
-            }
-            
+    if view not in {"products", "spaces"}:
+        view = "products"
+
     return templates.TemplateResponse(
         request=request,
         name="catalog.html",
         context={
-            "prod_categories": PRODUCT_CATEGORIES,
-            "categorized_by_item": categorized_by_item,
-            "active_category": category,
-            "all_products": products,
+            "view": view,
+            "category": category,
+            "room": room,
+            "products": products,
             "hosts": hosts,
-        }
+            "prod_categories": PRODUCT_CATEGORIES,
+            "room_categories": ROOM_CATEGORIES,
+            "has_space_data": len(hosts) > 0,
+            "admin_url": ADMIN_URL,
+        },
+    )
+
+
+@app.get("/showrooms/{host_id}", response_class=HTMLResponse)
+async def showroom_detail(request: Request, host_id: int):
+    conn = get_db_connection()
+    showroom, products = _build_showroom_context(conn, host_id)
+    conn.close()
+
+    if not showroom:
+        return HTMLResponse(content="<h1>존재하지 않는 쇼룸입니다.</h1>", status_code=404)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="showroom.html",
+        context={
+            "showroom": showroom,
+            "products": products,
+            "admin_url": ADMIN_URL,
+        },
     )
 
 
