@@ -423,11 +423,14 @@ def _build_catalog_hosts(conn):
                 v.description,
                 v.image1 as venue_image,
                 v.image2 as venue_image2,
+                v.image3 as venue_image3,
+                v.image4 as venue_image4,
+                v.image5 as venue_image5,
                 COUNT(p.id) as product_count
             FROM hosts h
             JOIN products p ON h.id = p.owner_id
             LEFT JOIN host_venues v ON h.id = v.host_id
-            GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
+            GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2, v.image3, v.image4, v.image5
             ORDER BY product_count DESC, h.id DESC
             """,
             """
@@ -439,11 +442,14 @@ def _build_catalog_hosts(conn):
                 v.description,
                 v.image1 as venue_image,
                 v.image2 as venue_image2,
+                v.image3 as venue_image3,
+                v.image4 as venue_image4,
+                v.image5 as venue_image5,
                 COUNT(p.id) as product_count
             FROM hosts h
             JOIN products p ON h.id = p.owner_id
             LEFT JOIN host_venues v ON h.id = v.host_id
-            GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
+            GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2, v.image3, v.image4, v.image5
             ORDER BY product_count DESC, h.id DESC
             """,
         )
@@ -452,7 +458,15 @@ def _build_catalog_hosts(conn):
     for host in hosts:
         host["entry_path"] = f"/showrooms/{host['id']}"
         host["space_icon"] = "🏠"
-        host["gallery_images"] = [img for img in [host.get("venue_image"), host.get("venue_image2")] if img]
+        host["gallery_images"] = [
+            img for img in [
+                host.get("venue_image"),
+                host.get("venue_image2"),
+                host.get("venue_image3"),
+                host.get("venue_image4"),
+                host.get("venue_image5"),
+            ] if img
+        ]
         host["gallery_count"] = len(host["gallery_images"])
     return hosts
 
@@ -486,7 +500,10 @@ def _build_showroom_context(conn, host_id):
             v.location,
             v.description,
             v.image1 as venue_image,
-            v.image2 as venue_image2
+            v.image2 as venue_image2,
+            v.image3 as venue_image3,
+            v.image4 as venue_image4,
+            v.image5 as venue_image5
         FROM hosts h
         LEFT JOIN host_venues v ON h.id = v.host_id
         WHERE h.id = %s
@@ -498,7 +515,10 @@ def _build_showroom_context(conn, host_id):
             v.location,
             v.description,
             v.image1 as venue_image,
-            v.image2 as venue_image2
+            v.image2 as venue_image2,
+            v.image3 as venue_image3,
+            v.image4 as venue_image4,
+            v.image5 as venue_image5
         FROM hosts h
         LEFT JOIN host_venues v ON h.id = v.host_id
         WHERE h.id = ?
@@ -507,6 +527,16 @@ def _build_showroom_context(conn, host_id):
     )
     if not showroom:
         return None, []
+
+    showroom["gallery_images"] = [
+        img for img in [
+            showroom.get("venue_image"),
+            showroom.get("venue_image2"),
+            showroom.get("venue_image3"),
+            showroom.get("venue_image4"),
+            showroom.get("venue_image5"),
+        ] if img
+    ]
 
     products = _fetch_all(
         conn,

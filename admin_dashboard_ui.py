@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import uuid
 import qrcode
+from datetime import timedelta
 from io import BytesIO
 import database
 import os
@@ -24,6 +25,98 @@ def initialize_platform():
 initialize_platform()
 
 CHECKOUT_BASE_URL = "https://affilistay-showroom.onrender.com"
+ROOM_MAP = {
+    '거실': 'living_room',
+    '침실': 'bedroom',
+    '주방': 'kitchen',
+    '화장실': 'bathroom',
+}
+ROOM_LABEL_MAP = {value: key for key, value in ROOM_MAP.items()}
+ROOM_ICON_MAP = {
+    'living_room': '🛋️',
+    'bedroom': '🛏️',
+    'kitchen': '🍳',
+    'bathroom': '🛁',
+}
+PROD_CAT_OPTIONS = [
+    ('🛋️ 가구', 'furniture'),
+    ('🧶 패브릭', 'fabric'),
+    ('📺 가전·디지털', 'appliance'),
+    ('🍳 주방용품', 'kitchenware'),
+    ('🥯 식품', 'food'),
+    ('🪴 데코·식물', 'deco'),
+    ('💡 조명', 'lighting'),
+    ('📦 수납·정리', 'storage'),
+    ('🛁 생활품', 'lifestyle'),
+    ('🔌 헤어드라이어', 'hairdryer'),
+]
+PROD_CAT_MAP = dict(PROD_CAT_OPTIONS)
+PROD_CAT_LABEL_MAP = {value: label for label, value in PROD_CAT_OPTIONS}
+VENUE_IMAGE_KEYS = [f"image{i}" for i in range(1, 6)]
+
+st.markdown(
+    """
+    <style>
+    div[data-testid="stTabs"] button[role="tab"] {
+        border-radius: 999px;
+        padding: 0.6rem 0.95rem;
+        font-weight: 700;
+    }
+    .host-hero {
+        background: linear-gradient(135deg, rgba(255,88,88,0.92), rgba(255,154,84,0.92));
+        border-radius: 28px;
+        color: white;
+        padding: 1.4rem 1.5rem;
+        box-shadow: 0 20px 40px rgba(255, 100, 88, 0.18);
+        margin-bottom: 1rem;
+    }
+    .host-hero-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.9rem;
+        margin-top: 1rem;
+    }
+    .host-chip {
+        border: 1px solid rgba(255,255,255,0.24);
+        background: rgba(255,255,255,0.12);
+        border-radius: 18px;
+        padding: 0.95rem 1rem;
+    }
+    .host-chip-label {
+        font-size: 0.8rem;
+        opacity: 0.84;
+        margin-bottom: 0.2rem;
+    }
+    .host-chip-value {
+        font-size: 1.7rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .section-card {
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        padding: 1rem;
+        background: rgba(255,255,255,0.02);
+    }
+    .section-title {
+        font-size: 1rem;
+        font-weight: 800;
+        margin-bottom: 0.25rem;
+    }
+    .section-copy {
+        color: rgba(250,250,250,0.65);
+        font-size: 0.92rem;
+        margin-bottom: 0.85rem;
+    }
+    @media (max-width: 900px) {
+        .host-hero-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ─────────────────────────────────────────
 # 헬퍼 함수
@@ -54,6 +147,154 @@ def show_img(b64_str, width=280):
             ph()
     else:
         ph()
+
+
+def build_options_text(option_rows):
+    return "\n".join(f"{name}: {values}" for name, values in option_rows)
+
+
+def parse_option_lines(options_raw):
+    option_lines = []
+    for raw_line in options_raw.splitlines():
+        if ":" not in raw_line:
+            continue
+        name, values = [piece.strip() for piece in raw_line.split(":", 1)]
+        if name and values:
+            option_lines.append((name, values))
+    return option_lines
+
+
+def replace_product_media(cursor, product_id, uploaded_files):
+    if database.DATABASE_URL:
+        cursor.execute("DELETE FROM product_images WHERE product_id=%s", (product_id,))
+        insert_query = "INSERT INTO product_images (product_id, image_data, sort_order) VALUES (%s,%s,%s)"
+    else:
+        cursor.execute("DELETE FROM product_images WHERE product_id=?", (product_id,))
+        insert_query = "INSERT INTO product_images (product_id, image_data, sort_order) VALUES (?,?,?)"
+
+    for index, img_file in enumerate(uploaded_files):
+        cursor.execute(insert_query, (product_id, database.file_to_base64(img_file), index))
+
+
+def replace_product_options(cursor, product_id, options_raw):
+    if database.DATABASE_URL:
+        cursor.execute("DELETE FROM product_options WHERE product_id=%s", (product_id,))
+        insert_query = 'INSERT INTO product_options (product_id, name, "values") VALUES (%s,%s,%s)'
+    else:
+        cursor.execute("DELETE FROM product_options WHERE product_id=?", (product_id,))
+        insert_query = 'INSERT INTO product_options (product_id, name, "values") VALUES (?,?,?)'
+
+    for name, values in parse_option_lines(options_raw):
+        cursor.execute(insert_query, (product_id, name, values))
+
+
+def calc_host_share(row):
+    original_price = row.get('original_price') or row.get('price') or 0
+    sale_price = row.get('price') or 0
+    gap = max(int(original_price) - int(sale_price), 0)
+    return int(gap * 0.5)
+
+
+def load_host_income_snapshot(host_id):
+    conn = database.get_db_connection()
+    query = (
+        """
+        SELECT o.id, o.total_amount, o.created_at, o.payment_status, o.settlement_status,
+               p.price, p.original_price
+        FROM orders o
+        JOIN products p ON o.product_id = p.id
+        WHERE p.owner_id = %s
+        ORDER BY o.created_at DESC
+        """
+        if database.DATABASE_URL else
+        """
+        SELECT o.id, o.total_amount, o.created_at, o.payment_status, o.settlement_status,
+               p.price, p.original_price
+        FROM orders o
+        JOIN products p ON o.product_id = p.id
+        WHERE p.owner_id = ?
+        ORDER BY o.created_at DESC
+        """
+    )
+    orders = pd.read_sql_query(query, conn, params=(host_id,))
+
+    count_query = (
+        "SELECT COUNT(*) AS count FROM products WHERE owner_id=%s"
+        if database.DATABASE_URL else
+        "SELECT COUNT(*) AS count FROM products WHERE owner_id=?"
+    )
+    live_products = int(pd.read_sql_query(count_query, conn, params=(host_id,)).iloc[0]["count"])
+    conn.close()
+
+    if orders.empty:
+        return {
+            "week_income": 0,
+            "month_income": 0,
+            "week_sales": 0,
+            "month_sales": 0,
+            "live_products": live_products,
+            "order_count": 0,
+        }
+
+    orders["created_at"] = pd.to_datetime(orders["created_at"], errors="coerce")
+    orders["host_share"] = orders.apply(calc_host_share, axis=1)
+
+    now = pd.Timestamp.now(tz=None)
+    week_cutoff = now - pd.Timedelta(days=7)
+    month_cutoff = now - pd.Timedelta(days=30)
+    weekly = orders[orders["created_at"] >= week_cutoff]
+    monthly = orders[orders["created_at"] >= month_cutoff]
+
+    return {
+        "week_income": int(weekly["host_share"].sum()),
+        "month_income": int(monthly["host_share"].sum()),
+        "week_sales": int(weekly["total_amount"].sum()),
+        "month_sales": int(monthly["total_amount"].sum()),
+        "live_products": live_products,
+        "order_count": int(len(orders)),
+    }
+
+
+def render_host_income_billboard(snapshot):
+    st.markdown(
+        f"""
+        <div class="host-hero">
+            <div style="font-size:0.82rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;opacity:0.88;">Host Momentum Board</div>
+            <div style="font-size:1.95rem;font-weight:800;line-height:1.15;margin-top:0.45rem;">이번 주와 이번 달 수입 흐름을 한눈에 보세요.</div>
+            <div style="opacity:0.9;margin-top:0.55rem;font-size:0.96rem;">숙소 운영 성과를 바로 확인하고, 인기 제품과 쇼룸 업데이트에 더 빠르게 반응할 수 있어요.</div>
+            <div class="host-hero-grid">
+                <div class="host-chip">
+                    <div class="host-chip-label">주간 예상 수입</div>
+                    <div class="host-chip-value">{snapshot['week_income']:,}원</div>
+                    <div style="font-size:0.84rem;opacity:0.82;margin-top:0.3rem;">주간 판매 {snapshot['week_sales']:,}원</div>
+                </div>
+                <div class="host-chip">
+                    <div class="host-chip-label">월간 예상 수입</div>
+                    <div class="host-chip-value">{snapshot['month_income']:,}원</div>
+                    <div style="font-size:0.84rem;opacity:0.82;margin-top:0.3rem;">월간 판매 {snapshot['month_sales']:,}원</div>
+                </div>
+                <div class="host-chip">
+                    <div class="host-chip-label">운영 중인 상품 / 누적 주문</div>
+                    <div class="host-chip-value">{snapshot['live_products']} / {snapshot['order_count']}</div>
+                    <div style="font-size:0.84rem;opacity:0.82;margin-top:0.3rem;">상품을 손보면 쇼룸 전환도 더 좋아집니다.</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_b64_gallery(images, columns_count=5):
+    images = [img for img in images if img]
+    if not images:
+        st.caption("아직 등록된 이미지가 없습니다.")
+        return
+    for start in range(0, len(images), columns_count):
+        cols = st.columns(columns_count)
+        for col, image in zip(cols, images[start:start + columns_count]):
+            with col:
+                show_img(image, width=120)
 
 # ─────────────────────────────────────────
 # 인증 시스템
@@ -166,86 +407,73 @@ with st.sidebar:
 # 공통 UI 컴포넌트: 상품 & QR / 주문 현황
 # ─────────────────────────────────────────
 def render_tab_qr(host_id, is_master):
-    st.subheader("➕ 새 제품 등록 & QR 생성")
-    ROOM_MAP = {
-        '거실': 'living_room', '침실': 'bedroom', '주방': 'kitchen', '화장실': 'bathroom',
-    }
-    PROD_CAT_MAP = {
-        '🛋️ 가구': 'furniture',
-        '🧶 패브릭': 'fabric',
-        '📺 가전·디지털': 'appliance',
-        '🍳 주방용품': 'kitchenware',
-        '🥯 식품': 'food',
-        '🪴 데코·식물': 'deco',
-        '💡 조명': 'lighting',
-        '📦 수납·정리': 'storage',
-        '🛁 생활품': 'lifestyle',
-        '🔌 헤어드라이어': 'hairdryer'
-    }
-    with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            brand_name   = st.text_input("브랜드명 *")
-            product_name = st.text_input("제품명 *")
-            room_label   = st.selectbox("배치 공간 (룸 타입) *", list(ROOM_MAP.keys()))
-            prod_cat_label = st.selectbox("품목 카테고리 *", list(PROD_CAT_MAP.keys()))
-        with c2:
-            original_price = st.number_input("정가 (할인 전 가격) *", min_value=0, step=1000, format="%d")
-            price = st.number_input("판매가 (실제 결제 금액) *", min_value=0, step=1000, format="%d")
-            prod_description = st.text_input("간결한 한줄 설명 (리스트 노출용)", placeholder="예: 구름처럼 포근한 조명")
-            prod_images = st.file_uploader("제품 이미지들 * (첫 이미지가 메인)", type=["jpg","jpeg","png","webp"], accept_multiple_files=True)
-        
-        st.markdown("**🔍 상세 정보 및 옵션 설정**")
-        detailed_description = st.text_area("제품 상세 상세설명 (상세페이지 노출)", placeholder="제품의 소재, 특징 등을 자세히 적어주세요. (줄바꿈 가능)", height=120)
-        options_raw = st.text_area("제품 옵션 (형식: 옵션명: 값1, 값2)", placeholder="예: 색상: 화이트, 블랙\n사이즈: S, M, L", height=80)
-        submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
+    current_role = st.session_state.get('role')
+    if current_role == 'HOST' and not is_master:
+        render_host_income_billboard(load_host_income_snapshot(host_id))
+
+    with st.container(border=True):
+        st.markdown("#### 🛍️ 새 쇼룸 상품 등록")
+        st.caption("새 제품을 올리고 QR과 상세페이지까지 한 번에 연결하세요.")
+        with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                brand_name = st.text_input("브랜드명 *")
+                product_name = st.text_input("제품명 *")
+                room_label = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
+                prod_cat_label = st.selectbox("품목 카테고리 *", list(PROD_CAT_MAP.keys()))
+            with c2:
+                original_price = st.number_input("정가 *", min_value=0, step=1000, format="%d")
+                price = st.number_input("판매가 *", min_value=0, step=1000, format="%d")
+                prod_description = st.text_input("리스트 한줄 설명", placeholder="예: 체크인 직후 눈길을 끄는 무드등")
+                prod_images = st.file_uploader("제품 이미지 (첫 이미지가 대표)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True)
+
+            detailed_description = st.text_area("상세 설명", placeholder="소재, 특징, 사용 포인트를 자세히 적어주세요.", height=140)
+            options_raw = st.text_area("옵션", placeholder="예: 색상: 화이트, 블랙\n사이즈: S, M, L", height=90)
+            submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
 
     if submitted:
         if not brand_name or not product_name or price <= 0 or not prod_images:
-            st.error("브랜드명, 제품명, 가격, 그리고 최소 한 장의 이미지를 등록해 주세요.")
+            st.error("브랜드명, 제품명, 가격, 대표 이미지는 꼭 입력해 주세요.")
         else:
             qr_id = str(uuid.uuid4())[:12]
-            url   = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
+            url = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
             main_img_b64 = database.file_to_base64(prod_images[0])
             conn = database.get_db_connection()
             try:
                 cursor = conn.cursor()
-                # 1. 메인 제품 정보 저장
-                q = ('INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id'
-                     if database.DATABASE_URL else
-                     'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-                
-                cursor.execute(q, (brand_name, product_name, price, original_price or price, qr_id, host_id, ROOM_MAP[room_label], PROD_CAT_MAP[prod_cat_label], prod_description or None, detailed_description or None, main_img_b64))
-                
+                insert_query = (
+                    'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id'
+                    if database.DATABASE_URL else
+                    'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+                )
+                cursor.execute(
+                    insert_query,
+                    (
+                        brand_name,
+                        product_name,
+                        price,
+                        original_price or price,
+                        qr_id,
+                        host_id,
+                        ROOM_MAP[room_label],
+                        PROD_CAT_MAP[prod_cat_label],
+                        prod_description or None,
+                        detailed_description or None,
+                        main_img_b64,
+                    ),
+                )
                 new_product_id = cursor.fetchone()[0] if database.DATABASE_URL else cursor.lastrowid
-                
-                # 2. 추가 이미지 저장 (전체 이미지 저장)
-                for i, img_file in enumerate(prod_images):
-                    img_data = database.file_to_base64(img_file)
-                    q_img = ('INSERT INTO product_images (product_id, image_data, sort_order) VALUES (%s,%s,%s)'
-                            if database.DATABASE_URL else
-                            'INSERT INTO product_images (product_id, image_data, sort_order) VALUES (?,?,?)')
-                    cursor.execute(q_img, (new_product_id, img_data, i))
-
-                # 3. 옵션 저장
-                if options_raw:
-                    lines = [line.strip() for line in options_raw.split('\n') if ':' in line]
-                    for line in lines:
-                        opt_name, opt_vals = [x.strip() for x in line.split(':', 1)]
-                        q_opt = ('INSERT INTO product_options (product_id, name, values) VALUES (%s,%s,%s)'
-                                if database.DATABASE_URL else
-                                'INSERT INTO product_options (product_id, name, values) VALUES (?,?,?)')
-                        cursor.execute(q_opt, (new_product_id, opt_name, opt_vals))
-
+                replace_product_media(cursor, new_product_id, prod_images)
+                replace_product_options(cursor, new_product_id, options_raw)
                 conn.commit()
-                st.success(f"✅ '{product_name}' 등록 완료!")
+                st.success(f"✅ '{product_name}' 등록이 완료됐어요.")
                 buf = make_qr(url)
-                cq, ci = st.columns([1, 2])
-                with cq:
+                q1, q2 = st.columns([1, 2])
+                with q1:
                     st.image(buf, width=180)
                     buf.seek(0)
                     st.download_button("📥 QR 다운로드", buf, f"QR_{product_name}.png", "image/png", use_container_width=True)
-                with ci:
+                with q2:
                     st.code(url, language=None)
             except Exception as e:
                 st.error(f"오류: {e}")
@@ -253,51 +481,177 @@ def render_tab_qr(host_id, is_master):
                 conn.close()
 
     st.markdown("---")
-    st.subheader("📋 전체/내 제품 목록")
+    st.subheader("🛠️ 등록된 상품 관리")
     conn = database.get_db_connection()
     if is_master:
-        df_p = pd.read_sql_query("SELECT p.id,p.brand_name,p.product_name,p.price,p.original_price,p.room_category,p.qr_code_id,h.name as owner FROM products p LEFT JOIN hosts h ON p.owner_id=h.id ORDER BY p.id DESC", conn)
+        product_query = """
+            SELECT p.*, h.name as owner
+            FROM products p
+            LEFT JOIN hosts h ON p.owner_id = h.id
+            ORDER BY p.id DESC
+        """
+        df_p = pd.read_sql_query(product_query, conn)
     else:
-        q = ('SELECT id,brand_name,product_name,price,original_price,room_category,qr_code_id FROM products WHERE owner_id=%s ORDER BY id DESC'
-             if database.DATABASE_URL else
-             'SELECT id,brand_name,product_name,price,original_price,room_category,qr_code_id FROM products WHERE owner_id=? ORDER BY id DESC')
-        df_p = pd.read_sql_query(q, conn, params=(host_id,))
+        product_query = (
+            """
+            SELECT p.*
+            FROM products p
+            WHERE p.owner_id=%s
+            ORDER BY p.id DESC
+            """
+            if database.DATABASE_URL else
+            """
+            SELECT p.*
+            FROM products p
+            WHERE p.owner_id=?
+            ORDER BY p.id DESC
+            """
+        )
+        df_p = pd.read_sql_query(product_query, conn, params=(host_id,))
+
+    gallery_map = {}
+    option_map = {}
+    for product_id in df_p['id'].tolist() if not df_p.empty else []:
+        gallery_images = []
+        for image in [df_p[df_p['id'] == product_id].iloc[0].get('image_url')] + database.fetch_product_images(conn, product_id):
+            if image and image not in gallery_images:
+                gallery_images.append(image)
+        gallery_map[product_id] = gallery_images
+        option_map[product_id] = build_options_text(database.fetch_product_options(conn, product_id))
     conn.close()
 
     if df_p.empty:
         st.info("등록된 제품이 없습니다.")
     else:
-        dsp = df_p.copy()
-        def calc_discount(row):
-            op = row['original_price'] if row['original_price'] and row['original_price'] > 0 else row['price']
-            p = row['price']
-            if op > p:
-                return f"{int((op - p) / op * 100)}%"
-            return "0%"
-        
-        dsp['discount'] = dsp.apply(calc_discount, axis=1)
-        dsp['price'] = dsp['price'].apply(lambda x: f"{x:,}원")
-        if 'original_price' in dsp.columns:
-            dsp['original_price'] = dsp['original_price'].apply(lambda x: f"{x:,}원" if x else "-")
-        ROOM_LABEL_MAP = {'living_room': '거실', 'bedroom': '침실', 'kitchen': '주방', 'bathroom': '화장실'}
-        if 'room_category' in dsp.columns:
-            dsp['room_category'] = dsp['room_category'].map(ROOM_LABEL_MAP).fillna('-')
-        st.dataframe(dsp, use_container_width=True, hide_index=True)
+        for index, (_, product) in enumerate(df_p.iterrows()):
+            product_id = int(product['id'])
+            room_value = product.get('room_category') or 'living_room'
+            category_value = product.get('product_category') or 'lifestyle'
+            gallery_images = gallery_map.get(product_id, [])
+            option_text = option_map.get(product_id, "")
+            badge_text = f"{ROOM_ICON_MAP.get(room_value, '🏠')} {ROOM_LABEL_MAP.get(room_value, room_value)} · {PROD_CAT_LABEL_MAP.get(category_value, category_value)}"
 
-        st.markdown("#### 🔄 QR 재발급")
-        sel = st.selectbox("제품 선택 (QR 다운로드용)", df_p['id'].tolist(),
-                           format_func=lambda x: f"[{x}] {df_p[df_p['id']==x]['brand_name'].values[0]} - {df_p[df_p['id']==x]['product_name'].values[0]}")
-        if st.button("📱 선택 제품 QR 보기", key=f"qr_regen_{host_id}"):
-            row = df_p[df_p['id']==sel].iloc[0]
-            url = f"{CHECKOUT_BASE_URL}/shop/{row['qr_code_id']}"
-            buf = make_qr(url)
-            cq2, ci2 = st.columns([1, 2])
-            with cq2:
-                st.image(buf, width=180)
-                buf.seek(0)
-                st.download_button("📥 다운로드", buf, f"QR_{row['product_name']}.png", "image/png", key=f"qr_dl_{host_id}")
-            with ci2:
-                st.code(url, language=None)
+            with st.expander(f"{product['product_name']}  ·  {badge_text}", expanded=index == 0):
+                top_left, top_right = st.columns([0.95, 1.55], gap="large")
+                with top_left:
+                    show_img(gallery_images[0] if gallery_images else product.get('image_url'), width=240)
+                    st.caption("현재 등록된 갤러리")
+                    render_b64_gallery(gallery_images[:5], columns_count=min(5, max(len(gallery_images[:5]), 1)))
+                    qr_url = f"{CHECKOUT_BASE_URL}/shop/{product['qr_code_id']}"
+                    qr_buffer = make_qr(qr_url)
+                    st.code(qr_url, language=None)
+                    qr_buffer.seek(0)
+                    st.download_button(
+                        "📥 이 상품 QR 다운로드",
+                        qr_buffer,
+                        f"QR_{product['product_name']}.png",
+                        "image/png",
+                        key=f"product_qr_{product_id}",
+                        use_container_width=True,
+                    )
+
+                with top_right:
+                    st.markdown(f"**상품 ID #{product_id}**")
+                    meta1, meta2, meta3 = st.columns(3)
+                    meta1.metric("판매가", f"{int(product['price']):,}원")
+                    meta2.metric("정가", f"{int((product['original_price'] or product['price'])):,}원")
+                    meta3.metric("할인율", f"{int(max((product['original_price'] or product['price']) - product['price'], 0) / max((product['original_price'] or product['price']), 1) * 100)}%")
+
+                    with st.form(f"product_edit_form_{product_id}"):
+                        e1, e2 = st.columns(2)
+                        with e1:
+                            edit_brand = st.text_input("브랜드명", value=product['brand_name'], key=f"brand_{product_id}")
+                            edit_name = st.text_input("제품명", value=product['product_name'], key=f"name_{product_id}")
+                            edit_room = st.selectbox(
+                                "배치 공간",
+                                list(ROOM_MAP.keys()),
+                                index=list(ROOM_MAP.values()).index(room_value) if room_value in ROOM_MAP.values() else 0,
+                                key=f"room_{product_id}",
+                            )
+                            edit_category = st.selectbox(
+                                "품목 카테고리",
+                                list(PROD_CAT_MAP.keys()),
+                                index=list(PROD_CAT_MAP.values()).index(category_value) if category_value in PROD_CAT_MAP.values() else 0,
+                                key=f"category_{product_id}",
+                            )
+                        with e2:
+                            edit_original_price = st.number_input("정가", min_value=0, step=1000, format="%d", value=int(product['original_price'] or product['price']), key=f"origin_{product_id}")
+                            edit_price = st.number_input("판매가", min_value=0, step=1000, format="%d", value=int(product['price']), key=f"price_{product_id}")
+                            edit_description = st.text_input("리스트 한줄 설명", value=product.get('description') or "", key=f"desc_{product_id}")
+                            replacement_images = st.file_uploader(
+                                "새 갤러리 이미지 (업로드 시 기존 이미지 전체 교체)",
+                                type=["jpg", "jpeg", "png", "webp"],
+                                accept_multiple_files=True,
+                                key=f"gallery_{product_id}",
+                            )
+
+                        edit_detailed_description = st.text_area(
+                            "상세 설명",
+                            value=product.get('detailed_description') or "",
+                            height=140,
+                            key=f"detail_{product_id}",
+                        )
+                        edit_options_raw = st.text_area(
+                            "옵션",
+                            value=option_text,
+                            height=90,
+                            key=f"options_{product_id}",
+                        )
+                        save_product = st.form_submit_button("💾 상품 정보 저장", use_container_width=True, type="primary")
+
+                    if save_product:
+                        if not edit_brand or not edit_name or edit_price <= 0:
+                            st.error("브랜드명, 제품명, 판매가는 비워둘 수 없습니다.")
+                        else:
+                            conn_edit = database.get_db_connection()
+                            cursor = conn_edit.cursor()
+                            try:
+                                next_main_image = product.get('image_url')
+                                if replacement_images:
+                                    next_main_image = database.file_to_base64(replacement_images[0])
+
+                                update_query = (
+                                    """
+                                    UPDATE products
+                                    SET brand_name=%s, product_name=%s, price=%s, original_price=%s,
+                                        room_category=%s, product_category=%s, description=%s,
+                                        detailed_description=%s, image_url=%s
+                                    WHERE id=%s
+                                    """
+                                    if database.DATABASE_URL else
+                                    """
+                                    UPDATE products
+                                    SET brand_name=?, product_name=?, price=?, original_price=?,
+                                        room_category=?, product_category=?, description=?,
+                                        detailed_description=?, image_url=?
+                                    WHERE id=?
+                                    """
+                                )
+                                cursor.execute(
+                                    update_query,
+                                    (
+                                        edit_brand,
+                                        edit_name,
+                                        edit_price,
+                                        edit_original_price or edit_price,
+                                        ROOM_MAP[edit_room],
+                                        PROD_CAT_MAP[edit_category],
+                                        edit_description or None,
+                                        edit_detailed_description or None,
+                                        next_main_image,
+                                        product_id,
+                                    ),
+                                )
+                                if replacement_images:
+                                    replace_product_media(cursor, product_id, replacement_images)
+                                replace_product_options(cursor, product_id, edit_options_raw)
+                                conn_edit.commit()
+                                st.success(f"✅ '{edit_name}' 정보가 저장되었습니다.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"오류: {e}")
+                            finally:
+                                conn_edit.close()
 
 def render_tab_orders(host_id, is_master):
     st.subheader("📦 주문 현황")
@@ -641,23 +995,20 @@ with tab_list[4]:
         # 마스터: 전체 숙소 탐색
         st.subheader("🏠 전체 호스트 숙소")
         conn = database.get_db_connection()
-        df_all_v = pd.read_sql_query("SELECT h.name,v.location,v.description,v.image1,v.image2 FROM host_venues v JOIN hosts h ON v.host_id=h.id", conn)
+        df_all_v = pd.read_sql_query("SELECT h.name,v.location,v.description,v.image1,v.image2,v.image3,v.image4,v.image5 FROM host_venues v JOIN hosts h ON v.host_id=h.id", conn)
         conn.close()
         if df_all_v.empty:
             st.info("등록된 숙소가 없습니다.")
         else:
             for _, v in df_all_v.iterrows():
                 with st.expander(f"🏠 {v['name']} — 📍{v['location'] or ''}"):
-                    c1, c2 = st.columns(2)
-                    with c1: show_img(v['image1'])
-                    with c2: show_img(v['image2'])
+                    render_b64_gallery([v.get(key) for key in VENUE_IMAGE_KEYS], columns_count=5)
                     if v['description']: st.caption(v['description'])
     else:
-        # 호스트: 내 숙소 프로필 등록·수정
+        render_host_income_billboard(load_host_income_snapshot(host_id))
         st.subheader("🏠 내 숙소 프로필")
-        st.caption("숙소 위치와 내부 사진을 등록하면 입점업체가 입점 제품을 제안할 수 있습니다.")
+        st.caption("숙소 위치와 내부 사진을 정리해 두면 쇼룸 완성도가 올라가고, 제휴 제안도 더 매끄럽게 받을 수 있어요.")
 
-        # 기존 데이터 불러오기
         conn = database.get_db_connection()
         q_v = ('SELECT * FROM host_venues WHERE host_id=%s' if database.DATABASE_URL
                else 'SELECT * FROM host_venues WHERE host_id=?')
@@ -665,31 +1016,58 @@ with tab_list[4]:
         conn.close()
         existing = df_v.iloc[0] if not df_v.empty else None
 
-        with st.form("venue_form"):
-            location    = st.text_input("숙소 위치 (주소 또는 지역명)", value=existing['location'] if existing is not None else "")
-            description = st.text_area("숙소 소개 (선택)", value=existing['description'] if existing is not None else "", height=80)
-            st.markdown("**숙소 내부 사진 (최대 2장)**")
-            cv1, cv2 = st.columns(2)
-            with cv1: img1_file = st.file_uploader("사진 1", type=["jpg","jpeg","png","webp"], key="v1")
-            with cv2: img2_file = st.file_uploader("사진 2", type=["jpg","jpeg","png","webp"], key="v2")
-            save_venue = st.form_submit_button("💾 저장", use_container_width=True, type="primary")
+        current_images = [existing.get(key) if existing is not None else None for key in VENUE_IMAGE_KEYS]
+
+        with st.container(border=True):
+            st.markdown("#### 쇼룸 공간 정보")
+            st.caption("사진은 최대 5장까지 등록할 수 있어요. 빈 칸은 그대로 두면 기존 이미지가 유지됩니다.")
+            with st.form("venue_form"):
+                location = st.text_input("숙소 위치 (주소 또는 지역명)", value=existing['location'] if existing is not None else "")
+                description = st.text_area("숙소 소개", value=existing['description'] if existing is not None else "", height=120)
+                st.markdown("**숙소 내부 사진 (최대 5장)**")
+
+                uploaded_slots = {}
+                clear_slots = {}
+                for start in range(0, len(VENUE_IMAGE_KEYS), 3):
+                    cols = st.columns(min(3, len(VENUE_IMAGE_KEYS) - start))
+                    for col, image_key in zip(cols, VENUE_IMAGE_KEYS[start:start + 3]):
+                        slot_index = VENUE_IMAGE_KEYS.index(image_key) + 1
+                        with col:
+                            st.markdown(f"**사진 {slot_index}**")
+                            show_img(current_images[slot_index - 1], width=180)
+                            uploaded_slots[image_key] = st.file_uploader(
+                                f"사진 {slot_index} 업로드",
+                                type=["jpg", "jpeg", "png", "webp"],
+                                key=f"venue_{slot_index}",
+                            )
+                            clear_slots[image_key] = st.checkbox("이 슬롯 비우기", value=False, key=f"venue_clear_{slot_index}")
+
+                save_venue = st.form_submit_button("💾 숙소 정보 저장", use_container_width=True, type="primary")
 
         if save_venue:
-            img1_b64 = database.file_to_base64(img1_file) if img1_file else (existing['image1'] if existing is not None else None)
-            img2_b64 = database.file_to_base64(img2_file) if img2_file else (existing['image2'] if existing is not None else None)
+            next_images = []
+            for image_key in VENUE_IMAGE_KEYS:
+                current_value = existing.get(image_key) if existing is not None else None
+                if clear_slots[image_key]:
+                    next_images.append(None)
+                elif uploaded_slots[image_key]:
+                    next_images.append(database.file_to_base64(uploaded_slots[image_key]))
+                else:
+                    next_images.append(current_value)
+
             conn = database.get_db_connection()
             cursor = conn.cursor()
             try:
                 if existing is not None:
-                    q = ('UPDATE host_venues SET location=%s,description=%s,image1=%s,image2=%s WHERE host_id=%s'
+                    q = ('UPDATE host_venues SET location=%s,description=%s,image1=%s,image2=%s,image3=%s,image4=%s,image5=%s WHERE host_id=%s'
                          if database.DATABASE_URL else
-                         'UPDATE host_venues SET location=?,description=?,image1=?,image2=? WHERE host_id=?')
-                    cursor.execute(q, (location, description, img1_b64, img2_b64, host_id))
+                         'UPDATE host_venues SET location=?,description=?,image1=?,image2=?,image3=?,image4=?,image5=? WHERE host_id=?')
+                    cursor.execute(q, (location, description, *next_images, host_id))
                 else:
-                    q = ('INSERT INTO host_venues (host_id,location,description,image1,image2) VALUES (%s,%s,%s,%s,%s)'
+                    q = ('INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
                          if database.DATABASE_URL else
-                         'INSERT INTO host_venues (host_id,location,description,image1,image2) VALUES (?,?,?,?,?)')
-                    cursor.execute(q, (host_id, location, description, img1_b64, img2_b64))
+                         'INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (?,?,?,?,?,?,?,?)')
+                    cursor.execute(q, (host_id, location, description, *next_images))
                 conn.commit()
                 st.success("✅ 숙소 정보가 저장되었습니다!")
                 st.rerun()
@@ -698,13 +1076,10 @@ with tab_list[4]:
             finally:
                 conn.close()
 
-        # 현재 등록된 사진 미리보기
         if existing is not None:
             st.markdown("---")
-            st.markdown("**현재 등록된 사진**")
-            cp1, cp2 = st.columns(2)
-            with cp1: show_img(existing['image1'])
-            with cp2: show_img(existing['image2'])
+            st.markdown("**현재 등록된 쇼룸 갤러리**")
+            render_b64_gallery([existing.get(key) for key in VENUE_IMAGE_KEYS], columns_count=5)
 
 # ═══════════════════════════════════════
 # TAB 5 — HOST: 입점 신청 / MASTER: 입점 전체 현황

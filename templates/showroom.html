@@ -63,8 +63,19 @@
 
         <main class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
             <section class="grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
-                <div class="overflow-hidden rounded-[1.9rem] border border-black/6 bg-[#ebe2d7] shadow-[0_12px_34px_rgba(18,16,12,0.06)]">
-                    <img src="{% if showroom.venue_image %}data:image/jpeg;base64,{{ showroom.venue_image }}{% elif showroom.venue_image2 %}data:image/jpeg;base64,{{ showroom.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ showroom.host_name }}" class="aspect-[1.15/1] h-full w-full object-cover">
+                <div class="space-y-3">
+                    <div class="overflow-hidden rounded-[1.9rem] border border-black/6 bg-[#ebe2d7] shadow-[0_12px_34px_rgba(18,16,12,0.06)]">
+                        <img src="{% if showroom.gallery_images %}data:image/jpeg;base64,{{ showroom.gallery_images[0] }}{% elif showroom.venue_image %}data:image/jpeg;base64,{{ showroom.venue_image }}{% elif showroom.venue_image2 %}data:image/jpeg;base64,{{ showroom.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ showroom.host_name }}" class="aspect-[1.15/1] h-full w-full object-cover">
+                    </div>
+                    {% if showroom.gallery_images and showroom.gallery_images|length > 1 %}
+                    <div class="grid grid-cols-4 gap-3 sm:grid-cols-5">
+                        {% for image in showroom.gallery_images[1:5] %}
+                        <div class="overflow-hidden rounded-[1.1rem] border border-black/6 bg-[#efe6db]">
+                            <img src="data:image/jpeg;base64,{{ image }}" alt="{{ showroom.host_name }}" class="aspect-square h-full w-full object-cover">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="rounded-[1.9rem] border border-black/6 bg-[var(--surface)] p-5 shadow-[0_12px_34px_rgba(18,16,12,0.04)] sm:p-6">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Stay Showroom</p>

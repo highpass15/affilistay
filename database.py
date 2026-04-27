@@ -86,7 +86,7 @@ def init_db():
             id SERIAL PRIMARY KEY,
             product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
-            values TEXT NOT NULL -- 콤마로 구분된 값들
+            "values" TEXT NOT NULL -- 콤마로 구분된 값들
         )
         """)
         cursor.execute("""
@@ -156,6 +156,9 @@ def init_db():
             description TEXT,
             image1 TEXT,
             image2 TEXT,
+            image3 TEXT,
+            image4 TEXT,
+            image5 TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -234,7 +237,43 @@ def init_db():
             qr_code_id TEXT UNIQUE, owner_id INTEGER,
             room_category TEXT DEFAULT 'living_room',
             product_category TEXT DEFAULT 'lifestyle',
-            description TEXT, image_url TEXT,
+            description TEXT, detailed_description TEXT, image_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER,
+            image_data TEXT NOT NULL,
+            sort_order INTEGER DEFAULT 0
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER,
+            name TEXT NOT NULL,
+            "values" TEXT NOT NULL
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER,
+            customer_name TEXT NOT NULL,
+            rating INTEGER DEFAULT 5,
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_inquiries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER,
+            customer_name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            content TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -274,7 +313,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS host_venues (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             host_id INTEGER UNIQUE, location TEXT, description TEXT,
-            image1 TEXT, image2 TEXT,
+            image1 TEXT, image2 TEXT, image3 TEXT, image4 TEXT, image5 TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -350,10 +389,16 @@ def init_db():
         migrations = [
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS room_category TEXT DEFAULT 'living_room'",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS product_category TEXT DEFAULT 'lifestyle'",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price INTEGER",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS detailed_description TEXT",
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT",
             "CREATE TABLE IF NOT EXISTS product_images (id SERIAL PRIMARY KEY, product_id INTEGER, image_data TEXT, sort_order INTEGER DEFAULT 0)",
-            "CREATE TABLE IF NOT EXISTS product_options (id SERIAL PRIMARY KEY, product_id INTEGER, name TEXT, values TEXT)",
+            'CREATE TABLE IF NOT EXISTS product_options (id SERIAL PRIMARY KEY, product_id INTEGER, name TEXT, "values" TEXT)',
+            "ALTER TABLE host_venues ADD COLUMN IF NOT EXISTS image3 TEXT",
+            "ALTER TABLE host_venues ADD COLUMN IF NOT EXISTS image4 TEXT",
+            "ALTER TABLE host_venues ADD COLUMN IF NOT EXISTS image5 TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'KRW'",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS exchange_rate REAL DEFAULT 1.0",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS paypal_order_id TEXT",
@@ -372,7 +417,16 @@ def init_db():
                 pass
     else:
         sqlite_migrations = [
-            "ALTER TABLE orders ADD COLUMN session_id TEXT"
+            "ALTER TABLE orders ADD COLUMN session_id TEXT",
+            "ALTER TABLE products ADD COLUMN detailed_description TEXT",
+            "ALTER TABLE products ADD COLUMN image_url TEXT",
+            "ALTER TABLE host_venues ADD COLUMN image3 TEXT",
+            "ALTER TABLE host_venues ADD COLUMN image4 TEXT",
+            "ALTER TABLE host_venues ADD COLUMN image5 TEXT",
+            "CREATE TABLE IF NOT EXISTS product_images (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, image_data TEXT NOT NULL, sort_order INTEGER DEFAULT 0)",
+            'CREATE TABLE IF NOT EXISTS product_options (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, name TEXT NOT NULL, "values" TEXT NOT NULL)',
+            "CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, rating INTEGER DEFAULT 5, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS product_inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ]
         for sql in sqlite_migrations:
             try:
@@ -387,11 +441,38 @@ def init_db():
 # ── 이미지 변환 헬퍼 ─────────────────────────────────
 def file_to_base64(uploaded_file) -> str:
     """Streamlit UploadedFile → base64 문자열"""
-    return base64.b64encode(uploaded_file.read()).decode('utf-8')
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    data = uploaded_file.read()
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    return base64.b64encode(data).decode('utf-8')
 
 def base64_to_bytes(b64_str: str) -> bytes:
     """base64 문자열 → bytes (st.image에 직접 사용)"""
     return base64.b64decode(b64_str)
+
+
+def fetch_product_images(conn, product_id):
+    cursor = conn.cursor()
+    query = (
+        "SELECT image_data FROM product_images WHERE product_id=%s ORDER BY sort_order, id"
+        if DATABASE_URL else
+        "SELECT image_data FROM product_images WHERE product_id=? ORDER BY sort_order, id"
+    )
+    cursor.execute(query, (product_id,))
+    return [row[0] for row in cursor.fetchall()]
+
+
+def fetch_product_options(conn, product_id):
+    cursor = conn.cursor()
+    query = (
+        'SELECT name, "values" FROM product_options WHERE product_id=%s ORDER BY id'
+        if DATABASE_URL else
+        'SELECT name, "values" FROM product_options WHERE product_id=? ORDER BY id'
+    )
+    cursor.execute(query, (product_id,))
+    return cursor.fetchall()
 
 
 # ── 수파베이스 동기화 ────────────────────────────────
