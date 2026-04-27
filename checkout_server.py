@@ -11,6 +11,7 @@ from typing import Dict, List
 from pydantic import BaseModel
 from datetime import datetime
 from urllib.parse import quote
+from decimal import Decimal, InvalidOperation
 import fcm_service
 import base64
 from dotenv import load_dotenv
@@ -471,9 +472,64 @@ def _encode_return_to(path):
     return quote(path, safe="")
 
 
+def _coerce_image_data(value):
+    if value is None:
+        return None
+    if isinstance(value, memoryview):
+        value = value.tobytes()
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError:
+            return base64.b64encode(value).decode("ascii")
+    return str(value)
+
+
+def _coerce_int(value, default=0):
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, Decimal):
+        return int(value)
+    try:
+        normalized = str(value).replace(",", "").strip()
+        if not normalized:
+            return default
+        return int(Decimal(normalized))
+    except (InvalidOperation, ValueError, TypeError):
+        return default
+
+
+def _normalize_product_record(product):
+    if not product:
+        return product
+    product["image_url"] = _coerce_image_data(product.get("image_url"))
+    product["price"] = _coerce_int(product.get("price"))
+    product["original_price"] = _coerce_int(product.get("original_price"), product["price"])
+    for key in (
+        "brand_name",
+        "product_name",
+        "description",
+        "detailed_description",
+        "host_name",
+        "host_location",
+        "host_description",
+        "room_category",
+        "product_category",
+    ):
+        if product.get(key) is None:
+            continue
+        product[key] = str(product.get(key))
+    return product
+
+
 def _decorate_catalog_products(products, image_map, gallery_map=None):
     gallery_map = gallery_map or {}
     for product in products:
+        _normalize_product_record(product)
         original_price = product.get("original_price") or product.get("price") or 0
         price = product.get("price") or 0
         gallery_images = _build_gallery_images(
@@ -507,6 +563,7 @@ def _build_gallery_images(primary_image, image_rows):
     gallery = []
     seen = set()
     for image_data in [primary_image, *[row.get("image_data") for row in image_rows]]:
+        image_data = _coerce_image_data(image_data)
         if not image_data or image_data in seen:
             continue
         seen.add(image_data)
@@ -1001,6 +1058,7 @@ async def product_detail(
             status_code=404,
         )
 
+    product = _normalize_product_record(product)
     showroom_path = f"/showrooms/{product['owner_id']}" if product.get("owner_id") else "/catalog?view=spaces"
     return_to = _safe_return_to(return_to, showroom_path)
 
@@ -1072,27 +1130,42 @@ async def product_detail(
     product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "✦")
     conn.close()
 
-    return templates.TemplateResponse(
-        request=request,
-        name="product_detail.html",
-        context={
-            "product": product,
-            "gallery_images": gallery_images,
-            "options": options,
-            "reviews": reviews,
-            "inquiries": inquiries,
-            "qr_code_id": qr_code_id,
-            "room_label": ROOM_CATEGORIES.get(product.get("room_category", ""), ""),
-            "product_category_label": PRODUCT_CATEGORIES.get(product.get("product_category", ""), ""),
-            "showroom_path": showroom_path,
-            "same_showroom_products": recommendation_groups["same_showroom_products"],
-            "host_curated_products": recommendation_groups["host_curated_products"],
-            "similar_products": recommendation_groups["similar_products"],
-            "return_to": return_to,
-            "return_to_encoded": _encode_return_to(return_to),
-            "public_content_version": public_content_version,
-        },
-    )
+    context = {
+        "request": request,
+        "product": product,
+        "gallery_images": gallery_images,
+        "options": options,
+        "reviews": reviews,
+        "inquiries": inquiries,
+        "qr_code_id": qr_code_id,
+        "room_label": ROOM_CATEGORIES.get(product.get("room_category", ""), ""),
+        "product_category_label": PRODUCT_CATEGORIES.get(product.get("product_category", ""), ""),
+        "showroom_path": showroom_path,
+        "same_showroom_products": recommendation_groups["same_showroom_products"],
+        "host_curated_products": recommendation_groups["host_curated_products"],
+        "similar_products": recommendation_groups["similar_products"],
+        "return_to": return_to,
+        "return_to_encoded": _encode_return_to(return_to),
+        "public_content_version": public_content_version,
+    }
+
+    try:
+        rendered = templates.get_template("product_detail.html").render(context)
+    except Exception as exc:
+        print(f"[Product Detail Render Error] product_id={product_id}: {exc}")
+        fallback_context = {
+            **context,
+            "gallery_images": gallery_images[:1],
+            "options": [],
+            "reviews": [],
+            "inquiries": [],
+            "same_showroom_products": [],
+            "host_curated_products": [],
+            "similar_products": [],
+        }
+        rendered = templates.get_template("product_detail.html").render(fallback_context)
+
+    return HTMLResponse(content=rendered)
 
 
 @app.get("/shop/{qr_code_id}/cart")
