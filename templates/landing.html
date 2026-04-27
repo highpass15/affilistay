@@ -33,9 +33,73 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: url('https://www.transparenttextures.com/patterns/natural-paper.png');
-            opacity: 0.4;
+            opacity: 0.18;
             pointer-events: none;
             z-index: 9999;
+        }
+
+        .hero-scene {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center center;
+        }
+
+        .hero-overlay-desktop {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.62) 42%, rgba(255,255,255,0.08) 100%);
+        }
+
+        .hero-overlay-mobile {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(248,247,244,0.18) 0%, rgba(248,247,244,0.48) 28%, rgba(248,247,244,0.78) 64%, rgba(248,247,244,0.96) 100%),
+                linear-gradient(90deg, rgba(248,247,244,0.74) 0%, rgba(248,247,244,0.16) 44%, rgba(248,247,244,0.32) 100%);
+        }
+
+        .hero-copy {
+            max-width: 48rem;
+        }
+
+        .hero-actions .hero-primary-btn,
+        .hero-actions .hero-secondary-btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            transition: all 0.45s ease;
+            box-shadow: 0 16px 36px rgba(23, 20, 16, 0.08);
+        }
+
+        .hero-actions .hero-primary-btn {
+            background: rgba(255,255,255,0.88);
+            color: var(--text-main);
+            border: 1px solid rgba(28, 25, 21, 0.18);
+        }
+
+        .hero-actions .hero-secondary-btn {
+            background: rgba(255,255,255,0.88);
+            color: var(--text-main);
+            border: 1px solid rgba(28, 25, 21, 0.18);
+        }
+
+        .hero-actions .hero-primary-btn:hover,
+        .hero-actions .hero-secondary-btn:hover {
+            background: #151311;
+            color: white;
+            border-color: #151311;
         }
 
         .reveal {
@@ -57,13 +121,123 @@
         
         /* 텍스트 줄바꿈 방지 및 가독성 */
         .keep-all { word-break: keep-all; }
+
+        @media (max-width: 767px) {
+            body {
+                background-color: #f6f2eb;
+            }
+
+            body::before {
+                opacity: 0.03;
+            }
+
+            #navbar {
+                background: linear-gradient(180deg, rgba(246,242,235,0.94) 0%, rgba(246,242,235,0.82) 100%);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid rgba(0,0,0,0.04);
+                padding: 1rem 1rem;
+                gap: 0.75rem;
+            }
+
+            .brand-mark {
+                font-size: 1.42rem;
+                letter-spacing: 0.14em;
+                white-space: nowrap;
+            }
+
+            .partner-entry {
+                flex-shrink: 0;
+                padding: 0;
+                font-size: 11px;
+                letter-spacing: 0.08em;
+                border: 0;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .nav-actions {
+                position: absolute;
+                top: 1.35rem;
+                right: 1rem;
+            }
+
+            #vision {
+                height: auto;
+                min-height: 100svh;
+                align-items: flex-start;
+                padding-top: 6.75rem;
+                padding-bottom: 3rem;
+                background: #f6f2eb;
+            }
+
+            .hero-scene {
+                inset: 0 0 auto 0;
+                height: 42svh;
+            }
+
+            .hero-image {
+                object-position: center 26%;
+                transform: scale(1.04);
+                filter: saturate(0.88) contrast(0.94) brightness(1.04);
+            }
+
+            .hero-copy {
+                max-width: none;
+                width: 100%;
+                margin-top: 0;
+                padding-top: clamp(4.75rem, 20svh, 8.5rem);
+            }
+
+            .hero-copy .hero-kicker {
+                margin-bottom: 1.15rem;
+                font-size: 10px;
+                letter-spacing: 0.46em;
+            }
+
+            .hero-copy .hero-title {
+                font-size: clamp(2.95rem, 12vw, 4.2rem);
+                line-height: 0.94;
+                letter-spacing: 0.02em;
+                margin-bottom: 1.35rem;
+            }
+
+            .hero-copy .hero-title span {
+                color: #5f574f;
+            }
+
+            .hero-copy .hero-description {
+                max-width: 26rem;
+                color: #5d544c;
+                font-size: 14px;
+                line-height: 1.75;
+                margin-bottom: 1.6rem;
+            }
+
+            .hero-actions {
+                gap: 0.75rem;
+            }
+
+            .hero-actions .hero-primary-btn,
+            .hero-actions .hero-secondary-btn {
+                width: 100%;
+                padding: 1rem 1.4rem;
+                letter-spacing: 0.08em;
+                font-size: 14px;
+                box-shadow: 0 14px 32px rgba(23, 20, 16, 0.09);
+            }
+
+            .hero-overlay-mobile {
+                background:
+                    linear-gradient(180deg, rgba(246,242,235,0.12) 0%, rgba(246,242,235,0.34) 24%, rgba(246,242,235,0.74) 58%, rgba(246,242,235,0.96) 82%, #f6f2eb 100%);
+            }
+        }
     </style>
 </head>
 <body class="antialiased">
 
     <!-- Navigation -->
     <nav class="flex justify-between items-center px-6 md:px-16 py-8 fixed w-full z-50 transition-all duration-700" id="navbar">
-        <div class="text-xl md:text-2xl font-bold tracking-[0.25em] uppercase">AFFILISTAY</div>
+        <div class="brand-mark text-xl md:text-2xl font-bold tracking-[0.25em] uppercase">AFFILISTAY</div>
         
         <div class="hidden lg:flex space-x-12 text-[10px] font-bold tracking-[0.4em] text-gray-400 uppercase">
             <a href="/catalog" class="hover:text-black transition-colors">입점 제품 둘러보기</a>
@@ -72,34 +246,35 @@
             <a href="#partners" class="hover:text-black transition-colors">브랜드사</a>
         </div>
         
-        <div class="flex items-center space-x-4 md:space-x-8">
-            <a href="{{ admin_url }}" class="inline-block text-[11px] font-bold border border-black/10 px-6 py-2.5 md:px-8 md:py-3 rounded-full hover:bg-black hover:text-white transition-all tracking-widest">로그인</a>
+        <div class="nav-actions flex items-center space-x-4 md:space-x-8">
+            <a href="{{ admin_url }}" class="partner-entry inline-block text-[11px] font-bold border border-black/10 px-6 py-2.5 md:px-8 md:py-3 rounded-full hover:bg-black hover:text-white transition-all tracking-widest">로그인</a>
         </div>
     </nav>
 
     <!-- Section 01: Hero -->
     <header id="vision" class="relative h-screen flex items-center px-6 md:px-16 bg-white overflow-hidden">
-        <div class="absolute right-0 top-0 w-full md:w-3/5 h-full overflow-hidden">
-            <img src="/static/hero.png" alt="Interior" class="w-full h-full object-cover">
-            <!-- 데스크탑 가독성용 그라데이션 -->
-            <div class="absolute inset-0 bg-gradient-to-r from-white via-white/40 to-transparent hidden md:block"></div>
-            <!-- 모바일 가독성용 반투명 블러 오버레이 (QR 코드가 은은하게 보이도록 강도 조절) -->
-            <div class="absolute inset-0 bg-white/60 backdrop-blur-[1px] md:hidden"></div>
+        <div class="hero-scene">
+            <picture>
+                <source media="(max-width: 767px)" srcset="/static/hero_with_stand.png">
+                <img src="/static/hero.png" alt="Interior" class="hero-image">
+            </picture>
+            <div class="hero-overlay-desktop hidden md:block"></div>
+            <div class="hero-overlay-mobile md:hidden"></div>
         </div>
         
-        <div class="relative z-10 max-w-3xl mt-10">
-            <span class="text-[10px] md:text-[12px] text-accent font-bold tracking-[0.6em] uppercase mb-6 md:mb-8 block reveal">Redefining Stay</span>
-            <h1 class="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold leading-[1.1] md:leading-[1.05] tracking-[0.1em] uppercase mb-8 md:mb-10 reveal keep-all">
+        <div class="hero-copy relative z-10 mt-10">
+            <span class="hero-kicker text-[10px] md:text-[12px] text-accent font-bold tracking-[0.6em] uppercase mb-6 md:mb-8 block reveal">Redefining Stay</span>
+            <h1 class="hero-title text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold leading-[1.1] md:leading-[1.05] tracking-[0.1em] uppercase mb-8 md:mb-10 reveal keep-all">
                 The Stay <br> <span class="text-accent transition-colors duration-500">As a</span> <br> Showroom
             </h1>
-            <p class="text-gray-500 text-sm md:text-base font-light tracking-wide max-w-md reveal leading-loose mb-10 md:mb-12 keep-all">
+            <p class="hero-description text-gray-500 text-sm md:text-base font-light tracking-wide max-w-md reveal leading-loose mb-10 md:mb-12 keep-all">
                 인위적인 마케팅이 아닌, 실제 머무는 시간 속에 자연스럽게 스며드는 브랜드 경험. 어필리스테이가 제안하는 프리미엄 오프라인 쇼룸의 정의입니다.
             </p>
-            <div class="reveal mt-8 flex flex-col sm:flex-row gap-4">
-                <button onclick="openSignup()" class="inline-block px-10 py-4 bg-black text-white hover:bg-[#B0A295] transition-colors duration-500 rounded-full text-[13px] font-bold tracking-widest shadow-lg border border-transparent uppercase text-center">
+            <div class="hero-actions reveal mt-8 flex flex-col sm:flex-row gap-4">
+                <button onclick="openSignup()" class="hero-primary-btn">
                     지금 시작하기
                 </button>
-                <a href="/catalog" class="inline-block px-10 py-4 bg-white text-black border border-black hover:bg-black hover:text-white transition-all duration-500 rounded-full text-[13px] font-bold tracking-widest shadow-lg uppercase text-center">
+                <a href="/catalog" class="hero-secondary-btn">
                     입점 제품 둘러보기
                 </a>
             </div>
