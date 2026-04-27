@@ -306,7 +306,7 @@
 <div class="container">
     <!-- 헤더 -->
     <header class="order-header" style="max-width: 600px; margin: 0 auto;">
-        <a href="javascript:history.back()" class="btn-close">✕</a>
+        <a href="{{ return_to }}" class="btn-close">✕</a>
         <h1 class="header-title">주문서</h1>
     </header>
 
@@ -314,6 +314,7 @@
         <input type="hidden" name="items_json" id="items_json" value="">
         <input type="hidden" name="session_id" id="session_id" value="">
         <input type="hidden" name="fcm_token" id="fcm_token" value="">
+        <input type="hidden" name="return_to" value="{{ return_to }}">
         
         <!-- 배송지 섹션 -->
         <section class="section-box">
@@ -458,7 +459,7 @@
             cartItems = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
             if (cartItems.length === 0) {
                 alert('장바구니가 비어있습니다.');
-                window.location.href = '/shop/{{ qr_code_id }}';
+                window.location.href = '{{ return_to }}';
                 return;
             }
 

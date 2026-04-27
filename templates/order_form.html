@@ -432,7 +432,7 @@
     <!-- 네비게이션 -->
     <nav class="order-nav">
         <div class="order-nav-inner">
-            <a href="/shop/{{ qr_code_id }}/product/{{ product.id }}" class="back-btn" id="back-to-product">←</a>
+            <a href="/shop/{{ qr_code_id }}/product/{{ product.id }}?return_to={{ return_to_encoded }}" class="back-btn" id="back-to-product">←</a>
             <span class="nav-title">주문서 작성</span>
         </div>
     </nav>
@@ -486,6 +486,7 @@
             <input type="hidden" name="selected_options" value="{{ selected_options }}">
             <input type="hidden" name="fcm_token" id="fcm_token" value="">
             <input type="hidden" name="session_id" id="session_id" value="">
+            <input type="hidden" name="return_to" value="{{ return_to }}">
 
             <div class="form-group">
                 <label class="form-label" for="customer_name">
@@ -613,7 +614,7 @@
         </div>
         <div class="cs-scroll-wrap">
             {% for item in cross_sell_products %}
-            <a href="/shop/{{ qr_code_id }}/product/{{ item.id }}" class="cs-card">
+            <a href="/shop/{{ qr_code_id }}/product/{{ item.id }}?return_to={{ return_to_encoded }}" class="cs-card">
                 <div class="cs-img-wrap">
                     {% if item.image_url %}
                         <img src="data:image/jpeg;base64,{{ item.image_url }}" alt="">

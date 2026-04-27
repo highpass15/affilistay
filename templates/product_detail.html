@@ -691,7 +691,7 @@
     <!-- 네비게이션 -->
     <nav class="detail-nav">
         <div class="detail-nav-inner">
-            <a href="/shop/{{ qr_code_id }}" class="back-btn" id="back-button">←</a>
+            <a href="{{ return_to }}" class="back-btn" id="back-button">←</a>
             <span class="nav-title">제품 상세</span>
         </div>
     </nav>
@@ -890,7 +890,7 @@
         </div>
         <div class="cs-scroll-wrap">
             {% for item in cross_sell_products %}
-            <a href="/shop/{{ qr_code_id }}/product/{{ item.id }}" class="cs-card">
+            <a href="/shop/{{ qr_code_id }}/product/{{ item.id }}?return_to={{ return_to_encoded }}" class="cs-card">
                 <div class="cs-img-wrap">
                     {% if item.image_url %}
                         <img src="data:image/jpeg;base64,{{ item.image_url }}" alt="">
@@ -924,7 +924,7 @@
                 <button onclick="addToCart()" class="sticky-buy-btn" style="background:#EEEDEA; color:var(--text-primary); padding:16px 20px; font-size:14px;">
                     장바구니 담기
                 </button>
-                <a href="/shop/{{ qr_code_id }}/order/{{ product.id }}" class="sticky-buy-btn" id="buy-submit" style="padding:16px 20px; font-size:14px; text-align:center;">
+                <a href="/shop/{{ qr_code_id }}/order/{{ product.id }}?return_to={{ return_to_encoded }}" class="sticky-buy-btn" id="buy-submit" style="padding:16px 20px; font-size:14px; text-align:center;">
                     바로 구매
                 </a>
             </div>
@@ -932,7 +932,7 @@
     </div>
 
     <!-- 플로팅 장바구니 아이콘 -->
-    <a href="/shop/{{ qr_code_id }}/cart" class="floating-cart">
+    <a href="/shop/{{ qr_code_id }}/cart?return_to={{ return_to_encoded }}" class="floating-cart">
         <span style="font-size: 20px;">🛒</span>
         <div id="cart-badge" class="cart-badge" style="display:none;">0</div>
     </a>
@@ -974,7 +974,7 @@
             
             <div style="display:flex; gap:12px; margin-bottom:32px;">
                 <button onclick="closeCartModal(event, true)" style="flex:1; padding:14px; background:#F0EFEC; border:none; border-radius:10px; font-weight:600; font-family:inherit; cursor:pointer;">계속 쇼핑하기</button>
-                <a href="/shop/{{ qr_code_id }}/cart" style="flex:1; padding:14px; background:var(--text-primary); color:white; border:none; border-radius:10px; font-weight:600; font-family:inherit; text-align:center; text-decoration:none;">장바구니 가기</a>
+                <a href="/shop/{{ qr_code_id }}/cart?return_to={{ return_to_encoded }}" style="flex:1; padding:14px; background:var(--text-primary); color:white; border:none; border-radius:10px; font-weight:600; font-family:inherit; text-align:center; text-decoration:none;">장바구니 가기</a>
             </div>
 
             <div style="border-top: 1px solid var(--border); padding-top: 24px;">
@@ -1042,9 +1042,15 @@
         function updateBuyLink() {
             const buyBtn = document.getElementById('buy-submit');
             if (!buyBtn) return;
-            const params = new URLSearchParams(selectedOptions).toString();
-            const baseUrl = buyBtn.getAttribute('href').split('?')[0];
-            buyBtn.setAttribute('href', baseUrl + (params ? '?' + params : ''));
+            const currentHref = buyBtn.getAttribute('href');
+            const url = new URL(currentHref, window.location.origin);
+            const nextParams = new URLSearchParams(selectedOptions);
+            const returnTo = url.searchParams.get('return_to');
+            if (returnTo) {
+                nextParams.set('return_to', returnTo);
+            }
+            const query = nextParams.toString();
+            buyBtn.setAttribute('href', url.pathname + (query ? '?' + query : ''));
         }
 
         // 장바구니 로직
@@ -1115,7 +1121,7 @@
                     data.recommendations.forEach(item => {
                         const imgTag = item.image_url ? `<img src="data:image/jpeg;base64,${item.image_url}" alt="">` : `<div style="width:100%;height:100%;background:#eee;"></div>`;
                         html += `
-                        <a href="/shop/${item.qr_code_id}/product/${item.id}" class="rec-card">
+                        <a href="/shop/${item.qr_code_id}/product/${item.id}?return_to={{ return_to_encoded }}" class="rec-card">
                             <div class="rec-img">${imgTag}</div>
                             <div class="rec-brand">${item.brand_name}</div>
                             <div class="rec-name">${item.product_name}</div>

@@ -10,6 +10,7 @@ import time
 from typing import Dict
 from pydantic import BaseModel
 from datetime import datetime
+from urllib.parse import quote
 import fcm_service
 import base64
 from dotenv import load_dotenv
@@ -386,6 +387,16 @@ def _category_items(labels, icons):
     ]
 
 
+def _safe_return_to(raw_return_to, fallback):
+    if raw_return_to and raw_return_to.startswith("/") and not raw_return_to.startswith("//"):
+        return raw_return_to
+    return fallback
+
+
+def _encode_return_to(path):
+    return quote(path, safe="")
+
+
 def _decorate_catalog_products(products, image_map):
     for product in products:
         original_price = product.get("original_price") or product.get("price") or 0
@@ -577,6 +588,8 @@ async def catalog_page(
     if view not in {"products", "spaces"}:
         view = "products"
 
+    current_url = f"/catalog?view={view}&category={category}&room={room}"
+
     return templates.TemplateResponse(
         request=request,
         name="catalog.html",
@@ -592,6 +605,8 @@ async def catalog_page(
             "room_category_items": _category_items(ROOM_CATEGORIES, ROOM_ICONS),
             "has_space_data": len(hosts) > 0,
             "admin_url": ADMIN_URL,
+            "current_url": current_url,
+            "current_url_encoded": _encode_return_to(current_url),
         },
     )
 
@@ -605,6 +620,8 @@ async def showroom_detail(request: Request, host_id: int):
     if not showroom:
         return HTMLResponse(content="<h1>존재하지 않는 쇼룸입니다.</h1>", status_code=404)
 
+    current_url = f"/showrooms/{host_id}"
+
     return templates.TemplateResponse(
         request=request,
         name="showroom.html",
@@ -612,6 +629,8 @@ async def showroom_detail(request: Request, host_id: int):
             "showroom": showroom,
             "products": products,
             "admin_url": ADMIN_URL,
+            "current_url": current_url,
+            "current_url_encoded": _encode_return_to(current_url),
         },
     )
 
@@ -702,9 +721,15 @@ async def shop_page(request: Request, qr_code_id: str, category: str = Query(def
 # 제품 상세 페이지
 # ─────────────────────────────────────────
 @app.get("/shop/{qr_code_id}/product/{product_id}", response_class=HTMLResponse)
-async def product_detail(request: Request, qr_code_id: str, product_id: int):
+async def product_detail(
+    request: Request,
+    qr_code_id: str,
+    product_id: int,
+    return_to: str = Query(default=""),
+):
     """개별 제품 상세 페이지"""
     conn = get_db_connection()
+    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
 
     product = _fetch_one(
         conn,
@@ -722,20 +747,26 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
         )
 
     # 추가 이미지 조회
-    images = _fetch_all(
-        conn,
-        "SELECT image_data FROM product_images WHERE product_id = %s ORDER BY sort_order",
-        "SELECT image_data FROM product_images WHERE product_id = ? ORDER BY sort_order",
-        (product_id,)
-    )
+    try:
+        images = _fetch_all(
+            conn,
+            "SELECT image_data FROM product_images WHERE product_id = %s ORDER BY sort_order",
+            "SELECT image_data FROM product_images WHERE product_id = ? ORDER BY sort_order",
+            (product_id,)
+        )
+    except Exception:
+        images = []
     
     # 옵션 조회
-    options_db = _fetch_all(
-        conn,
-        "SELECT name, values FROM product_options WHERE product_id = %s",
-        "SELECT name, values FROM product_options WHERE product_id = ?",
-        (product_id,)
-    )
+    try:
+        options_db = _fetch_all(
+            conn,
+            "SELECT name, values FROM product_options WHERE product_id = %s",
+            "SELECT name, values FROM product_options WHERE product_id = ?",
+            (product_id,)
+        )
+    except Exception:
+        options_db = []
     # 옵션 값들을 리스트로 변환
     options = []
     for opt in options_db:
@@ -745,20 +776,26 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
         })
 
     # 리뷰 조회
-    reviews = _fetch_all(
-        conn,
-        "SELECT * FROM reviews WHERE product_id = %s ORDER BY created_at DESC",
-        "SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC",
-        (product_id,)
-    )
+    try:
+        reviews = _fetch_all(
+            conn,
+            "SELECT * FROM reviews WHERE product_id = %s ORDER BY created_at DESC",
+            "SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC",
+            (product_id,)
+        )
+    except Exception:
+        reviews = []
 
     # 문의 조회
-    inquiries = _fetch_all(
-        conn,
-        "SELECT * FROM product_inquiries WHERE product_id = %s ORDER BY created_at DESC",
-        "SELECT * FROM product_inquiries WHERE product_id = ? ORDER BY created_at DESC",
-        (product_id,)
-    )
+    try:
+        inquiries = _fetch_all(
+            conn,
+            "SELECT * FROM product_inquiries WHERE product_id = %s ORDER BY created_at DESC",
+            "SELECT * FROM product_inquiries WHERE product_id = ? ORDER BY created_at DESC",
+            (product_id,)
+        )
+    except Exception:
+        inquiries = []
 
     cross_sell_products = _fetch_all(
         conn,
@@ -782,18 +819,23 @@ async def product_detail(request: Request, qr_code_id: str, product_id: int):
             "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
             "product_category_label": PRODUCT_CATEGORIES.get(product.get('product_category', ''), ''),
             "cross_sell_products": cross_sell_products,
+            "return_to": return_to,
+            "return_to_encoded": _encode_return_to(return_to),
         }
     )
 
 
 @app.get("/shop/{qr_code_id}/cart")
-async def view_cart(request: Request, qr_code_id: str):
+async def view_cart(request: Request, qr_code_id: str, return_to: str = Query(default="")):
     """장바구니 페이지 (클라이언트의 localStorage 기반으로 렌더링)"""
+    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
     return templates.TemplateResponse(
         request=request,
         name="cart.html",
         context={
-            "qr_code_id": qr_code_id
+            "qr_code_id": qr_code_id,
+            "return_to": return_to,
+            "return_to_encoded": _encode_return_to(return_to),
         }
     )
 
@@ -802,9 +844,15 @@ async def view_cart(request: Request, qr_code_id: str):
 # 주문서 페이지
 # ─────────────────────────────────────────
 @app.get("/shop/{qr_code_id}/order/{product_id}", response_class=HTMLResponse)
-async def order_form(request: Request, qr_code_id: str, product_id: int):
+async def order_form(
+    request: Request,
+    qr_code_id: str,
+    product_id: int,
+    return_to: str = Query(default=""),
+):
     """주문서 작성 페이지"""
     conn = get_db_connection()
+    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/product/{product_id}")
 
     product = _fetch_one(
         conn,
@@ -827,7 +875,7 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
     conn.close()
 
     # 선택된 옵션 파싱 (쿼리 스트링에서)
-    params = dict(request.query_params)
+    params = {k: v for k, v in dict(request.query_params).items() if k != "return_to"}
     selected_options_str = ", ".join([f"{k}: {v}" for k, v in params.items()])
 
     return templates.TemplateResponse(
@@ -838,6 +886,8 @@ async def order_form(request: Request, qr_code_id: str, product_id: int):
             "qr_code_id": qr_code_id,
             "selected_options": selected_options_str,
             "cross_sell_products": cross_sell_products,
+            "return_to": return_to,
+            "return_to_encoded": _encode_return_to(return_to),
         }
     )
 
@@ -857,9 +907,11 @@ async def process_order(
     selected_options: str = Form(default=""),
     fcm_token: str = Form(default=""),
     session_id: str = Form(default=""),
+    return_to: str = Form(default=""),
 ):
     """주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
     conn = get_db_connection()
+    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
 
     if _is_pg():
         with conn.cursor() as cur:
@@ -935,7 +987,7 @@ async def process_order(
                 }],
                 "application_context": {
                     "return_url": f"{base_url}/api/paypal/return?order_id={order_id}&qr_code_id={qr_code_id}&currency=USD&exchange_rate={usd_rate}",
-                    "cancel_url": f"{base_url}/shop/{qr_code_id}",
+                    "cancel_url": f"{base_url}{return_to}",
                     "user_action": "PAY_NOW"
                 }
             }
@@ -973,9 +1025,10 @@ async def process_order(
 # 장바구니 통합 주문 처리 API
 # ─────────────────────────────────────────
 @app.get("/shop/{qr_code_id}/order_cart", response_class=HTMLResponse)
-async def order_cart_form(request: Request, qr_code_id: str):
+async def order_cart_form(request: Request, qr_code_id: str, return_to: str = Query(default="")):
     """장바구니 다중 상품 주문서 작성 페이지"""
     conn = get_db_connection()
+    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/cart")
     cross_sell_products = _fetch_all(
         conn,
         "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY RANDOM() LIMIT 4",
@@ -989,6 +1042,8 @@ async def order_cart_form(request: Request, qr_code_id: str):
         name="order_cart_form.html",
         context={
             "qr_code_id": qr_code_id,
+            "return_to": return_to,
+            "return_to_encoded": _encode_return_to(return_to),
             "product": {"price": 0, "product_name": "장바구니 상품"}, # JS에서 덮어씀
             "cross_sell_products": cross_sell_products,
         }
@@ -1007,8 +1062,10 @@ async def process_cart_order(
     delivery_note: str = Form(default=""),
     fcm_token: str = Form(default=""),
     session_id: str = Form(default=""),
+    return_to: str = Form(default=""),
 ):
     """장바구니 다중 상품 주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
+    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/cart")
     
     try:
         items = json.loads(items_json)
@@ -1107,7 +1164,7 @@ async def process_cart_order(
                 }],
                 "application_context": {
                     "return_url": f"{base_url}/api/paypal/return_cart?order_ids={order_ids_str}&qr_code_id={qr_code_id}&currency=USD&exchange_rate={usd_rate}",
-                    "cancel_url": f"{base_url}/shop/{qr_code_id}/cart",
+                    "cancel_url": f"{base_url}{return_to}",
                     "user_action": "PAY_NOW"
                 }
             }
