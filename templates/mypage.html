@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마이페이지 | AFFILISTAY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #f6f2eb;
+            --card: #fffdf9;
+            --text: #221f1a;
+            --muted: #81786f;
+            --line: rgba(24, 22, 18, 0.09);
+            --accent: #221f1a;
+            --soft: #b39a82;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Outfit", system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+            word-break: keep-all;
+            padding-bottom: calc(76px + env(safe-area-inset-bottom));
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            opacity: 0.08;
+            pointer-events: none;
+        }
+        a { color: inherit; text-decoration: none; }
+        .shell {
+            position: relative;
+            z-index: 1;
+            width: min(680px, 100%);
+            margin: 0 auto;
+            padding: 1.15rem 1rem 2rem;
+        }
+        .topbar {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) 44px;
+            align-items: center;
+            min-height: 54px;
+        }
+        .page-title {
+            text-align: center;
+            font-size: 1.35rem;
+            font-weight: 800;
+        }
+        .icon-btn {
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.74);
+            font-size: 1.1rem;
+        }
+        .profile {
+            display: grid;
+            grid-template-columns: 4.2rem minmax(0, 1fr);
+            gap: 1rem;
+            align-items: center;
+            margin-top: 1.1rem;
+        }
+        .avatar {
+            display: grid;
+            width: 4.2rem;
+            height: 4.2rem;
+            place-items: center;
+            border-radius: 999px;
+            background: #ebe5dc;
+            color: #fff;
+            font-size: 2rem;
+        }
+        .hello {
+            font-size: 1.65rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+        }
+        .sub {
+            margin-top: 0.2rem;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+        .panel {
+            margin-top: 1.25rem;
+            border: 1px solid var(--line);
+            border-radius: 1.35rem;
+            background: rgba(255,255,255,0.82);
+            box-shadow: 0 14px 32px rgba(18,16,12,0.05);
+            overflow: hidden;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0;
+        }
+        .stat {
+            padding: 1.15rem 0.55rem;
+            text-align: center;
+            border-right: 1px solid var(--line);
+        }
+        .stat:last-child { border-right: 0; }
+        .stat .icon { font-size: 1.45rem; }
+        .stat .label {
+            margin-top: 0.45rem;
+            color: #7f766d;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .stat .value {
+            margin-top: 0.28rem;
+            font-size: 1.25rem;
+            font-weight: 900;
+        }
+        .rows {
+            border-top: 1px solid var(--line);
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.05rem 1.1rem;
+            border-bottom: 1px solid var(--line);
+            font-weight: 800;
+        }
+        .row:last-child { border-bottom: 0; }
+        .row span:last-child {
+            color: #aaa199;
+        }
+        .cta {
+            display: flex;
+            margin-top: 1.1rem;
+            min-height: 54px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            background: var(--accent);
+            color: white;
+            font-weight: 900;
+        }
+        .secondary {
+            background: rgba(255,255,255,0.82);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+        .bottom-tabbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
+            border-top: 1px solid var(--line);
+            background: rgba(255,253,249,0.94);
+            backdrop-filter: blur(18px);
+            padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+        }
+        .bottom-tabbar-inner {
+            margin: 0 auto;
+            display: grid;
+            max-width: 620px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+        .bottom-tab {
+            position: relative;
+            display: flex;
+            min-height: 3.15rem;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.18rem;
+            border-radius: 1rem;
+            color: #8a8279;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .bottom-tab .icon { font-size: 1.25rem; line-height: 1; }
+        .bottom-tab.is-active { background: var(--accent); color: white; }
+        .bottom-badge {
+            position: absolute;
+            top: 0.28rem;
+            right: calc(50% - 1.35rem);
+            min-width: 1.05rem;
+            height: 1.05rem;
+            padding: 0 0.25rem;
+            border-radius: 999px;
+            background: #e65d58;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            line-height: 1.05rem;
+            text-align: center;
+            display: none;
+        }
+        .bottom-badge.is-visible { display: inline-block; }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <a class="icon-btn" href="/catalog" aria-label="쇼핑">⌂</a>
+            <h1 class="page-title">마이페이지</h1>
+            <a class="icon-btn" href="/wishlist" aria-label="찜">♡</a>
+        </header>
+        <section class="profile">
+            <div class="avatar">♙</div>
+            <div>
+                <div class="hello">{% if customer_logged_in %}반가워요{% else %}게스트님{% endif %}</div>
+                <div class="sub">{% if customer_logged_in %}쇼룸 상품과 관리 메뉴를 이어서 볼 수 있어요.{% else %}로그인하면 쇼룸과 관리 메뉴를 더 편하게 이어볼 수 있어요.{% endif %}</div>
+            </div>
+        </section>
+        <section class="panel">
+            <div class="stats">
+                <a class="stat" href="/wishlist">
+                    <div class="icon">♥</div>
+                    <div class="label">찜</div>
+                    <div class="value" data-wish-value>0</div>
+                </a>
+                <div class="stat">
+                    <div class="icon">▤</div>
+                    <div class="label">주문</div>
+                    <div class="value">0</div>
+                </div>
+                <div class="stat">
+                    <div class="icon">◌</div>
+                    <div class="label">문의</div>
+                    <div class="value">0</div>
+                </div>
+            </div>
+            <div class="rows">
+                <a class="row" href="/wishlist"><span>내 찜 목록</span><span>›</span></a>
+                <a class="row" href="/catalog"><span>입점제품 둘러보기</span><span>›</span></a>
+                <a class="row" href="{{ admin_url }}"><span>호스트/입점업체/관리자 페이지</span><span>›</span></a>
+            </div>
+        </section>
+        {% if customer_logged_in %}
+        <a class="cta secondary" href="{{ customer_logout_url }}">로그아웃</a>
+        {% else %}
+        <a class="cta" href="{{ customer_login_url }}">로그인</a>
+        {% endif %}
+    </main>
+    <nav class="bottom-tabbar" aria-label="고객 메뉴">
+        <div class="bottom-tabbar-inner">
+            <a href="/" class="bottom-tab"><span class="icon">⌂</span><span>홈</span></a>
+            <a href="/catalog" class="bottom-tab"><span class="icon">▦</span><span>쇼핑</span></a>
+            <a href="/wishlist" class="bottom-tab"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♡</span><span>찜</span></a>
+            <a href="/mypage" class="bottom-tab is-active"><span class="icon">♙</span><span>마이</span></a>
+        </div>
+    </nav>
+    <script>
+        const WISHLIST_KEY = 'affilistay_wishlist';
+        const readWishlist = () => {
+            try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]'); }
+            catch (error) { return []; }
+        };
+        const count = readWishlist().length;
+        document.querySelector('[data-wish-value]').textContent = count;
+        document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
+            badge.textContent = count;
+            badge.classList.toggle('is-visible', count > 0);
+        });
+    </script>
+</body>
+</html>

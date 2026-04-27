@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>찜 | AFFILISTAY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #f6f2eb;
+            --card: #fffdf9;
+            --text: #221f1a;
+            --muted: #81786f;
+            --line: rgba(24, 22, 18, 0.09);
+            --accent: #221f1a;
+            --soft: #b39a82;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Outfit", system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+            word-break: keep-all;
+            padding-bottom: calc(76px + env(safe-area-inset-bottom));
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            opacity: 0.08;
+            pointer-events: none;
+        }
+        a { color: inherit; text-decoration: none; }
+        .shell {
+            position: relative;
+            z-index: 1;
+            width: min(680px, 100%);
+            margin: 0 auto;
+            padding: 1.1rem 1rem 2rem;
+        }
+        .topbar {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) 44px;
+            align-items: center;
+            gap: 0.75rem;
+            min-height: 54px;
+        }
+        .icon-btn {
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.74);
+            font-size: 1.1rem;
+        }
+        .page-title {
+            text-align: center;
+            font-size: 1.45rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-bottom: 1px solid var(--line);
+            margin-top: 0.9rem;
+        }
+        .tabs a {
+            padding: 1rem 0 0.85rem;
+            text-align: center;
+            color: #8b837a;
+            font-weight: 700;
+        }
+        .tabs .active {
+            color: var(--text);
+            border-bottom: 3px solid var(--accent);
+        }
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 1rem 0;
+        }
+        .pill {
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.72);
+            padding: 0.78rem 1rem;
+            color: #6f665d;
+            font-weight: 700;
+        }
+        .pill.active {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: white;
+        }
+        .empty {
+            display: grid;
+            place-items: center;
+            min-height: 58vh;
+            text-align: center;
+        }
+        .empty-heart {
+            color: #ddd8d1;
+            font-size: 5.2rem;
+            line-height: 1;
+        }
+        .empty h2 {
+            margin: 1rem 0 0.4rem;
+            font-size: 1.55rem;
+            font-weight: 800;
+        }
+        .empty p {
+            margin: 0;
+            color: #9a938c;
+            line-height: 1.7;
+        }
+        .primary {
+            display: inline-flex;
+            margin-top: 1.8rem;
+            min-height: 54px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            background: var(--accent);
+            color: white;
+            padding: 0 1.6rem;
+            font-weight: 800;
+        }
+        .grid {
+            display: grid;
+            gap: 0.9rem;
+        }
+        .wish-card {
+            display: grid;
+            grid-template-columns: 112px minmax(0, 1fr);
+            gap: 0.9rem;
+            border: 1px solid var(--line);
+            border-radius: 1.25rem;
+            background: rgba(255,255,255,0.84);
+            padding: 0.75rem;
+            box-shadow: 0 12px 28px rgba(18,16,12,0.05);
+        }
+        .wish-card img {
+            width: 112px;
+            height: 112px;
+            border-radius: 1rem;
+            object-fit: cover;
+            background: #eee6dc;
+        }
+        .brand {
+            color: var(--soft);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .name {
+            margin-top: 0.35rem;
+            font-size: 1.05rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .price {
+            margin-top: 0.6rem;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+        .remove {
+            margin-top: 0.7rem;
+            border: 0;
+            border-radius: 999px;
+            background: #f0e8dc;
+            color: #5f554c;
+            padding: 0.48rem 0.8rem;
+            font-weight: 700;
+        }
+        .bottom-tabbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
+            border-top: 1px solid var(--line);
+            background: rgba(255,253,249,0.94);
+            backdrop-filter: blur(18px);
+            padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+        }
+        .bottom-tabbar-inner {
+            margin: 0 auto;
+            display: grid;
+            max-width: 620px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+        .bottom-tab {
+            position: relative;
+            display: flex;
+            min-height: 3.15rem;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.18rem;
+            border-radius: 1rem;
+            color: #8a8279;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .bottom-tab .icon { font-size: 1.25rem; line-height: 1; }
+        .bottom-tab.is-active { background: var(--accent); color: white; }
+        .bottom-badge {
+            position: absolute;
+            top: 0.28rem;
+            right: calc(50% - 1.35rem);
+            min-width: 1.05rem;
+            height: 1.05rem;
+            padding: 0 0.25rem;
+            border-radius: 999px;
+            background: #e65d58;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            line-height: 1.05rem;
+            text-align: center;
+            display: none;
+        }
+        .bottom-badge.is-visible { display: inline-block; }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <a class="icon-btn" href="/catalog" aria-label="뒤로">←</a>
+            <h1 class="page-title">찜</h1>
+            <a class="icon-btn" href="/catalog" aria-label="쇼핑">⌕</a>
+        </header>
+        <nav class="tabs" aria-label="찜 종류">
+            <a class="active" href="/wishlist">상품</a>
+            <a href="/wishlist">내 서랍</a>
+            <a href="/catalog">쇼룸</a>
+        </nav>
+        <div class="toolbar">
+            <button class="pill">담은순</button>
+            <button class="pill active">전체</button>
+        </div>
+        <section id="wishlist-list" class="grid"></section>
+        <section id="wishlist-empty" class="empty">
+            <div>
+                <div class="empty-heart">♡</div>
+                <h2>찜한 상품이 없어요</h2>
+                <p>어필리스테이의 쇼룸 상품을<br>하트로 담아둘 수 있어요.</p>
+                <a class="primary" href="/catalog">상품 보러가기</a>
+            </div>
+        </section>
+    </main>
+    <nav class="bottom-tabbar" aria-label="고객 메뉴">
+        <div class="bottom-tabbar-inner">
+            <a href="/" class="bottom-tab"><span class="icon">⌂</span><span>홈</span></a>
+            <a href="/catalog" class="bottom-tab"><span class="icon">▦</span><span>쇼핑</span></a>
+            <a href="/wishlist" class="bottom-tab is-active"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♥</span><span>찜</span></a>
+            <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
+        </div>
+    </nav>
+    <script>
+        const WISHLIST_KEY = 'affilistay_wishlist';
+        const readWishlist = () => {
+            try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]'); }
+            catch (error) { return []; }
+        };
+        const writeWishlist = (items) => localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+        const formatPrice = (value) => `${Number(value || 0).toLocaleString('ko-KR')}원`;
+        const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        }[char]));
+        const updateCount = () => {
+            const count = readWishlist().length;
+            document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
+                badge.textContent = count;
+                badge.classList.toggle('is-visible', count > 0);
+            });
+        };
+        const render = () => {
+            const items = readWishlist();
+            const list = document.getElementById('wishlist-list');
+            const empty = document.getElementById('wishlist-empty');
+            list.innerHTML = '';
+            empty.style.display = items.length ? 'none' : 'grid';
+            items.forEach((item) => {
+                const card = document.createElement('article');
+                card.className = 'wish-card';
+                const safeUrl = item.url || '/catalog';
+                const safeImage = item.image || '/static/product.png';
+                card.innerHTML = `
+                    <a href="${escapeHtml(safeUrl)}"><img src="${escapeHtml(safeImage)}" alt=""></a>
+                    <div>
+                        <div class="brand">${escapeHtml(item.brand || 'AFFILISTAY')}</div>
+                        <a href="${escapeHtml(safeUrl)}"><div class="name">${escapeHtml(item.name || '쇼룸 상품')}</div></a>
+                        <div class="price">${formatPrice(item.price)}</div>
+                        <button class="remove" type="button" data-remove="${escapeHtml(item.id)}">하트 해제</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+            list.querySelectorAll('[data-remove]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    writeWishlist(readWishlist().filter((item) => String(item.id) !== String(button.dataset.remove)));
+                    render();
+                    updateCount();
+                });
+            });
+            updateCount();
+        };
+        render();
+    </script>
+</body>
+</html>

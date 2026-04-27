@@ -268,6 +268,10 @@ async def customer_logout(return_url: str = Query(default="/catalog")):
     response.delete_cookie("customer_id")
     return response
 
+@app.get("/partner-entrance")
+async def partner_entrance():
+    return RedirectResponse(url=ADMIN_URL, status_code=303)
+
 @app.post("/api/portone/verify")
 async def verify_portone_payment(request: Request):
     """
@@ -952,6 +956,38 @@ async def catalog_page(
             "customer_login_url": f"/customer/login?return_url={current_url_encoded}",
             "customer_logout_url": f"/customer/logout?return_url={current_url_encoded}",
             "public_content_version": public_content_version,
+            "active_nav": "shop",
+        },
+    )
+
+
+@app.get("/wishlist", response_class=HTMLResponse)
+async def wishlist_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="wishlist.html",
+        context={
+            "request": request,
+            "customer_logged_in": bool(request.cookies.get("customer_id")),
+            "customer_login_url": "/customer/login?return_url=%2Fwishlist",
+            "customer_logout_url": "/customer/logout?return_url=%2Fwishlist",
+            "active_nav": "wishlist",
+        },
+    )
+
+
+@app.get("/mypage", response_class=HTMLResponse)
+async def mypage(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="mypage.html",
+        context={
+            "request": request,
+            "customer_logged_in": bool(request.cookies.get("customer_id")),
+            "customer_login_url": "/customer/login?return_url=%2Fmypage",
+            "customer_logout_url": "/customer/logout?return_url=%2Fmypage",
+            "admin_url": ADMIN_URL,
+            "active_nav": "mypage",
         },
     )
 

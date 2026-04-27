@@ -27,6 +27,7 @@
             color: var(--text);
             letter-spacing: 0;
             word-break: keep-all;
+            padding-bottom: calc(74px + env(safe-area-inset-bottom));
         }
         body::before {
             content: "";
@@ -189,6 +190,92 @@
             width: 1.4rem;
             background: white;
         }
+        .wish-button {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            z-index: 5;
+            display: inline-flex;
+            height: 2.55rem;
+            width: 2.55rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.62);
+            background: rgba(255, 255, 255, 0.82);
+            color: #2d2924;
+            box-shadow: 0 10px 24px rgba(18, 16, 12, 0.14);
+            backdrop-filter: blur(10px);
+            font-size: 1.15rem;
+            line-height: 1;
+            transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+        }
+        .wish-button.is-liked {
+            background: #221f1a;
+            color: #fff;
+        }
+        .wish-button:active {
+            transform: scale(0.94);
+        }
+        .bottom-tabbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 60;
+            border-top: 1px solid rgba(24, 22, 18, 0.08);
+            background: rgba(255, 253, 249, 0.94);
+            backdrop-filter: blur(18px);
+            padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+        }
+        .bottom-tabbar-inner {
+            margin: 0 auto;
+            display: grid;
+            max-width: 620px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+        .bottom-tab {
+            position: relative;
+            display: flex;
+            min-height: 3.15rem;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.18rem;
+            border-radius: 1rem;
+            color: #8a8279;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .bottom-tab .icon {
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+        .bottom-tab.is-active {
+            background: #221f1a;
+            color: white;
+        }
+        .bottom-badge {
+            position: absolute;
+            top: 0.28rem;
+            right: calc(50% - 1.35rem);
+            min-width: 1.05rem;
+            height: 1.05rem;
+            padding: 0 0.25rem;
+            border-radius: 999px;
+            background: #e65d58;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            line-height: 1.05rem;
+            text-align: center;
+            display: none;
+        }
+        .bottom-badge.is-visible {
+            display: inline-block;
+        }
         @media (min-width: 960px) {
             .auto-scroll-row {
                 mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
@@ -336,6 +423,19 @@
                     {% for product in products %}
                     <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="group overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1" aria-label="{{ product.product_name }} 구매 화면으로 이동">
                         <div class="relative aspect-[1.18/1] overflow-hidden bg-[#efe8dd]" data-product-carousel {% if product.gallery_count > 1 %}data-product-delay="1000"{% endif %}>
+                            <button
+                                type="button"
+                                class="wish-button"
+                                data-wishlist-toggle
+                                data-product-id="{{ product.id }}"
+                                data-product-name="{{ product.product_name }}"
+                                data-brand-name="{{ product.brand_name }}"
+                                data-price="{{ product.price }}"
+                                data-url="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}"
+                                data-image="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}"
+                                aria-label="{{ product.product_name }} 찜하기"
+                                aria-pressed="false"
+                            >♡</button>
                             {% if product.gallery_count > 1 %}
                             <div class="product-carousel-track flex h-full" data-product-track>
                                 {% for image in product.gallery_images %}
@@ -466,6 +566,27 @@
             {% endif %}
         </main>
     </div>
+    <nav class="bottom-tabbar" aria-label="고객 메뉴">
+        <div class="bottom-tabbar-inner">
+            <a href="/" class="bottom-tab">
+                <span class="icon" aria-hidden="true">⌂</span>
+                <span>홈</span>
+            </a>
+            <a href="/catalog" class="bottom-tab is-active">
+                <span class="icon" aria-hidden="true">▦</span>
+                <span>쇼핑</span>
+            </a>
+            <a href="/wishlist" class="bottom-tab">
+                <span class="bottom-badge" data-wishlist-count></span>
+                <span class="icon" aria-hidden="true">♡</span>
+                <span>찜</span>
+            </a>
+            <a href="/mypage" class="bottom-tab">
+                <span class="icon" aria-hidden="true">♙</span>
+                <span>마이</span>
+            </a>
+        </div>
+    </nav>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -474,6 +595,67 @@
     ></script>
     <script>
         (() => {
+            const WISHLIST_KEY = 'affilistay_wishlist';
+
+            const readWishlist = () => {
+                try {
+                    return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]');
+                } catch (error) {
+                    return [];
+                }
+            };
+
+            const writeWishlist = (items) => {
+                localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+            };
+
+            const updateWishlistCount = () => {
+                const count = readWishlist().length;
+                document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
+                    badge.textContent = count;
+                    badge.classList.toggle('is-visible', count > 0);
+                });
+            };
+
+            const syncWishlistButtons = () => {
+                const ids = new Set(readWishlist().map((item) => String(item.id)));
+                document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
+                    const liked = ids.has(String(button.dataset.productId));
+                    button.classList.toggle('is-liked', liked);
+                    button.setAttribute('aria-pressed', liked ? 'true' : 'false');
+                    button.textContent = liked ? '♥' : '♡';
+                });
+                updateWishlistCount();
+            };
+
+            const bindWishlistButtons = () => {
+                document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
+                    if (button.dataset.wishlistBound === 'true') return;
+                    button.dataset.wishlistBound = 'true';
+                    button.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const id = String(button.dataset.productId);
+                        const items = readWishlist();
+                        const existingIndex = items.findIndex((item) => String(item.id) === id);
+                        if (existingIndex >= 0) {
+                            items.splice(existingIndex, 1);
+                        } else {
+                            items.unshift({
+                                id,
+                                name: button.dataset.productName || '',
+                                brand: button.dataset.brandName || '',
+                                price: Number(button.dataset.price || 0),
+                                url: button.dataset.url || '/catalog',
+                                image: button.dataset.image || '/static/product.png'
+                            });
+                        }
+                        writeWishlist(items);
+                        syncWishlistButtons();
+                    });
+                });
+            };
+
             const bindBrowseLinks = (scope = document) => {
                 scope.querySelectorAll('[data-nav-link]').forEach((link) => {
                     if (link.dataset.navBound === 'true') return;
@@ -718,12 +900,16 @@
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                     bindBrowseLinks();
+                    bindWishlistButtons();
+                    syncWishlistButtons();
                     startAutoScroll();
                     startSpaceCarousels();
                     startProductCarousels();
                 }, { once: true });
             } else {
                 bindBrowseLinks();
+                bindWishlistButtons();
+                syncWishlistButtons();
                 startAutoScroll();
                 startSpaceCarousels();
                 startProductCarousels();
