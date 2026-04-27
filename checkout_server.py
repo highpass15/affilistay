@@ -7,7 +7,7 @@ from database import get_db_connection, get_public_content_version, init_db
 import os
 import httpx
 import time
-from typing import Dict
+from typing import Dict, List
 from pydantic import BaseModel
 from datetime import datetime
 from urllib.parse import quote
@@ -418,6 +418,145 @@ def _decorate_catalog_products(products, image_map):
     return products
 
 
+def _unique_products(products: List[dict]) -> List[dict]:
+    seen = set()
+    unique = []
+    for product in products:
+        product_id = product.get("id")
+        if not product_id or product_id in seen:
+            continue
+        seen.add(product_id)
+        unique.append(product)
+    return unique
+
+
+def _build_gallery_images(primary_image, image_rows):
+    gallery = []
+    seen = set()
+    for image_data in [primary_image, *[row.get("image_data") for row in image_rows]]:
+        if not image_data or image_data in seen:
+            continue
+        seen.add(image_data)
+        gallery.append(image_data)
+    return gallery
+
+
+def _decorate_recommendation_products(products, image_map):
+    products = _decorate_catalog_products(products, image_map)
+    for product in products:
+        showroom_path = f"/showrooms/{product['owner_id']}" if product.get("owner_id") else "/catalog?view=spaces"
+        product["showroom_path"] = showroom_path
+        product["detail_path"] = (
+            f"/shop/{product['qr_code_id']}/product/{product['id']}"
+            f"?return_to={_encode_return_to(showroom_path)}"
+        )
+    return products
+
+
+def _build_product_recommendations(conn, product):
+    image_map = _catalog_image_map(conn)
+    owner_id = product.get("owner_id")
+    product_id = product.get("id")
+    current_room = product.get("room_category")
+    current_category = product.get("product_category")
+    current_price = product.get("price") or 0
+
+    same_owner_products = _fetch_all(
+        conn,
+        """
+        SELECT p.*, h.name as host_name, v.location as host_location
+        FROM products p
+        JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues v ON p.owner_id = v.host_id
+        WHERE p.owner_id = %s AND p.id != %s
+        ORDER BY p.id DESC
+        """,
+        """
+        SELECT p.*, h.name as host_name, v.location as host_location
+        FROM products p
+        JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues v ON p.owner_id = v.host_id
+        WHERE p.owner_id = ? AND p.id != ?
+        ORDER BY p.id DESC
+        """,
+        (owner_id, product_id),
+    )
+    same_owner_products = _decorate_recommendation_products(same_owner_products, image_map)
+
+    same_showroom_products = same_owner_products
+    if current_room:
+        same_showroom_products = [item for item in same_owner_products if item.get("room_category") == current_room]
+        if len(same_showroom_products) < 4:
+            same_showroom_products = _unique_products(same_showroom_products + same_owner_products)
+    same_showroom_products = same_showroom_products[:6]
+
+    host_curated_products = [
+        item for item in same_owner_products
+        if item.get("room_category") != current_room or item.get("product_category") != current_category
+    ]
+    if not host_curated_products:
+        excluded = {item["id"] for item in same_showroom_products}
+        host_curated_products = [item for item in same_owner_products if item.get("id") not in excluded]
+    host_curated_products = host_curated_products[:6]
+
+    similar_candidates = _fetch_all(
+        conn,
+        """
+        SELECT p.*, h.name as host_name, v.location as host_location
+        FROM products p
+        JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues v ON p.owner_id = v.host_id
+        WHERE p.owner_id != %s
+        ORDER BY p.id DESC
+        LIMIT 48
+        """,
+        """
+        SELECT p.*, h.name as host_name, v.location as host_location
+        FROM products p
+        JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues v ON p.owner_id = v.host_id
+        WHERE p.owner_id != ?
+        ORDER BY p.id DESC
+        LIMIT 48
+        """,
+        (owner_id,),
+    )
+    similar_candidates = _decorate_recommendation_products(similar_candidates, image_map)
+
+    def recommendation_score(item):
+        category_match = item.get("product_category") == current_category
+        room_match = item.get("room_category") == current_room
+        price_gap = abs((item.get("price") or 0) - current_price)
+        if category_match and room_match:
+            affinity = 0
+        elif category_match:
+            affinity = 1
+        elif room_match:
+            affinity = 2
+        else:
+            affinity = 3
+        return (
+            affinity,
+            price_gap,
+            -int(item.get("discount_rate") or 0),
+            -int(item.get("id") or 0),
+        )
+
+    similar_products = [
+        item for item in similar_candidates
+        if item.get("product_category") == current_category or item.get("room_category") == current_room
+    ]
+    if len(similar_products) < 6:
+        similar_products = _unique_products(similar_products + similar_candidates)
+    similar_products = sorted(similar_products, key=recommendation_score)[:6]
+
+    return {
+        "same_showroom_products": same_showroom_products,
+        "host_curated_products": host_curated_products,
+        "similar_products": similar_products,
+    }
+
+
 def _build_catalog_hosts(conn):
     try:
         hosts = _fetch_all(
@@ -698,87 +837,40 @@ async def showroom_detail(request: Request, host_id: int):
 @app.get("/shop/{qr_code_id}", response_class=HTMLResponse)
 async def shop_page(request: Request, qr_code_id: str, category: str = Query(default=None)):
     """
-    QR 코드 ID로 진입 → 해당 제품의 호스트(owner_id) 기반으로
-    같은 숙소의 모든 입점제품을 카테고리별로 표시합니다.
+    QR ??? ?? ?? ?? ?? ?? ?? ??? ?? ??? ?? ????.
     """
-    public_content_version = get_public_content_version()
     conn = get_db_connection()
-
-    # 1. QR 코드에 해당하는 제품 조회 → owner_id 추출
     entry_product = _fetch_one(
         conn,
-        "SELECT * FROM products WHERE qr_code_id = %s",
-        "SELECT * FROM products WHERE qr_code_id = ?",
-        (qr_code_id,)
+        "SELECT id, owner_id FROM products WHERE qr_code_id = %s",
+        "SELECT id, owner_id FROM products WHERE qr_code_id = ?",
+        (qr_code_id,),
     )
 
     if not entry_product:
         conn.close()
         return HTMLResponse(
             content="<html><body style='font-family:Outfit,sans-serif;text-align:center;padding-top:20%;background:#FAF9F6'>"
-                    "<h2 style='font-weight:300'>유효하지 않은 QR 코드입니다</h2>"
-                    "<p style='color:#888;font-size:14px'>만료되었거나 존재하지 않는 코드입니다.</p></body></html>",
-            status_code=404
+                    "<h2 style='font-weight:300'>???? ?? QR ?????</h2>"
+                    "<p style='color:#888;font-size:14px'>?????? ???? ?? ?????.</p></body></html>",
+            status_code=404,
         )
 
-    owner_id = entry_product.get('owner_id')
-
-    # 2. 호스트 정보 조회
-    host_info = _fetch_one(
-        conn,
-        "SELECT name FROM hosts WHERE id = %s",
-        "SELECT name FROM hosts WHERE id = ?",
-        (owner_id,)
-    ) if owner_id else None
-
-    host_name = host_info['name'] if host_info else "AFFILISTAY Showroom"
-
-    # 3. 해당 호스트의 모든 제품을 카테고리별로 조회
-    if category and category in ROOM_CATEGORIES:
-        products = _fetch_all(
-            conn,
-            "SELECT * FROM products WHERE owner_id = %s AND room_category = %s ORDER BY id",
-            "SELECT * FROM products WHERE owner_id = ? AND room_category = ? ORDER BY id",
-            (owner_id, category)
-        )
-    else:
-        products = _fetch_all(
-            conn,
-            "SELECT * FROM products WHERE owner_id = %s ORDER BY room_category, id",
-            "SELECT * FROM products WHERE owner_id = ? ORDER BY room_category, id",
-            (owner_id,)
-        )
-
+    showroom_path = (
+        f"/showrooms/{entry_product['owner_id']}"
+        if entry_product.get("owner_id")
+        else "/catalog?view=spaces"
+    )
     conn.close()
-
-    # 4. 카테고리별 제품 그룹핑
-    categorized = {}
-    for cat_key, cat_name in ROOM_CATEGORIES.items():
-        cat_products = [p for p in products if p.get('room_category') == cat_key]
-        if cat_products:
-            categorized[cat_key] = {
-                'name': cat_name,
-                'products': cat_products
-            }
-
-    return templates.TemplateResponse(
-        request=request,
-        name="shop.html",
-        context={
-            "host_name": host_name,
-            "qr_code_id": qr_code_id,
-            "categories": ROOM_CATEGORIES,
-            "categorized": categorized,
-            "active_category": category,
-            "all_products": products,
-            "public_content_version": public_content_version,
-        }
+    return RedirectResponse(
+        url=(
+            f"/shop/{qr_code_id}/product/{entry_product['id']}"
+            f"?return_to={_encode_return_to(showroom_path)}"
+        ),
+        status_code=303,
     )
 
 
-# ─────────────────────────────────────────
-# 제품 상세 페이지
-# ─────────────────────────────────────────
 @app.get("/shop/{qr_code_id}/product/{product_id}", response_class=HTMLResponse)
 async def product_detail(
     request: Request,
@@ -786,84 +878,91 @@ async def product_detail(
     product_id: int,
     return_to: str = Query(default=""),
 ):
-    """개별 제품 상세 페이지"""
+    """?? ?? ?? ?? ???"""
     public_content_version = get_public_content_version()
     conn = get_db_connection()
-    return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
 
     product = _fetch_one(
         conn,
-        "SELECT * FROM products WHERE id = %s",
-        "SELECT * FROM products WHERE id = ?",
-        (product_id,)
+        """
+        SELECT p.*, h.name as host_name, v.location as host_location, v.description as host_description
+        FROM products p
+        JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues v ON p.owner_id = v.host_id
+        WHERE p.id = %s
+        """,
+        """
+        SELECT p.*, h.name as host_name, v.location as host_location, v.description as host_description
+        FROM products p
+        JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues v ON p.owner_id = v.host_id
+        WHERE p.id = ?
+        """,
+        (product_id,),
     )
 
     if not product:
         conn.close()
         return HTMLResponse(
             content="<html><body style='font-family:Outfit,sans-serif;text-align:center;padding-top:20%;background:#FAF9F6'>"
-                    "<h2 style='font-weight:300'>제품을 찾을 수 없습니다</h2></body></html>",
-            status_code=404
+                    "<h2 style='font-weight:300'>??? ?? ? ????</h2></body></html>",
+            status_code=404,
         )
 
-    # 추가 이미지 조회
+    showroom_path = f"/showrooms/{product['owner_id']}" if product.get("owner_id") else "/catalog?view=spaces"
+    return_to = _safe_return_to(return_to, showroom_path)
+
     try:
         images = _fetch_all(
             conn,
             "SELECT image_data FROM product_images WHERE product_id = %s ORDER BY sort_order",
             "SELECT image_data FROM product_images WHERE product_id = ? ORDER BY sort_order",
-            (product_id,)
+            (product_id,),
         )
     except Exception:
         images = []
-    
-    # 옵션 조회
+
     try:
         options_db = _fetch_all(
             conn,
             'SELECT name, "values" FROM product_options WHERE product_id = %s',
             'SELECT name, "values" FROM product_options WHERE product_id = ?',
-            (product_id,)
+            (product_id,),
         )
     except Exception:
         options_db = []
-    # 옵션 값들을 리스트로 변환
-    options = []
-    for opt in options_db:
-        options.append({
-            'name': opt['name'],
-            'values': [v.strip() for v in opt['values'].split(',')]
-        })
+    options = [
+        {
+            "name": opt["name"],
+            "values": [value.strip() for value in opt["values"].split(",") if value.strip()],
+        }
+        for opt in options_db
+    ]
 
-    # 리뷰 조회
     try:
         reviews = _fetch_all(
             conn,
             "SELECT * FROM reviews WHERE product_id = %s ORDER BY created_at DESC",
             "SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC",
-            (product_id,)
+            (product_id,),
         )
     except Exception:
         reviews = []
 
-    # 문의 조회
     try:
         inquiries = _fetch_all(
             conn,
             "SELECT * FROM product_inquiries WHERE product_id = %s ORDER BY created_at DESC",
             "SELECT * FROM product_inquiries WHERE product_id = ? ORDER BY created_at DESC",
-            (product_id,)
+            (product_id,),
         )
     except Exception:
         inquiries = []
 
-    cross_sell_products = _fetch_all(
-        conn,
-        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != %s ORDER BY RANDOM() LIMIT 4",
-        "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id != ? ORDER BY RANDOM() LIMIT 4",
-        (product['owner_id'],)
-    )
-
+    recommendation_groups = _build_product_recommendations(conn, product)
+    gallery_images = _build_gallery_images(product.get("image_url"), images)
+    product["room_icon"] = ROOM_ICONS.get(product.get("room_category"), "⌂")
+    product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "✦")
     conn.close()
 
     return templates.TemplateResponse(
@@ -871,18 +970,21 @@ async def product_detail(
         name="product_detail.html",
         context={
             "product": product,
-            "images": images if images else [{'image_data': product['image_url']}],
+            "gallery_images": gallery_images,
             "options": options,
             "reviews": reviews,
             "inquiries": inquiries,
             "qr_code_id": qr_code_id,
-            "room_label": ROOM_CATEGORIES.get(product.get('room_category', ''), ''),
-            "product_category_label": PRODUCT_CATEGORIES.get(product.get('product_category', ''), ''),
-            "cross_sell_products": cross_sell_products,
+            "room_label": ROOM_CATEGORIES.get(product.get("room_category", ""), ""),
+            "product_category_label": PRODUCT_CATEGORIES.get(product.get("product_category", ""), ""),
+            "showroom_path": showroom_path,
+            "same_showroom_products": recommendation_groups["same_showroom_products"],
+            "host_curated_products": recommendation_groups["host_curated_products"],
+            "similar_products": recommendation_groups["similar_products"],
             "return_to": return_to,
             "return_to_encoded": _encode_return_to(return_to),
             "public_content_version": public_content_version,
-        }
+        },
     )
 
 

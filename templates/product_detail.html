@@ -4,984 +4,1045 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ product.product_name }} | {{ product.brand_name }}</title>
-    <meta name="description" content="{{ product.brand_name }} - {{ product.product_name }}. AFFILISTAY 쇼룸에서 직접 경험한 제품을 구매하세요.">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="{{ product.brand_name }} {{ product.product_name }}를 어필리스테이 쇼룸에서 확인하고 바로 구매해보세요.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
         :root {
-            --bg: #FAF9F6;
-            --bg-card: #FFFFFF;
-            --text-primary: #1A1A1A;
-            --text-secondary: #7A7672;
-            --text-muted: #B0AAA3;
-            --accent: #B0A295;
-            --accent-dark: #8A7E73;
-            --border: #EEEDEA;
-            --radius: 16px;
+            --bg: #f6f2eb;
+            --surface: rgba(255, 255, 255, 0.92);
+            --card: #ffffff;
+            --line: rgba(24, 22, 18, 0.08);
+            --text: #1c1813;
+            --muted: #6d645b;
+            --soft: #b39a82;
+            --soft-2: #eee5d9;
+            --accent: #221f1a;
+            --accent-2: #faf7f2;
+            --danger: #e55a52;
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            font-family: 'Outfit', -apple-system, sans-serif;
+            margin: 0;
+            font-family: "Outfit", sans-serif;
             background: var(--bg);
-            color: var(--text-primary);
+            color: var(--text);
             -webkit-font-smoothing: antialiased;
-            min-height: 100vh;
-        }
-
-        /* ── 네비게이션 ── */
-        .detail-nav {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(250, 249, 246, 0.92);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            padding: 14px 20px;
-        }
-
-        .detail-nav-inner {
-            max-width: 600px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .back-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            text-decoration: none;
-            color: var(--text-primary);
-            font-size: 18px;
-            transition: all 0.3s;
-            flex-shrink: 0;
-        }
-
-        .back-btn:hover {
-            background: var(--text-primary);
-            color: white;
-            border-color: var(--text-primary);
-        }
-
-        .nav-title {
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
-
-        /* ── 제품 이미지 ── */
-        .product-image-section {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .product-image-wrap {
-            position: relative;
-            width: 100%;
-            padding-top: 100%;
-            background: #F0EFEC;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            display: flex;
-            scrollbar-width: none;
-        }
-        .product-image-wrap::-webkit-scrollbar { display: none; }
-
-        .product-slide {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: cover;
-            scroll-snap-align: start;
-            flex: 0 0 100%;
-            position: relative;
-        }
-
-        .carousel-dots {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 10;
-        }
-        .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.4);
-            transition: all 0.3s;
-        }
-        .dot.active {
-            background: white;
-            transform: scale(1.2);
-        }
-
-        .product-image-placeholder {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
-            color: var(--text-muted);
-        }
-
-        .product-image-placeholder .ph-icon {
-            font-size: 64px;
-            opacity: 0.3;
-        }
-
-        .product-image-placeholder .ph-text {
-            font-size: 12px;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            font-weight: 500;
-        }
-
-        /* ── 제품 정보 ── */
-        .product-details {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 28px 24px 32px;
-            background: var(--bg-card);
-            border-top: 0;
-            position: relative;
-        }
-
-        .product-badge {
-            display: inline-block;
-            padding: 5px 12px;
-            background: #F3F2EF;
-            border-radius: 100px;
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--accent-dark);
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            margin-bottom: 14px;
-        }
-
-        .product-details .brand-name {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--accent-dark);
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .product-details .product-name {
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            line-height: 1.3;
-            margin-bottom: 20px;
-        }
-
-        .original-price-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
-        }
-
-        .discount-badge {
-            font-size: 18px;
-            font-weight: 700;
-            color: #FF4D4D;
-        }
-
-        .original-price {
-            font-size: 14px;
-            color: var(--text-muted);
-            text-decoration: line-through;
-        }
-
-        .price-row {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
-            margin-bottom: 24px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .price-label {
-            font-size: 10px;
-            font-weight: 500;
-            color: var(--text-muted);
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-        }
-
-        .price-value {
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: -0.03em;
-        }
-
-        .price-unit {
-            font-size: 14px;
-            font-weight: 400;
-            color: var(--text-secondary);
-        }
-
-        /* ── 탭 네비게이션 ── */
-        .pdp-tabs {
-            position: sticky;
-            top: 60px;
-            background: white;
-            display: flex;
-            border-bottom: 1px solid var(--border);
-            z-index: 100;
-            margin-bottom: 24px;
-        }
-        .pdp-tab {
-            flex: 1;
-            text-align: center;
-            padding: 16px 0;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        .pdp-tab span { font-size: 11px; margin-left: 2px; opacity: 0.6; }
-        .pdp-tab.active {
-            color: var(--text-primary);
-            border-bottom-color: var(--text-primary);
-            font-weight: 600;
-        }
-        .tab-content { display: none; padding: 0 24px 60px; }
-        .tab-content.active { display: block; }
-
-        /* ── 옵션 선택 ── */
-        .options-section {
-            margin-bottom: 32px;
-        }
-        .option-group {
-            margin-bottom: 20px;
-        }
-        .option-name {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            display: block;
-        }
-        .option-values {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .option-btn {
-            padding: 10px 18px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            font-size: 13px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .option-btn.selected {
-            border-color: var(--text-primary);
-            background: var(--text-primary);
-            color: white;
-        }
-
-        /* ── 제품 설명 ── */
-        .product-description {
-            font-size: 14px;
-            line-height: 1.8;
-            color: var(--text-secondary);
-            font-weight: 300;
-            margin-bottom: 40px;
             word-break: keep-all;
-        }
-        .detailed-context {
-            border-top: 1px solid var(--border);
-            padding-top: 40px;
-            margin-top: 40px;
-        }
-        .detailed-title {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            letter-spacing: -0.01em;
-        }
-        .detailed-content {
-            font-size: 14px;
-            line-height: 1.9;
-            color: var(--text-secondary);
-            white-space: pre-wrap;
+            padding-bottom: 108px;
         }
 
-        /* ── 리뷰 & 문의 아이템 ── */
-        .item-list { margin-top: 20px; }
-        .item-card {
-            padding: 20px 0;
-            border-bottom: 1px solid var(--border);
-        }
-        .item-meta {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-        }
-        .item-name { color: var(--text-primary); font-weight: 600; }
-        .item-rating { color: #FFB800; }
-        .item-text { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
-        .item-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            background: #F0F0F0;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-right: 6px;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            opacity: 0.12;
+            pointer-events: none;
         }
 
-        /* ── 정보 폼 ── */
-        .submission-form {
-            background: #F9F9F8;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 32px;
-        }
-        .form-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
-        .form-row { margin-bottom: 12px; }
-        .form-row label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
-        .form-row input, .form-row textarea, .form-row select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #DDD;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 13px;
-        }
-        .form-submit {
-            width: 100%;
-            padding: 12px;
-            background: var(--text-primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+        a { color: inherit; text-decoration: none; }
+        button, input, textarea, select { font: inherit; }
 
-        /* ── 안내 섹션 ── */
-        .policy-section { margin-bottom: 32px; }
-        .policy-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; border-left: 3px solid var(--text-primary); padding-left: 10px; }
-        .policy-text { font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
-
-        /* ── CTA 버튼 ── */
-        .cta-section {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 0 24px 40px;
-            background: var(--bg-card);
-        }
-
-        .cta-button {
-            display: block;
-            width: 100%;
-            padding: 18px;
-            background: var(--text-primary);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-family: 'Outfit', sans-serif;
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-align: center;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .cta-button:hover {
-            background: #333;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(26,26,26,0.2);
-        }
-
-        .cta-button:active {
-            transform: translateY(0);
-        }
-
-        .cta-sub {
-            text-align: center;
-            margin-top: 12px;
-            font-size: 10px;
-            color: var(--text-muted);
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-        }
-
-        /* ── 스크롤 스와이프 위젯 (유니버셜 카트) ── */
-        .cross-sell-section {
-            padding: 40px 0 60px;
-            background: #F8F7F4;
-            margin-top: 20px;
-        }
-        
-        .cs-header {
-            padding: 0 24px;
-            margin-bottom: 20px;
-        }
-        
-        .cs-title {
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
-        
-        .cs-scroll-wrap {
-            display: flex;
-            gap: 14px;
-            padding: 0 24px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .cs-scroll-wrap::-webkit-scrollbar { display: none; }
-        
-        .cs-card {
-            flex: 0 0 140px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            text-decoration: none;
-            color: inherit;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            transition: transform 0.2s;
-        }
-        .cs-card:active { transform: scale(0.96); }
-        
-        .cs-img-wrap {
-            width: 100%;
-            height: 140px;
-            background: #F0EFEC;
+        .shell {
             position: relative;
+            z-index: 1;
+            max-width: 720px;
+            margin: 0 auto;
+            background: transparent;
         }
-        .cs-img-wrap img {
-            width: 100%; height: 100%;
-            object-fit: cover;
-            position: absolute; top:0; left:0;
+
+        .hero {
+            position: relative;
+            background: #efe8de;
         }
-        .cs-info { padding: 12px; }
-        .cs-host {
-            font-size: 10px;
-            color: var(--accent-dark);
+
+        .hero-topbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .hero-topbar .left-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .hero-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: rgba(18, 16, 12, 0.38);
+            color: #fff;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: transform 180ms ease, background 180ms ease;
+        }
+
+        .hero-btn:hover { transform: translateY(-1px); background: rgba(18, 16, 12, 0.5); }
+
+        .hero-caption {
+            min-width: 0;
+            color: white;
+            text-shadow: 0 8px 28px rgba(14, 12, 9, 0.34);
+        }
+
+        .hero-caption .eyebrow {
+            font-size: 0.72rem;
             font-weight: 600;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
-            margin-bottom: 4px;
-            display: block;
+            opacity: 0.82;
+        }
+
+        .hero-caption .title {
+            margin-top: 3px;
+            font-size: 0.92rem;
+            font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .cs-name {
-            font-size: 13px;
+
+        .hero-carousel {
+            position: relative;
+            overflow-x: auto;
+            display: flex;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            background: #ece4d9;
+        }
+
+        .hero-carousel::-webkit-scrollbar { display: none; }
+
+        .hero-slide {
+            position: relative;
+            flex: 0 0 100%;
+            scroll-snap-align: start;
+            aspect-ratio: 1 / 1.08;
+            overflow: hidden;
+            background: #ebe3d7;
+        }
+
+        .hero-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .hero-gradient {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(to top, rgba(14, 12, 9, 0.16), transparent 38%),
+                linear-gradient(to bottom, rgba(14, 12, 9, 0.42), transparent 24%);
+            pointer-events: none;
+        }
+
+        .hero-dots {
+            position: absolute;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            z-index: 2;
+            display: flex;
+            gap: 7px;
+        }
+
+        .hero-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.4);
+            transition: width 180ms ease, background 180ms ease;
+        }
+
+        .hero-dot.is-active {
+            width: 20px;
+            background: white;
+        }
+
+        .panel {
+            margin-top: -22px;
+            border-radius: 28px 28px 0 0;
+            background: linear-gradient(180deg, rgba(249, 246, 240, 0.98), rgba(246, 242, 235, 0.98));
+            box-shadow: 0 -10px 28px rgba(18, 16, 12, 0.04);
+            padding: 22px 18px 34px;
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid var(--line);
+            font-size: 0.82rem;
             font-weight: 500;
-            line-height: 1.3;
-            margin-bottom: 6px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+            color: #5f554c;
+        }
+
+        .chip.soft {
+            background: var(--soft-2);
+            color: #4c4138;
+            border-color: rgba(179, 154, 130, 0.18);
+        }
+
+        .brand {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--soft);
+        }
+
+        .product-title {
+            margin: 8px 0 0;
+            font-size: clamp(1.95rem, 6vw, 2.65rem);
+            line-height: 1.05;
+            letter-spacing: -0.04em;
+            font-weight: 700;
+        }
+
+        .description {
+            margin: 12px 0 0;
+            font-size: 1rem;
+            line-height: 1.75;
+            color: var(--muted);
+        }
+
+        .price-block {
+            margin-top: 18px;
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .discount {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 12px;
+            border-radius: 16px;
+            background: rgba(229, 90, 82, 0.08);
+            color: var(--danger);
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+
+        .price-main {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .price-main strong {
+            font-size: clamp(2rem, 7vw, 2.8rem);
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
+
+        .price-main span {
+            font-size: 0.98rem;
+            color: var(--muted);
+        }
+
+        .price-sub {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .showroom-card,
+        .section-card,
+        details.info-accordion {
+            margin-top: 18px;
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 12px 30px rgba(18, 16, 12, 0.04);
+        }
+
+        .showroom-card {
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .showroom-head {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .showroom-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--soft);
+        }
+
+        .showroom-name {
+            margin-top: 6px;
+            font-size: 1.08rem;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        .showroom-meta {
+            margin-top: 4px;
+            font-size: 0.92rem;
+            line-height: 1.65;
+            color: var(--muted);
+        }
+
+        .ghost-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--accent-2);
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .option-group + .option-group { margin-top: 16px; }
+
+        .option-label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #40362d;
+        }
+
+        .option-values {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .option-btn {
+            border: 1px solid var(--line);
+            background: white;
+            color: #5f554c;
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-size: 0.92rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 160ms ease;
+        }
+
+        .option-btn.is-selected {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            box-shadow: 0 10px 24px rgba(34, 31, 26, 0.18);
+        }
+
+        .section-card {
+            padding: 18px;
+        }
+
+        .section-eyebrow {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--soft);
+        }
+
+        .section-title {
+            margin: 6px 0 0;
+            font-size: 1.2rem;
+            line-height: 1.35;
+            font-weight: 700;
+        }
+
+        .section-body {
+            margin-top: 10px;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: var(--muted);
+            white-space: pre-line;
+        }
+
+        .recommend-wrap {
+            margin-top: 22px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .recommend-section {
+            display: grid;
+            gap: 12px;
+        }
+
+        .recommend-header {
+            display: grid;
+            gap: 4px;
+        }
+
+        .recommend-title {
+            font-size: 1.08rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .recommend-copy {
+            font-size: 0.9rem;
+            line-height: 1.65;
+            color: var(--muted);
+        }
+
+        .recommend-rail {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(216px, 72%);
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scroll-snap-type: x proximity;
+            scrollbar-width: none;
+        }
+
+        .recommend-rail::-webkit-scrollbar { display: none; }
+
+        .rec-card {
+            scroll-snap-align: start;
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            background: white;
+            overflow: hidden;
+            box-shadow: 0 12px 30px rgba(18, 16, 12, 0.04);
+        }
+
+        .rec-thumb {
+            aspect-ratio: 1.05 / 1;
+            background: #efe6db;
+        }
+
+        .rec-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .rec-body {
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .rec-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .rec-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: #f6f2eb;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #5f554c;
+        }
+
+        .rec-brand {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--soft);
+        }
+
+        .rec-name {
+            font-size: 1rem;
+            line-height: 1.45;
+            font-weight: 700;
+        }
+
+        .rec-host {
+            font-size: 0.86rem;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .rec-price {
+            font-size: 1.12rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        details.info-accordion {
             overflow: hidden;
         }
-        .cs-price {
-            font-size: 14px;
-            font-weight: 600;
-        }
 
-        /* ── 고정 하단 결제바 (Sticky Action Bar) ── */
-        .sticky-bottom-bar {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid var(--border);
-            padding: 16px 20px;
-            padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        details.info-accordion summary {
+            cursor: pointer;
+            list-style: none;
+            padding: 18px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            z-index: 200;
-        }
-        .sticky-bottom-inner {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        .sticky-price-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .sticky-label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 2px;
-        }
-        .sticky-price {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        .sticky-buy-btn {
-            background: var(--text-primary);
-            color: white;
-            padding: 16px 36px;
-            border-radius: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            font-size: 15px;
-            transition: 0.2s;
-        }
-        .sticky-buy-btn:active { background: #333; transform: scale(0.98); }
-        body { padding-bottom: 100px; }
-
-        /* ── 페이지 전환 애니메이션 ── */
-        .slide-up {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: slideUp 0.5s ease forwards;
-        }
-
-        @keyframes slideUp {
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
-
-        /* ── 장바구니 UI ── */
-        .floating-cart {
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            background: var(--bg-card);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            text-decoration: none;
-            z-index: 190;
-            transition: transform 0.2s;
-        }
-        .floating-cart:active { transform: scale(0.9); }
-        .cart-badge {
-            position: absolute;
-            top: 0; right: 0;
-            background: #FF4D4D;
-            color: white;
-            font-size: 11px;
+            gap: 14px;
+            font-size: 1rem;
             font-weight: 700;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 10px;
-            display: flex;
+        }
+
+        details.info-accordion summary::-webkit-details-marker { display: none; }
+
+        details.info-accordion .accordion-body {
+            border-top: 1px solid var(--line);
+            padding: 0 18px 18px;
+        }
+
+        .simple-form {
+            display: grid;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .simple-form input,
+        .simple-form textarea,
+        .simple-form select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: #fbfaf7;
+            padding: 14px 16px;
+            color: var(--text);
+        }
+
+        .simple-form textarea { min-height: 108px; resize: vertical; }
+
+        .form-submit {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 0 6px;
-            border: 2px solid var(--bg-card);
+            min-height: 48px;
+            border: 0;
+            border-radius: 16px;
+            background: var(--accent);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .list-stack {
+            margin-top: 18px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .list-card {
+            border-radius: 16px;
+            background: #fbfaf7;
+            border: 1px solid var(--line);
+            padding: 14px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .list-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: start;
+            font-size: 0.88rem;
+            color: var(--muted);
+        }
+
+        .list-name {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .list-text {
+            font-size: 0.92rem;
+            line-height: 1.7;
+            color: #4d433a;
+            white-space: pre-line;
+        }
+
+        .sticky-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
+            background: rgba(248, 245, 239, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(24, 22, 18, 0.08);
+            padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+        }
+
+        .sticky-inner {
+            max-width: 720px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .sticky-price {
+            display: grid;
+            gap: 3px;
+        }
+
+        .sticky-price .label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .sticky-price .value {
+            font-size: 1.52rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+        }
+
+        .sticky-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 102px;
+            min-height: 52px;
+            padding: 0 18px;
+            border-radius: 18px;
+            border: 0;
+            font-size: 0.98rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .sticky-btn.secondary {
+            background: #ede8df;
+            color: var(--text);
+        }
+
+        .sticky-btn.primary {
+            background: var(--accent);
+            color: white;
         }
 
         .modal-overlay {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(4px);
-            z-index: 300;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        .modal-content {
-            background: white;
-            width: 100%;
-            max-width: 600px;
-            border-radius: 24px 24px 0 0;
-            padding: 32px 24px;
-            box-shadow: 0 -4px 24px rgba(0,0,0,0.1);
-        }
-        .rec-card {
-            flex: 0 0 120px;
-            text-decoration: none;
-            color: inherit;
-        }
-        .rec-img {
-            width: 100%;
-            height: 120px;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #F0EFEC;
-            margin-bottom: 8px;
-        }
-        .rec-img img { width: 100%; height: 100%; object-fit: cover; }
-        .rec-brand { font-size: 9px; color: var(--accent-dark); font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
-        .rec-name { font-size: 11px; font-weight: 500; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .rec-price { font-size: 12px; font-weight: 600; }
-    </style>
-    <!-- 트래킹 및 세션 스크립트 -->
-    <script>
-        function getSessionId() {
-            let sessionId = sessionStorage.getItem('affilistay_session_id');
-            if (!sessionId) {
-                sessionId = 'sess_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-                sessionStorage.setItem('affilistay_session_id', sessionId);
-            }
-            return sessionId;
-        }
-
-        const pageEnterTime = new Date();
-        const sessionId = getSessionId();
-
-        window.addEventListener('beforeunload', function() {
-            const pageLeaveTime = new Date();
-            const durationSeconds = Math.round((pageLeaveTime - pageEnterTime) / 1000);
-            
-            const data = {
-                session_id: sessionId,
-                product_id: {{ product.id }},
-                host_id: {{ product.owner_id if product.owner_id else 'null' }},
-                page_url: window.location.href,
-                enter_time: pageEnterTime.toISOString(),
-                duration_seconds: durationSeconds
-            };
-
-            // beacon을 통해 브라우저가 닫힐 때도 안정적으로 서버에 전송
-            navigator.sendBeacon('/api/track/page_view', JSON.stringify(data));
-        });
-    </script>
-</head>
-<body>
-
-    <!-- 네비게이션 -->
-    <nav class="detail-nav">
-        <div class="detail-nav-inner">
-            <a href="{{ return_to }}" class="back-btn" id="back-button">←</a>
-            <span class="nav-title">제품 상세</span>
-        </div>
-    </nav>
-
-    <!-- 제품 이미지 (캐러셀) -->
-    <section class="product-image-section slide-up">
-        <div class="product-image-wrap" id="image-carousel">
-            {% for img in images %}
-                <img src="data:image/jpeg;base64,{{ img.image_data }}" class="product-slide" alt="">
-            {% endfor %}
-            {% if images|length > 1 %}
-            <div class="carousel-dots">
-                {% for _ in images %}
-                <div class="dot {% if loop.first %}active{% endif %}"></div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-    </section>
-
-    <!-- 제품 정보 -->
-    <section class="product-details slide-up delay-1">
-        <div style="display: flex; gap: 6px; margin-bottom: 24px;">
-            {% if product_category_label %}
-            <span class="product-badge" style="background: var(--accent); color: white; border: none;">{{ product_category_label }}</span>
-            {% endif %}
-            {% if room_label %}
-            <span class="product-badge">{{ room_label }}</span>
-            {% endif %}
-        </div>
-        <div class="brand-name">{{ product.brand_name }}</div>
-        <h1 class="product-name">{{ product.product_name }}</h1>
-
-        {% if product.original_price and product.original_price > product.price %}
-        <div class="original-price-row">
-            <span class="discount-badge">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}%</span>
-            <span class="original-price">{{ "{:,}".format(product.original_price) }}원</span>
-        </div>
-        {% endif %}
-
-        <div class="price-row">
-            <span class="price-label">Guest Price</span>
-            <span class="price-value">{{ "{:,}".format(product.price) }}</span>
-            <span class="price-unit">원</span>
-        </div>
-        <p style="font-size: 11px; color: var(--text-muted); margin-top: -16px; margin-bottom: 24px;">* 배송비 별도 / 환불·교환 시 왕복 배송비 고객 부담</p>
-
-    <!-- 탭 네비게이션 -->
-    <div class="pdp-tabs">
-        <div class="pdp-tab active" onclick="switchTab('info')">상품정보</div>
-        <div class="pdp-tab" onclick="switchTab('reviews')">리뷰 <span>{{ reviews|length }}</span></div>
-        <div class="pdp-tab" onclick="switchTab('inquiries')">문의 <span>{{ inquiries|length }}</span></div>
-        <div class="pdp-tab" onclick="switchTab('policy')">배송/환불</div>
-    </div>
-
-    <!-- [Tab 1] 상품정보 -->
-    <div id="tab-info" class="tab-content active">
-        <!-- 기존 상세 설명 -->
-        {% if product.description %}
-        <div class="product-description">
-            {{ product.description }}
-        </div>
-        {% endif %}
-
-        {% if product.detailed_description %}
-        <div class="detailed-context">
-            <h3 class="detailed-title">제품 상세 정보</h3>
-            <div class="detailed-content">{{ product.detailed_description }}</div>
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- [Tab 2] 리뷰 -->
-    <div id="tab-reviews" class="tab-content">
-        <div class="submission-form">
-            <div class="form-title">구매 후기 남기기</div>
-            <form action="/shop/{{ qr_code_id }}/product/{{ product.id }}/review" method="POST">
-                <div class="form-row">
-                    <label>이름</label>
-                    <input type="text" name="customer_name" required placeholder="수령인 성함">
-                </div>
-                <div class="form-row">
-                    <label>별점</label>
-                    <select name="rating">
-                        <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
-                        <option value="4">⭐⭐⭐⭐ (4/5)</option>
-                        <option value="3">⭐⭐⭐ (3/5)</option>
-                        <option value="2">⭐⭐ (2/5)</option>
-                        <option value="1">⭐ (1/5)</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <label>후기 내용</label>
-                    <textarea name="comment" rows="3" required placeholder="제품은 어떠셨나요?"></textarea>
-                </div>
-                <button type="submit" class="form-submit">리뷰 등록</button>
-            </form>
-        </div>
-
-        <div class="item-list">
-            {% if reviews %}
-                {% for r in reviews %}
-                <div class="item-card">
-                    <div class="item-meta">
-                        <span class="item-name">{{ r.customer_name }}</span>
-                        <span class="item-rating">
-                            {% for _ in range(r.rating) %}⭐{% endfor %}
-                        </span>
-                    </div>
-                    <div class="item-text">{{ r.comment }}</div>
-                    <div class="item-meta" style="margin-top:8px; font-size:10px;">{{ r.created_at.strftime('%Y.%m.%d') }}</div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p style="text-align:center; color:#999; font-size:13px; padding:40px 0;">아직 작성된 리뷰가 없습니다.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- [Tab 3] 문의 -->
-    <div id="tab-inquiries" class="tab-content">
-        <div class="submission-form">
-            <div class="form-title">취소/환불/기타 문의하기</div>
-            <form action="/shop/{{ qr_code_id }}/product/{{ product.id }}/inquiry" method="POST">
-                <div class="form-row">
-                    <label>성함</label>
-                    <input type="text" name="customer_name" required placeholder="문의자 성함">
-                </div>
-                <div class="form-row">
-                    <label>문의 유형</label>
-                    <select name="type">
-                        <option value="배송">배송 문의</option>
-                        <option value="취소/환불">취소/환불 문의</option>
-                        <option value="상품">상품 문의</option>
-                        <option value="기타">기타</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <label>문의 내용</label>
-                    <textarea name="content" rows="3" required placeholder="문의하실 내용을 상세히 적어주세요."></textarea>
-                </div>
-                <button type="submit" class="form-submit">문의 등록</button>
-            </form>
-        </div>
-
-        <div class="item-list">
-            {% if inquiries %}
-                {% for q in inquiries %}
-                <div class="item-card">
-                    <div class="item-meta">
-                        <span><span class="item-badge">{{ q.type }}</span> <span class="item-name">{{ q.customer_name }}</span></span>
-                        <span>{{ q.created_at.strftime('%Y.%m.%d') }}</span>
-                    </div>
-                    <div class="item-text">{{ q.content }}</div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p style="text-align:center; color:#999; font-size:13px; padding:40px 0;">문의 내역이 없습니다.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- [Tab 4] 배송/환불 -->
-    <div id="tab-policy" class="tab-content">
-        <div class="policy-section">
-            <h4 class="policy-title">배송 정보</h4>
-            <div class="policy-text">
-                • 배송 방식: 브랜드사 직배송 (택배)<br>
-                • 배송비: 제품별 별도 부과 (구매 화면에서 확인 가능)<br>
-                • 배송 기간: 결제 완료 후 평균 2~5일 이내 (영업일 기준)
-            </div>
-        </div>
-        <div class="policy-section">
-            <h4 class="policy-title">교환/환불 정책</h4>
-            <div class="policy-text">
-                • 교환/반품 기간: 상품 수령 후 7일 이내 신청 가능<br>
-                • 단순 변심 시: 왕복 배송비 고객 부담<br>
-                • 상품 불량 시: 배송비 전액 브랜드사 부담<br>
-                • 불가 사유: 사용 흔적이 있거나 패키지가 훼손된 경우 환불이 제한될 수 있습니다.
-            </div>
-        </div>
-        <div class="policy-section">
-            <h4 class="policy-title">취소 안내</h4>
-            <div class="policy-text">
-                • [배송 준비 중] 이전 단계에서는 즉시 취소 요청이 가능하며, 이후 단계에서는 반품 절차로 진행될 수 있습니다.
-            </div>
-        </div>
-    </div>
-</section>
-
-    <!-- 멀티 유니버스 크로스셀 위젯 -->
-    {% if cross_sell_products %}
-    <section class="cross-sell-section slide-up delay-2">
-        <div class="cs-header">
-            <h3 class="cs-title">다른 감성 숙소 호스트들의 큐레이션 훔쳐보기</h3>
-        </div>
-        <div class="cs-scroll-wrap">
-            {% for item in cross_sell_products %}
-            <a href="/shop/{{ qr_code_id }}/product/{{ item.id }}?return_to={{ return_to_encoded }}" class="cs-card">
-                <div class="cs-img-wrap">
-                    {% if item.image_url %}
-                        <img src="data:image/jpeg;base64,{{ item.image_url }}" alt="">
-                    {% else %}
-                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.2;font-size:24px;">📦</div>
-                    {% endif %}
-                </div>
-                <div class="cs-info">
-                    <div class="cs-host">By {{ item.host_name }}</div>
-                    <div class="cs-name">{{ item.product_name }}</div>
-                    <div class="cs-price">{{ "{:,}".format(item.price) }}원</div>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
-
-    <!-- 하단 고정 결제바 -->
-    <div class="sticky-bottom-bar slide-up delay-3">
-        <div class="sticky-bottom-inner">
-            <div class="sticky-price-info">
-                {% if product.original_price and product.original_price > product.price %}
-                <span class="sticky-label" style="color:#FF4D4D; font-weight:700;">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}% DISCOUNT</span>
-                {% else %}
-                <span class="sticky-label">Guest Price</span>
-                {% endif %}
-                <span class="sticky-price">{{ "{:,}".format(product.price) }}원</span>
-            </div>
-            <div style="display:flex; gap:6px;">
-                <button onclick="addToCart()" class="sticky-buy-btn" style="background:#EEEDEA; color:var(--text-primary); padding:16px 20px; font-size:14px;">
-                    장바구니 담기
-                </button>
-                <a href="/shop/{{ qr_code_id }}/order/{{ product.id }}?return_to={{ return_to_encoded }}" class="sticky-buy-btn" id="buy-submit" style="padding:16px 20px; font-size:14px; text-align:center;">
-                    바로 구매
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- 플로팅 장바구니 아이콘 -->
-    <a href="/shop/{{ qr_code_id }}/cart?return_to={{ return_to_encoded }}" class="floating-cart">
-        <span style="font-size: 20px;">🛒</span>
-        <div id="cart-badge" class="cart-badge" style="display:none;">0</div>
-    </a>
-
-    <!-- 장바구니 바텀 시트 (Bottom Sheet) -->
-    <style>
-        .bottom-sheet-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
+            inset: 0;
+            background: rgba(14, 12, 9, 0.52);
             display: none;
             align-items: flex-end;
             justify-content: center;
+            z-index: 50;
+            padding: 0 14px;
         }
-        .bottom-sheet {
-            background: #fff;
-            width: 100%;
-            max-width: 600px;
-            border-radius: 20px 20px 0 0;
-            padding: 24px 20px;
+
+        .modal-sheet {
+            width: min(720px, 100%);
+            border-radius: 24px 24px 0 0;
+            background: white;
+            padding: 18px 18px calc(22px + env(safe-area-inset-bottom));
             transform: translateY(100%);
-            transition: transform 0.3s ease-out;
-            max-height: 85vh;
-            overflow-y: auto;
+            transition: transform 220ms ease;
         }
-        .bottom-sheet.open {
-            transform: translateY(0);
+
+        .modal-sheet.is-open { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 44px;
+            height: 4px;
+            border-radius: 999px;
+            background: #d6cec3;
+            margin: 0 auto 18px;
+        }
+
+        .sheet-actions {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (min-width: 721px) {
+            .hero-slide { aspect-ratio: 1.2 / 1; }
+            .panel {
+                margin-top: -26px;
+                padding: 28px 24px 40px;
+            }
+            .recommend-rail {
+                grid-auto-columns: minmax(250px, 31%);
+            }
+        }
+
+        @media (max-width: 420px) {
+            .hero-topbar { padding: 14px; }
+            .panel { padding-left: 16px; padding-right: 16px; }
+            .sticky-inner {
+                grid-template-columns: 1fr 1fr;
+            }
+            .sticky-price {
+                grid-column: 1 / -1;
+            }
+            .sticky-btn {
+                min-width: 0;
+                width: 100%;
+            }
         }
     </style>
-    <div id="cart-modal" class="bottom-sheet-overlay" onclick="closeCartModal(event)">
-        <div class="bottom-sheet" id="cart-sheet" onclick="event.stopPropagation()">
-            <div style="width:40px; height:4px; background:#ddd; border-radius:2px; margin: 0 auto 20px;"></div>
-            
-            <div style="text-align:center; margin-bottom: 24px;">
-                <div style="font-size:32px; margin-bottom:8px;">🛍️</div>
-                <h3 style="font-size:18px; font-weight:600; margin-bottom:6px;">장바구니에 담겼습니다</h3>
-                <p style="font-size:13px; color:var(--text-secondary);">장바구니로 이동하시겠습니까?</p>
-            </div>
-            
-            <div style="display:flex; gap:12px; margin-bottom:32px;">
-                <button onclick="closeCartModal(event, true)" style="flex:1; padding:14px; background:#F0EFEC; border:none; border-radius:10px; font-weight:600; font-family:inherit; cursor:pointer;">계속 쇼핑하기</button>
-                <a href="/shop/{{ qr_code_id }}/cart?return_to={{ return_to_encoded }}" style="flex:1; padding:14px; background:var(--text-primary); color:white; border:none; border-radius:10px; font-weight:600; font-family:inherit; text-align:center; text-decoration:none;">장바구니 가기</a>
+</head>
+<body>
+    <div class="shell">
+        <section class="hero">
+            <div class="hero-topbar">
+                <div class="left-group">
+                    <a href="{{ return_to }}" class="hero-btn" aria-label="이전으로">←</a>
+                    <div class="hero-caption">
+                        <div class="eyebrow">Product Detail</div>
+                        <div class="title">{{ product.host_name or product.brand_name }}</div>
+                    </div>
+                </div>
+                <a href="{{ showroom_path }}" class="hero-btn" aria-label="숙소 둘러보기">⌂</a>
             </div>
 
-            <div style="border-top: 1px solid var(--border); padding-top: 24px;">
-                <h4 style="font-size:14px; font-weight:700; margin-bottom:16px;">함께 보면 좋은 상품 추천 ✨</h4>
-                <div class="cs-scroll-wrap" id="cart-recommendations" style="padding:0;">
-                    <!-- JS로 추천 상품 주입 -->
+            <div class="hero-carousel" id="hero-carousel">
+                {% if gallery_images %}
+                    {% for image in gallery_images %}
+                    <div class="hero-slide">
+                        <img src="data:image/jpeg;base64,{{ image }}" alt="{{ product.product_name }}">
+                        <div class="hero-gradient"></div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="hero-slide">
+                        <img src="/static/product.png" alt="{{ product.product_name }}">
+                        <div class="hero-gradient"></div>
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if gallery_images|length > 1 %}
+            <div class="hero-dots" id="hero-dots">
+                {% for _ in gallery_images %}
+                <div class="hero-dot {% if loop.first %}is-active{% endif %}"></div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        <main class="panel">
+            <div class="chip-row">
+                {% if product_category_label %}
+                <span class="chip soft">{{ product.get("category_icon", "✦") }} {{ product_category_label }}</span>
+                {% endif %}
+                {% if room_label %}
+                <span class="chip">{{ product.get("room_icon", "⌂") }} {{ room_label }}</span>
+                {% endif %}
+            </div>
+
+            <div class="brand">{{ product.brand_name }}</div>
+            <h1 class="product-title">{{ product.product_name }}</h1>
+            {% if product.description %}
+            <p class="description">{{ product.description }}</p>
+            {% endif %}
+
+            <div class="price-block">
+                {% if product.original_price and product.original_price > product.price %}
+                <div class="discount">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}% 할인</div>
+                {% endif %}
+                <div class="price-main">
+                    <strong>{{ "{:,}".format(product.price) }}원</strong>
+                    {% if product.original_price and product.original_price > product.price %}
+                    <span><s>{{ "{:,}".format(product.original_price) }}원</s></span>
+                    {% endif %}
                 </div>
+            </div>
+            <div class="price-sub">배송비는 브랜드별로 달라질 수 있으며 주문 단계에서 다시 안내됩니다.</div>
+
+            <section class="showroom-card">
+                <div class="showroom-head">
+                    <div>
+                        <div class="showroom-label">Showroom Context</div>
+                        <div class="showroom-name">{{ product.host_name or "AFFILISTAY Host" }}</div>
+                        <div class="showroom-meta">
+                            {{ product.host_location or "숙소 위치 정보 준비 중" }}<br>
+                            실제 머무는 공간에서 발견한 제품이라는 맥락까지 함께 보고 싶다면 쇼룸 전체를 둘러보세요.
+                        </div>
+                    </div>
+                    <a href="{{ showroom_path }}" class="ghost-link">숙소 둘러보기</a>
+                </div>
+            </section>
+
+            {% if options %}
+            <section class="section-card">
+                <div class="section-eyebrow">Options</div>
+                <h2 class="section-title">지금 바로 고를 수 있게 옵션을 먼저 정리했어요.</h2>
+                {% for option in options %}
+                <div class="option-group">
+                    <div class="option-label">{{ option.name }}</div>
+                    <div class="option-values">
+                        {% for value in option.values %}
+                        <button
+                            type="button"
+                            class="option-btn"
+                            data-option-name="{{ option.name }}"
+                            data-option-value="{{ value }}"
+                        >{{ value }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            {% if product.detailed_description %}
+            <section class="section-card">
+                <div class="section-eyebrow">Product Story</div>
+                <h2 class="section-title">이 제품을 공간에 두면 어떤 결이 생기는지</h2>
+                <div class="section-body">{{ product.detailed_description }}</div>
+            </section>
+            {% endif %}
+
+            <section class="recommend-wrap">
+                {% if same_showroom_products %}
+                <section class="recommend-section">
+                    <div class="recommend-header">
+                        <div class="recommend-title">이 숙소 안에서 함께 보는 다른 제품</div>
+                        <div class="recommend-copy">같은 공간 맥락에서 함께 배치된 제품을 먼저 보여드릴게요. 객실 무드가 가장 덜 끊기는 흐름입니다.</div>
+                    </div>
+                    <div class="recommend-rail">
+                        {% for item in same_showroom_products %}
+                        <a href="{{ item.detail_path }}" class="rec-card">
+                            <div class="rec-thumb">
+                                <img src="{% if item.primary_image %}data:image/jpeg;base64,{{ item.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ item.product_name }}">
+                            </div>
+                            <div class="rec-body">
+                                <div class="rec-meta">
+                                    <span class="rec-pill">{{ item.room_icon }} {{ item.room_label }}</span>
+                                    <span class="rec-pill">{{ item.category_icon }} {{ item.category_label }}</span>
+                                </div>
+                                <div>
+                                    <div class="rec-brand">{{ item.brand_name }}</div>
+                                    <div class="rec-name">{{ item.product_name }}</div>
+                                </div>
+                                <div class="rec-host">{{ item.host_name }}{% if item.host_location %} · {{ item.host_location }}{% endif %}</div>
+                                <div class="rec-price">{{ "{:,}".format(item.price) }}원</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if host_curated_products %}
+                <section class="recommend-section">
+                    <div class="recommend-header">
+                        <div class="recommend-title">같은 호스트가 다른 공간에서 고른 제품</div>
+                        <div class="recommend-copy">지금 보는 제품이 마음에 들었다면, 같은 호스트가 다른 방과 동선에서 어떻게 이어 붙였는지도 같이 확인해보세요.</div>
+                    </div>
+                    <div class="recommend-rail">
+                        {% for item in host_curated_products %}
+                        <a href="{{ item.detail_path }}" class="rec-card">
+                            <div class="rec-thumb">
+                                <img src="{% if item.primary_image %}data:image/jpeg;base64,{{ item.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ item.product_name }}">
+                            </div>
+                            <div class="rec-body">
+                                <div class="rec-meta">
+                                    <span class="rec-pill">{{ item.room_icon }} {{ item.room_label }}</span>
+                                    <span class="rec-pill">{{ item.category_icon }} {{ item.category_label }}</span>
+                                </div>
+                                <div>
+                                    <div class="rec-brand">{{ item.brand_name }}</div>
+                                    <div class="rec-name">{{ item.product_name }}</div>
+                                </div>
+                                <div class="rec-host">{{ item.host_name }}</div>
+                                <div class="rec-price">{{ "{:,}".format(item.price) }}원</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if similar_products %}
+                <section class="recommend-section">
+                    <div class="recommend-header">
+                        <div class="recommend-title">비슷한 감도의 제품 추천</div>
+                        <div class="recommend-copy">무드만 비슷한 막연한 추천이 아니라, 같은 카테고리와 공간 맥락, 가격대까지 함께 고려해서 가까운 제품을 아래에 모았습니다.</div>
+                    </div>
+                    <div class="recommend-rail">
+                        {% for item in similar_products %}
+                        <a href="{{ item.detail_path }}" class="rec-card">
+                            <div class="rec-thumb">
+                                <img src="{% if item.primary_image %}data:image/jpeg;base64,{{ item.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ item.product_name }}">
+                            </div>
+                            <div class="rec-body">
+                                <div class="rec-meta">
+                                    <span class="rec-pill">{{ item.room_icon }} {{ item.room_label }}</span>
+                                    <span class="rec-pill">{{ item.category_icon }} {{ item.category_label }}</span>
+                                    {% if item.discount_rate > 0 %}
+                                    <span class="rec-pill">{{ item.discount_rate }}% 할인</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="rec-brand">{{ item.brand_name }}</div>
+                                    <div class="rec-name">{{ item.product_name }}</div>
+                                </div>
+                                <div class="rec-host">{{ item.host_name }}{% if item.host_location %} · {{ item.host_location }}{% endif %}</div>
+                                <div class="rec-price">{{ "{:,}".format(item.price) }}원</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+            </section>
+
+            <details class="info-accordion">
+                <summary>리뷰 {{ reviews|length }}개 <span>＋</span></summary>
+                <div class="accordion-body">
+                    <form action="/shop/{{ qr_code_id }}/product/{{ product.id }}/review" method="POST" class="simple-form">
+                        <input type="text" name="customer_name" required placeholder="이름">
+                        <select name="rating">
+                            <option value="5">★★★★★ 아주 만족해요</option>
+                            <option value="4">★★★★ 만족해요</option>
+                            <option value="3">★★★ 보통이에요</option>
+                            <option value="2">★★ 아쉬워요</option>
+                            <option value="1">★ 별로예요</option>
+                        </select>
+                        <textarea name="comment" required placeholder="이 제품이 공간에서 어땠는지 남겨주세요."></textarea>
+                        <button type="submit" class="form-submit">리뷰 남기기</button>
+                    </form>
+
+                    {% if reviews %}
+                    <div class="list-stack">
+                        {% for review in reviews %}
+                        <div class="list-card">
+                            <div class="list-head">
+                                <span class="list-name">{{ review.customer_name }}</span>
+                                <span>{{ review.created_at.strftime('%Y.%m.%d') }}</span>
+                            </div>
+                            <div class="list-text">평점 {{ review.rating }}/5 · {{ review.comment }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="section-body">아직 남겨진 리뷰가 없어요. 첫 후기를 남겨보세요.</div>
+                    {% endif %}
+                </div>
+            </details>
+
+            <details class="info-accordion">
+                <summary>문의 남기기 <span>＋</span></summary>
+                <div class="accordion-body">
+                    <form action="/shop/{{ qr_code_id }}/product/{{ product.id }}/inquiry" method="POST" class="simple-form">
+                        <input type="text" name="customer_name" required placeholder="이름">
+                        <select name="type">
+                            <option value="상품">상품 문의</option>
+                            <option value="배송">배송 문의</option>
+                            <option value="취소/환불">취소/환불 문의</option>
+                            <option value="기타">기타 문의</option>
+                        </select>
+                        <textarea name="content" required placeholder="궁금한 점을 남겨주세요."></textarea>
+                        <button type="submit" class="form-submit">문의 남기기</button>
+                    </form>
+
+                    {% if inquiries %}
+                    <div class="list-stack">
+                        {% for inquiry in inquiries %}
+                        <div class="list-card">
+                            <div class="list-head">
+                                <span class="list-name">{{ inquiry.customer_name }} · {{ inquiry.type }}</span>
+                                <span>{{ inquiry.created_at.strftime('%Y.%m.%d') }}</span>
+                            </div>
+                            <div class="list-text">{{ inquiry.content }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="section-body">아직 공개된 문의가 없어요.</div>
+                    {% endif %}
+                </div>
+            </details>
+
+            <details class="info-accordion">
+                <summary>배송 · 교환 · 환불 안내 <span>＋</span></summary>
+                <div class="accordion-body">
+                    <div class="section-body">
+                        배송은 브랜드별로 직접 진행되며, 상세 배송비와 출고 일정은 주문 단계에서 다시 확인하실 수 있어요.
+                        수령 후 7일 이내에는 단순 변심 교환·환불 접수가 가능하고, 제품 하자나 오배송은 판매처 기준에 맞춰 빠르게 처리됩니다.
+                    </div>
+                </div>
+            </details>
+        </main>
+    </div>
+
+    <div class="sticky-bar">
+        <div class="sticky-inner">
+            <div class="sticky-price">
+                <span class="label">{% if product.original_price and product.original_price > product.price %}{{ ((product.original_price - product.price) / product.original_price * 100) | int }}% Discount{% else %}Guest Price{% endif %}</span>
+                <span class="value">{{ "{:,}".format(product.price) }}원</span>
+            </div>
+            <button type="button" class="sticky-btn secondary" onclick="addToCart()">장바구니</button>
+            <a
+                href="/shop/{{ qr_code_id }}/order/{{ product.id }}?return_to={{ return_to_encoded }}"
+                class="sticky-btn primary"
+                id="buy-submit"
+                data-base-href="/shop/{{ qr_code_id }}/order/{{ product.id }}?return_to={{ return_to_encoded }}"
+            >바로 구매</a>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="cart-modal" onclick="closeCartModal(event)">
+        <div class="modal-sheet" id="cart-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="section-eyebrow">Added</div>
+            <div class="section-title">장바구니에 담았어요.</div>
+            <div class="section-body">지금 바로 결제로 넘어가거나, 이 숙소 안의 다른 제품을 더 둘러보셔도 괜찮아요.</div>
+            <div class="sheet-actions">
+                <button type="button" class="sticky-btn secondary" style="width:100%;" onclick="closeCartModal(null, true)">계속 둘러보기</button>
+                <a href="/shop/{{ qr_code_id }}/cart?return_to={{ return_to_encoded }}" class="sticky-btn primary" style="width:100%;">장바구니 가기</a>
             </div>
         </div>
     </div>
@@ -989,177 +1050,117 @@
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
-        data-live-message="상품 정보가 새로 반영되어 화면을 업데이트하고 있어요."
+        data-live-message="제품 정보가 새로 반영되어 화면을 업데이트하고 있어요."
         data-live-interval="5000"
     ></script>
     <script>
-        // 탭 전환 로직
-        function switchTab(tabName) {
-            // 모든 탭 비활성화
-            document.querySelectorAll('.pdp-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            // 선택한 탭 활성화
-            const targetTab = Array.from(document.querySelectorAll('.pdp-tab')).find(t => t.innerText.includes(
-                tabName === 'info' ? '상품정보' : (tabName === 'reviews' ? '리뷰' : (tabName === 'inquiries' ? '문의' : '배송/환불'))
-            ));
-            if (targetTab) targetTab.classList.add('active');
-            
-            const content = document.getElementById('tab-' + tabName);
-            if (content) content.classList.add('active');
-
-            // URL 업데이트 (히스토리)
-            const url = new URL(window.location);
-            url.searchParams.set('tab', tabName);
-            window.history.replaceState({}, '', url);
+        const heroCarousel = document.getElementById("hero-carousel");
+        const heroDots = Array.from(document.querySelectorAll(".hero-dot"));
+        if (heroCarousel && heroDots.length > 0) {
+            heroCarousel.addEventListener("scroll", () => {
+                const index = Math.round(heroCarousel.scrollLeft / heroCarousel.clientWidth);
+                heroDots.forEach((dot, dotIndex) => {
+                    dot.classList.toggle("is-active", dotIndex === index);
+                });
+            }, { passive: true });
         }
 
-        // 초기 탭 로드 (URL 파라미터 확인)
-        window.addEventListener('load', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const tab = urlParams.get('tab');
-            if (tab) switchTab(tab);
+        const selectedOptions = {};
+        const optionButtons = Array.from(document.querySelectorAll(".option-btn"));
+        optionButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const optionName = button.dataset.optionName;
+                const optionValue = button.dataset.optionValue;
+                const siblings = button.parentElement.querySelectorAll(".option-btn");
+                siblings.forEach((item) => item.classList.remove("is-selected"));
+                button.classList.add("is-selected");
+                selectedOptions[optionName] = optionValue;
+                updateBuyLink();
+            });
         });
 
-        // 캐러셀 닷 업데이트
-        const carousel = document.getElementById('image-carousel');
-        const dots = document.querySelectorAll('.dot');
-        if (carousel && dots.length > 0) {
-            carousel.addEventListener('scroll', () => {
-                const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-                dots.forEach((dot, i) => {
-                    dot.classList.toggle('active', i === index);
-                });
+        function updateBuyLink() {
+            const buyBtn = document.getElementById("buy-submit");
+            if (!buyBtn) return;
+            const url = new URL(buyBtn.dataset.baseHref, window.location.origin);
+            const nextParams = new URLSearchParams();
+            Object.entries(selectedOptions).forEach(([key, value]) => nextParams.set(key, value));
+            const returnTo = url.searchParams.get("return_to");
+            if (returnTo) nextParams.set("return_to", returnTo);
+            buyBtn.setAttribute("href", url.pathname + (nextParams.toString() ? `?${nextParams.toString()}` : ""));
+        }
+
+        function ensureDefaultOptions() {
+            const groups = document.querySelectorAll(".option-values");
+            groups.forEach((group) => {
+                const first = group.querySelector(".option-btn");
+                if (first && !group.querySelector(".option-btn.is-selected")) {
+                    first.click();
+                }
             });
         }
 
-        // 옵션 선택 로직
-        const selectedOptions = {};
-        function selectOption(btn, name, value) {
-            const group = btn.closest('.option-values');
-            group.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedOptions[name] = value;
-            
-            // 구매 링크에 옵션 쿼리 추가 (또는 상태 유지)
-            updateBuyLink();
-        }
-
-        function updateBuyLink() {
-            const buyBtn = document.getElementById('buy-submit');
-            if (!buyBtn) return;
-            const currentHref = buyBtn.getAttribute('href');
-            const url = new URL(currentHref, window.location.origin);
-            const nextParams = new URLSearchParams(selectedOptions);
-            const returnTo = url.searchParams.get('return_to');
-            if (returnTo) {
-                nextParams.set('return_to', returnTo);
-            }
-            const query = nextParams.toString();
-            buyBtn.setAttribute('href', url.pathname + (query ? '?' + query : ''));
-        }
-
-        // 장바구니 로직
-        function updateCartBadge() {
-            let cart = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
-            const badge = document.getElementById('cart-badge');
-            if (badge) {
-                badge.innerText = cart.length;
-                badge.style.display = cart.length > 0 ? 'flex' : 'none';
-            }
+        function updateCartPayloadCount() {
+            const badgeSource = JSON.parse(localStorage.getItem("affilistay_cart") || "[]");
+            return badgeSource.length;
         }
 
         function addToCart() {
-            // 옵션 필수 검증 (만약 옵션이 있다면)
-            const optionGroups = document.querySelectorAll('.option-group');
+            const optionGroups = document.querySelectorAll(".option-values");
             if (optionGroups.length > 0 && Object.keys(selectedOptions).length < optionGroups.length) {
-                alert('모든 옵션을 선택해주세요.');
+                alert("옵션을 먼저 선택해주세요.");
                 return;
             }
 
-            let cart = JSON.parse(localStorage.getItem('affilistay_cart') || '[]');
-            const productInfo = {
+            const cart = JSON.parse(localStorage.getItem("affilistay_cart") || "[]");
+            const payload = {
                 id: {{ product.id }},
-                qr_code_id: '{{ qr_code_id }}',
-                name: '{{ product.product_name | replace("'", "\\'") }}',
-                brand: '{{ product.brand_name | replace("'", "\\'") }}',
+                qr_code_id: "{{ qr_code_id }}",
+                name: {{ product.product_name|tojson }},
+                brand: {{ product.brand_name|tojson }},
                 price: {{ product.price }},
-                image: '{{ product.image_url }}',
+                image: {{ (gallery_images[0] if gallery_images else product.image_url)|tojson }},
                 options: selectedOptions,
                 quantity: 1,
                 added_at: new Date().getTime()
             };
 
-            // 동일 상품/옵션 체크
-            const existingIdx = cart.findIndex(item => 
-                item.id === productInfo.id && 
-                JSON.stringify(item.options) === JSON.stringify(productInfo.options)
+            const existingIndex = cart.findIndex((item) =>
+                item.id === payload.id && JSON.stringify(item.options || {}) === JSON.stringify(payload.options || {})
             );
 
-            if (existingIdx >= 0) {
-                cart[existingIdx].quantity += 1;
+            if (existingIndex >= 0) {
+                cart[existingIndex].quantity += 1;
             } else {
-                cart.push(productInfo);
+                cart.push(payload);
             }
 
-            localStorage.setItem('affilistay_cart', JSON.stringify(cart));
-            updateCartBadge();
+            localStorage.setItem("affilistay_cart", JSON.stringify(cart));
             showCartModal();
         }
 
-        async function showCartModal() {
-            const overlay = document.getElementById('cart-modal');
-            const sheet = document.getElementById('cart-sheet');
-            if(overlay && sheet) {
-                overlay.style.display = 'flex';
-                // Trigger reflow
-                void sheet.offsetWidth;
-                sheet.classList.add('open');
-            }
-
-            // 추천 상품 불러오기
-            try {
-                const response = await fetch(`/api/recommendations?product_id={{ product.id }}`);
-                const data = await response.json();
-                const recContainer = document.getElementById('cart-recommendations');
-                if(data.recommendations && data.recommendations.length > 0) {
-                    let html = '';
-                    data.recommendations.forEach(item => {
-                        const imgTag = item.image_url ? `<img src="data:image/jpeg;base64,${item.image_url}" alt="">` : `<div style="width:100%;height:100%;background:#eee;"></div>`;
-                        html += `
-                        <a href="/shop/${item.qr_code_id}/product/${item.id}?return_to={{ return_to_encoded }}" class="rec-card">
-                            <div class="rec-img">${imgTag}</div>
-                            <div class="rec-brand">${item.brand_name}</div>
-                            <div class="rec-name">${item.product_name}</div>
-                            <div class="rec-price">${item.price.toLocaleString()}원</div>
-                        </a>
-                        `;
-                    });
-                    recContainer.innerHTML = html;
-                } else {
-                    recContainer.innerHTML = '<div style="font-size:12px;color:#999;">추천 상품이 없습니다.</div>';
-                }
-            } catch(e) {
-                console.error(e);
-            }
+        function showCartModal() {
+            const overlay = document.getElementById("cart-modal");
+            const sheet = document.getElementById("cart-sheet");
+            overlay.style.display = "flex";
+            void sheet.offsetWidth;
+            sheet.classList.add("is-open");
         }
 
-        function closeCartModal(event, force=false) {
-            if (event && !force && event.target.id !== 'cart-modal') return;
-            
-            const overlay = document.getElementById('cart-modal');
-            const sheet = document.getElementById('cart-sheet');
-            if(sheet && overlay) {
-                sheet.classList.remove('open');
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                }, 300);
-            }
+        function closeCartModal(event, force = false) {
+            if (event && !force && event.target.id !== "cart-modal") return;
+            const overlay = document.getElementById("cart-modal");
+            const sheet = document.getElementById("cart-sheet");
+            sheet.classList.remove("is-open");
+            setTimeout(() => {
+                overlay.style.display = "none";
+            }, 220);
         }
 
-        // 초기화
-        window.addEventListener('load', () => {
-            updateCartBadge();
+        window.addEventListener("load", () => {
+            ensureDefaultOptions();
+            updateBuyLink();
+            updateCartPayloadCount();
         });
     </script>
 </body>
