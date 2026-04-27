@@ -457,6 +457,25 @@ def _build_catalog_hosts(conn):
     return hosts
 
 
+def _fetch_catalog_products(conn, category):
+    base_pg = "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC"
+    base_sqlite = "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC"
+    filtered_pg = "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id DESC"
+    filtered_sqlite = "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id DESC"
+
+    try:
+        if category != "all" and category in PRODUCT_CATEGORIES:
+            products = _fetch_all(conn, filtered_pg, filtered_sqlite, (category,))
+        else:
+            products = _fetch_all(conn, base_pg, base_sqlite)
+    except Exception:
+        products = _fetch_all(conn, base_pg, base_sqlite)
+
+    if category != "all":
+        products = [p for p in products if p.get("product_category") == category]
+    return products
+
+
 def _build_showroom_context(conn, host_id):
     showroom = _fetch_one(
         conn,
@@ -569,19 +588,7 @@ async def catalog_page(
     hosts = []
 
     if view == "products":
-        if category != "all" and category in PRODUCT_CATEGORIES:
-            products = _fetch_all(
-                conn,
-                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id DESC",
-                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id DESC",
-                (category,),
-            )
-        else:
-            products = _fetch_all(
-                conn,
-                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
-                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
-            )
+        products = _fetch_catalog_products(conn, category)
 
         if room != "all" and room in ROOM_CATEGORIES:
             products = [p for p in products if p.get("room_category") == room]
