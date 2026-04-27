@@ -33,6 +33,7 @@ app = FastAPI(title="AffiliStay Showroom Platform")
 @app.on_event("startup")
 def run_migrations():
     """앱 시작 시 누락된 데이터베이스 컬럼을 자동 추가합니다."""
+    init_db()
     conn = get_db_connection()
     try:
         if _is_pg():
@@ -178,8 +179,13 @@ async def api_get_rates():
 # ─────────────────────────────────────────
 @app.get("/customer/login", response_class=HTMLResponse)
 async def customer_login_page(request: Request, return_url: str = Query(default="/")):
-    """고객 로그인 페이지"""
-    return templates.TemplateResponse("customer_login.html", {"request": request, "return_url": return_url})
+    """Customer login page."""
+    safe_return_url = _safe_return_to(return_url, "/catalog")
+    return templates.TemplateResponse(
+        request=request,
+        name="customer_login.html",
+        context={"request": request, "return_url": safe_return_url},
+    )
 
 @app.post("/customer/login")
 async def customer_login_process(
@@ -189,18 +195,18 @@ async def customer_login_process(
     return_url: str = Form(default="/")
 ):
     """
-    고객 이메일/비밀번호 로그인 처리
-    MVP 단계에서는 비밀번호 검증 없이 이메일로 가입/로그인 처리
+    ?? ???/???? ??? ??
+    MVP ????? ???? ?? ?? ???? ??/??? ??
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 이메일로 기존 고객 조회
+    # ???? ?? ?? ??
     cursor.execute("SELECT id FROM customers WHERE email = %s" if os.environ.get('DATABASE_URL') else "SELECT id FROM customers WHERE email = ?", (email,))
     customer = cursor.fetchone()
     
     if not customer:
-        # 없으면 회원가입 처리
+        # ??? ???? ??
         cursor.execute(
             "INSERT INTO customers (email, password, provider) VALUES (%s, %s, 'email') RETURNING id" if os.environ.get('DATABASE_URL') else "INSERT INTO customers (email, password, provider) VALUES (?, ?, 'email')",
             (email, password)
@@ -215,16 +221,17 @@ async def customer_login_process(
         
     conn.close()
     
-    # 로그인 성공: 세션 쿠키 또는 응답 (여기서는 MVP로 쿼리 파라미터나 간단히 리다이렉트 처리)
-    response = RedirectResponse(url=return_url, status_code=303)
+    # ??? ??: ?? ?? ?? ?? (???? MVP? ?? ????? ??? ????? ??)
+    safe_return_url = _safe_return_to(return_url, "/catalog")
+    response = RedirectResponse(url=safe_return_url, status_code=303)
     response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
     return response
 
 @app.get("/customer/login/sns/{provider}")
 async def customer_sns_login(provider: str, return_url: str = Query(default="/")):
     """
-    SNS 간편 로그인 (Mock)
-    MVP 단계에서는 SNS 버튼 클릭 시 해당 SNS 계정 이메일로 자동 가입/로그인 된 것으로 간주
+    SNS ?? ??? (Mock)
+    MVP ????? SNS ?? ?? ? ?? SNS ?? ???? ?? ??/??? ? ??? ??
     """
     mock_email = f"user_{provider}@example.com"
     conn = get_db_connection()
@@ -248,13 +255,18 @@ async def customer_sns_login(provider: str, return_url: str = Query(default="/")
         
     conn.close()
     
-    response = RedirectResponse(url=return_url, status_code=303)
+    safe_return_url = _safe_return_to(return_url, "/catalog")
+    response = RedirectResponse(url=safe_return_url, status_code=303)
     response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
     return response
 
-# ─────────────────────────────────────────
-# PortOne 결제 검증 (국내 PG)
-# ─────────────────────────────────────────
+@app.get("/customer/logout")
+async def customer_logout(return_url: str = Query(default="/catalog")):
+    safe_return_url = _safe_return_to(return_url, "/catalog")
+    response = RedirectResponse(url=safe_return_url, status_code=303)
+    response.delete_cookie("customer_id")
+    return response
+
 @app.post("/api/portone/verify")
 async def verify_portone_payment(request: Request):
     """
@@ -403,11 +415,50 @@ def _catalog_gallery_map(conn):
 
 
 
-def _category_items(labels, icons):
+def _category_items(labels, icons, counts=None):
+    counts = counts or {}
     return [
-        {"key": key, "label": label, "icon": icons.get(key, "•")}
+        {
+            "key": key,
+            "label": label,
+            "icon": icons.get(key, "*"),
+            "count": int(counts.get(key, 0) or 0),
+        }
         for key, label in labels.items()
     ]
+
+
+def _catalog_filter_counts(conn, selected_category="all", selected_room="all"):
+    try:
+        rows = _fetch_all(
+            conn,
+            "SELECT product_category, room_category FROM products",
+            "SELECT product_category, room_category FROM products",
+        )
+    except Exception:
+        return (
+            {key: 0 for key in PRODUCT_CATEGORIES},
+            {key: 0 for key in ROOM_CATEGORIES},
+        )
+
+    category_counts = {key: 0 for key in PRODUCT_CATEGORIES}
+    room_counts = {key: 0 for key in ROOM_CATEGORIES}
+
+    for row in rows:
+        product_category = row.get("product_category")
+        room_category = row.get("room_category")
+
+        if product_category in PRODUCT_CATEGORIES and (
+            selected_room == "all" or room_category == selected_room
+        ):
+            category_counts[product_category] += 1
+
+        if room_category in ROOM_CATEGORIES and (
+            selected_category == "all" or product_category == selected_category
+        ):
+            room_counts[room_category] += 1
+
+    return category_counts, room_counts
 
 
 def _safe_return_to(raw_return_to, fallback):
@@ -789,6 +840,7 @@ async def catalog_page(
     conn = get_db_connection()
     products = []
     hosts = []
+    category_counts, room_counts = _catalog_filter_counts(conn, category, room)
 
     if view == "products":
         products = _fetch_catalog_products(conn, category)
@@ -809,6 +861,9 @@ async def catalog_page(
     else:
         current_url = "/catalog?view=spaces"
 
+    current_url_encoded = _encode_return_to(current_url)
+    customer_logged_in = bool(request.cookies.get("customer_id"))
+
     return templates.TemplateResponse(
         request=request,
         name="catalog.html",
@@ -819,13 +874,16 @@ async def catalog_page(
             "products": products,
             "hosts": hosts,
             "prod_categories": PRODUCT_CATEGORIES,
-            "prod_category_items": _category_items(PRODUCT_CATEGORIES, PRODUCT_ICONS),
+            "prod_category_items": _category_items(PRODUCT_CATEGORIES, PRODUCT_ICONS, category_counts),
             "room_categories": ROOM_CATEGORIES,
-            "room_category_items": _category_items(ROOM_CATEGORIES, ROOM_ICONS),
+            "room_category_items": _category_items(ROOM_CATEGORIES, ROOM_ICONS, room_counts),
             "has_space_data": len(hosts) > 0,
             "admin_url": ADMIN_URL,
             "current_url": current_url,
-            "current_url_encoded": _encode_return_to(current_url),
+            "current_url_encoded": current_url_encoded,
+            "customer_logged_in": customer_logged_in,
+            "customer_login_url": f"/customer/login?return_url={current_url_encoded}",
+            "customer_logout_url": f"/customer/logout?return_url={current_url_encoded}",
             "public_content_version": public_content_version,
         },
     )

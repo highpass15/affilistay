@@ -101,15 +101,17 @@
         .filter-row {
             --row-gap: 0.55rem;
             position: relative;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
             padding-bottom: 0.1rem;
             padding-right: 0.25rem;
-            touch-action: pan-y;
+            touch-action: pan-x pan-y;
+            scroll-behavior: auto;
         }
         .filter-row-track {
             display: flex;
             width: max-content;
-            will-change: transform;
+            will-change: auto;
         }
         .filter-row-set {
             display: flex;
@@ -118,18 +120,27 @@
             gap: var(--row-gap);
             padding-right: var(--row-gap);
         }
-        .filter-row.is-ready .filter-row-track {
-            animation: filterMarquee var(--filter-duration, 26s) linear infinite;
-        }
-        .filter-row.is-paused .filter-row-track {
-            animation-play-state: paused;
-        }
         .filter-row-set > a {
             flex: 0 0 auto;
         }
-        @keyframes filterMarquee {
-            from { transform: translateX(0); }
-            to { transform: translateX(calc(-1 * var(--filter-loop-width, 0px))); }
+        .filter-row::-webkit-scrollbar {
+            display: none;
+        }
+        .chip-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2rem;
+            padding: 0.22rem 0.48rem;
+            border-radius: 999px;
+            background: rgba(28, 24, 19, 0.08);
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .chip-count.is-active {
+            background: rgba(255, 255, 255, 0.18);
+            color: white;
         }
         .space-carousel-track {
             transition: transform 420ms ease;
@@ -213,20 +224,72 @@
                         <p class="mt-1 text-xs text-stone-400">Curated showroom catalog</p>
                     </div>
                 </div>
-                <a href="{{ admin_url }}" class="hidden rounded-full border border-black/10 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-700 transition hover:bg-black hover:text-white sm:inline-flex">
-                    Partner Access
-                </a>
+                <div class="flex shrink-0 items-center gap-2">
+                    {% if customer_logged_in %}
+                    <a href="{{ customer_logout_url }}" class="rounded-full border border-black/10 bg-white/85 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-700 transition hover:bg-black hover:text-white">
+                        로그아웃
+                    </a>
+                    {% else %}
+                    <a href="{{ customer_login_url }}" class="rounded-full border border-black/10 bg-white/85 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-700 transition hover:bg-black hover:text-white">
+                        로그인
+                    </a>
+                    {% endif %}
+                    <a href="#manage-panel" class="rounded-full border border-black/10 bg-[var(--accent)] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-black">
+                        관리 메뉴
+                    </a>
+                </div>
             </div>
         </header>
 
         <main class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+            <section id="manage-panel" class="mb-4 browse-card space-y-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="space-y-1">
+                        <p class="browse-label">Browse &amp; Manage</p>
+                        <p class="text-sm leading-6 text-[var(--muted)]">
+                            {% if customer_logged_in %}
+                            지금 보고 있던 입점제품 둘러보기는 그대로 두고, 관리 화면은 새 탭에서 열 수 있어요.
+                            {% else %}
+                            로그인해도 지금 보던 입점제품 둘러보기로 바로 돌아오도록 연결해뒀어요.
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if not customer_logged_in %}
+                    <a href="{{ customer_login_url }}" class="inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-black">
+                        로그인 후 둘러보기 계속
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Product</p>
+                        <p class="mt-2 text-base font-semibold text-stone-900">제품 관리하기</p>
+                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">상품 등록, 가격 수정, QR 재발급을 바로 이어서 진행합니다.</p>
+                    </a>
+                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Host</p>
+                        <p class="mt-2 text-base font-semibold text-stone-900">호스트 센터</p>
+                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">숙소 사진, 수입 보드, 쇼룸 운영 정보를 새 탭에서 관리합니다.</p>
+                    </a>
+                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Brand</p>
+                        <p class="mt-2 text-base font-semibold text-stone-900">입점업체 페이지</p>
+                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">브랜드 상품 풀과 입점 제안을 같은 흐름 안에서 이어서 봅니다.</p>
+                    </a>
+                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Admin</p>
+                        <p class="mt-2 text-base font-semibold text-stone-900">관리자 페이지</p>
+                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">전체 주문, 정산, 회원가입 문의를 한 번에 확인할 수 있어요.</p>
+                    </a>
+                </div>
+            </section>
             <section class="mb-6 browse-card space-y-4 sm:space-y-5">
                 <div class="browse-group">
                     <div class="browse-switch grid grid-cols-2 rounded-full border border-black/8 bg-white/90 p-1 shadow-sm">
-                        <a href="/catalog?view=products&category={{ category }}&room={{ room }}" class="block rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'products' %}bg-[var(--accent)] text-white shadow-[0_8px_18px_rgba(34,31,26,0.18)]{% else %}text-stone-500 hover:text-stone-900{% endif %}">
+                        <a href="/catalog?view=products&category={{ category }}&room={{ room }}" data-nav-link class="block rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'products' %}bg-[var(--accent)] text-white shadow-[0_8px_18px_rgba(34,31,26,0.18)]{% else %}text-stone-500 hover:text-stone-900{% endif %}">
                             제품별 보기
                         </a>
-                        <a href="/catalog?view=spaces" class="block rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'spaces' %}bg-[var(--accent)] text-white shadow-[0_8px_18px_rgba(34,31,26,0.18)]{% else %}text-stone-500 hover:text-stone-900{% endif %}">
+                        <a href="/catalog?view=spaces" data-nav-link class="block rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'spaces' %}bg-[var(--accent)] text-white shadow-[0_8px_18px_rgba(34,31,26,0.18)]{% else %}text-stone-500 hover:text-stone-900{% endif %}">
                             숙소별 보기
                         </a>
                     </div>
@@ -237,9 +300,12 @@
                     <p class="browse-label">제품 카테고리</p>
                     <div class="auto-scroll-row filter-row scroll-x" data-auto-scroll="categories">
                         {% for item in prod_category_items %}
-                        <a href="/catalog?view=products&category={{ item.key }}&room={{ room }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == item.key %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/90 text-stone-600{% endif %}">
+                        <a href="/catalog?view=products&category={{ item.key }}&room={{ room }}" data-nav-link class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == item.key %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/90 text-stone-600{% endif %}">
                             <span class="chip-icon {% if category == item.key %}!bg-white/20{% endif %}">{{ item.icon }}</span>
                             {{ item.label }}
+                            {% if item.count > 0 %}
+                            <span class="chip-count {% if category == item.key %}is-active{% endif %}">{{ item.count }}개</span>
+                            {% endif %}
                         </a>
                         {% endfor %}
                     </div>
@@ -249,9 +315,12 @@
                     <p class="browse-label">공간 선택</p>
                     <div class="auto-scroll-row filter-row scroll-x" data-auto-scroll="rooms">
                         {% for item in room_category_items %}
-                        <a href="/catalog?view=products&category={{ category }}&room={{ item.key }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == item.key %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/90 text-stone-500{% endif %}">
+                        <a href="/catalog?view=products&category={{ category }}&room={{ item.key }}" data-nav-link class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == item.key %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/90 text-stone-500{% endif %}">
                             <span class="chip-icon">{{ item.icon }}</span>
                             {{ item.label }}
+                            {% if item.count > 0 %}
+                            <span class="chip-count">{{ item.count }}개</span>
+                            {% endif %}
                         </a>
                         {% endfor %}
                     </div>
@@ -400,6 +469,19 @@
     ></script>
     <script>
         (() => {
+            const bindBrowseLinks = (scope = document) => {
+                scope.querySelectorAll('[data-nav-link]').forEach((link) => {
+                    if (link.dataset.navBound === 'true') return;
+                    link.dataset.navBound = 'true';
+                    link.addEventListener('click', (event) => {
+                        const href = link.getAttribute('href');
+                        if (!href) return;
+                        event.preventDefault();
+                        window.location.href = href;
+                    });
+                });
+            };
+
             const startAutoScroll = () => {
                 const rows = document.querySelectorAll('[data-auto-scroll]');
                 if (!rows.length) return;
@@ -423,11 +505,13 @@
                         copy.setAttribute('aria-hidden', 'true');
                         copy.querySelectorAll('a').forEach((anchor) => {
                             anchor.tabIndex = -1;
+                            anchor.dataset.navLink = 'true';
                         });
                         track.appendChild(copy);
                     };
 
                     cloneSet();
+                    bindBrowseLinks(track);
 
                     const baseWidth = Math.ceil(firstSet.getBoundingClientRect().width);
                     const minimumTrackWidth = row.clientWidth + baseWidth;
@@ -435,19 +519,27 @@
                         cloneSet();
                     }
 
-                    const pxPerSecond = window.innerWidth < 640 ? 28 : 40;
-                    row.style.setProperty('--filter-loop-width', `${baseWidth}px`);
-                    row.style.setProperty('--filter-duration', `${Math.max(18, baseWidth / pxPerSecond)}s`);
-                    row.classList.add('is-ready');
+                    const pxPerSecond = window.innerWidth < 640 ? 30 : 42;
+                    let lastTime = 0;
+                    let pausedUntil = performance.now() + 900 + (index * 120);
 
-                    let resumeTimer = null;
                     const pause = (ms = 1800) => {
-                        row.classList.add('is-paused');
-                        if (resumeTimer) window.clearTimeout(resumeTimer);
-                        resumeTimer = window.setTimeout(() => {
-                            row.classList.remove('is-paused');
-                            resumeTimer = null;
-                        }, ms);
+                        pausedUntil = performance.now() + ms;
+                    };
+
+                    const tick = (timestamp) => {
+                        if (!lastTime) lastTime = timestamp;
+                        const delta = timestamp - lastTime;
+                        lastTime = timestamp;
+
+                        if (!document.hidden && timestamp >= pausedUntil) {
+                            row.scrollLeft += (delta / 1000) * pxPerSecond;
+                            if (row.scrollLeft >= baseWidth) {
+                                row.scrollLeft -= baseWidth;
+                            }
+                        }
+
+                        window.requestAnimationFrame(tick);
                     };
 
                     ['pointerenter', 'pointerdown', 'wheel', 'touchstart', 'focusin'].forEach((eventName) => {
@@ -455,16 +547,18 @@
                     });
 
                     ['pointerleave', 'touchend'].forEach((eventName) => {
-                        row.addEventListener(eventName, () => pause(650), { passive: true });
+                        row.addEventListener(eventName, () => pause(750), { passive: true });
                     });
 
                     document.addEventListener('visibilitychange', () => {
                         if (document.hidden) {
-                            row.classList.add('is-paused');
+                            pause(60000);
                         } else {
                             pause(500 + (index * 150));
                         }
                     });
+
+                    window.requestAnimationFrame(tick);
                 });
             };
 
@@ -617,11 +711,13 @@
 
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
+                    bindBrowseLinks();
                     startAutoScroll();
                     startSpaceCarousels();
                     startProductCarousels();
                 }, { once: true });
             } else {
+                bindBrowseLinks();
                 startAutoScroll();
                 startSpaceCarousels();
                 startProductCarousels();
