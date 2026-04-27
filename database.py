@@ -52,6 +52,11 @@ def init_db():
             entity_type TEXT DEFAULT 'Individual',
             phone TEXT,
             email TEXT,
+            address_road TEXT,
+            address_detail TEXT,
+            postal_code TEXT,
+            phone_verified BOOLEAN DEFAULT FALSE,
+            phone_verified_at TIMESTAMP,
             signup_path TEXT,
             desired_product_type TEXT,
             is_master BOOLEAN DEFAULT FALSE,
@@ -233,7 +238,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE, password TEXT, name TEXT,
             role TEXT DEFAULT 'HOST', entity_type TEXT DEFAULT 'Individual',
-            phone TEXT, email TEXT, signup_path TEXT, desired_product_type TEXT,
+            phone TEXT, email TEXT, address_road TEXT, address_detail TEXT,
+            postal_code TEXT, phone_verified BOOLEAN DEFAULT FALSE, phone_verified_at TIMESTAMP,
+            signup_path TEXT, desired_product_type TEXT,
             is_master BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -403,6 +410,11 @@ def init_db():
     # ── 마이그레이션: 기존 테이블에 누락 컬럼 추가 ──
     if DATABASE_URL:
         migrations = [
+            "ALTER TABLE hosts ADD COLUMN IF NOT EXISTS address_road TEXT",
+            "ALTER TABLE hosts ADD COLUMN IF NOT EXISTS address_detail TEXT",
+            "ALTER TABLE hosts ADD COLUMN IF NOT EXISTS postal_code TEXT",
+            "ALTER TABLE hosts ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE hosts ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES hosts(id)",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS room_category TEXT DEFAULT 'living_room'",
             "ALTER TABLE products ADD COLUMN IF NOT EXISTS product_category TEXT DEFAULT 'lifestyle'",
@@ -434,6 +446,11 @@ def init_db():
                 pass
     else:
         sqlite_migrations = [
+            "ALTER TABLE hosts ADD COLUMN address_road TEXT",
+            "ALTER TABLE hosts ADD COLUMN address_detail TEXT",
+            "ALTER TABLE hosts ADD COLUMN postal_code TEXT",
+            "ALTER TABLE hosts ADD COLUMN phone_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE hosts ADD COLUMN phone_verified_at TIMESTAMP",
             "ALTER TABLE orders ADD COLUMN session_id TEXT",
             "ALTER TABLE products ADD COLUMN detailed_description TEXT",
             "ALTER TABLE products ADD COLUMN image_url TEXT",

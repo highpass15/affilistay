@@ -1,5 +1,6 @@
 # AFFILISTAY Admin Dashboard UI - Redeploy 1
 import streamlit as st
+import re
 import pandas as pd
 import uuid
 import qrcode
@@ -8,6 +9,7 @@ from io import BytesIO
 import database
 import os
 import time
+import httpx
 import fcm_service
 
 st.set_page_config(
@@ -25,6 +27,12 @@ def initialize_platform():
 initialize_platform()
 
 CHECKOUT_BASE_URL = "https://affilistay-showroom.onrender.com"
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
+JUSO_API_KEY = os.getenv("JUSO_API_KEY", "")
+PHONE_REGEX = re.compile(r"^01[016789]\d{7,8}$")
+EMAIL_REGEX = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$", re.IGNORECASE)
 ROOM_MAP = {
     '거실': 'living_room',
     '침실': 'bedroom',
@@ -416,6 +424,128 @@ def render_product_summary_metrics(df_products, gallery_map):
     c3.metric("다중 이미지 적용", f"{gallery_ready}개")
     st.caption(f"현재 {len(room_mix)}개 공간 카테고리에 제품이 배치되어 있어요.")
 
+
+def normalize_phone(raw_phone):
+    digits = re.sub(r"\D", "", raw_phone or "")
+    if not PHONE_REGEX.fullmatch(digits):
+        return None
+    return digits
+
+
+def format_phone_display(raw_phone):
+    digits = normalize_phone(raw_phone)
+    if not digits:
+        return raw_phone
+    if len(digits) == 10:
+        return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+    return f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
+
+
+def to_e164_kr(raw_phone):
+    digits = normalize_phone(raw_phone)
+    if not digits:
+        return None
+    return f"+82{digits[1:]}"
+
+
+def is_valid_email(email):
+    return bool(EMAIL_REGEX.fullmatch((email or "").strip()))
+
+
+def signup_address_label(role):
+    if role == "HOST":
+        return "숙소 주소"
+    if role == "BRAND":
+        return "판매시설 주소"
+    return "주소"
+
+
+def send_phone_verification(phone_e164):
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_VERIFY_SERVICE_SID):
+        return False, "휴대폰 인증을 사용하려면 Twilio Verify 환경변수를 먼저 설정해 주세요."
+
+    try:
+        response = httpx.post(
+            f"https://verify.twilio.com/v2/Services/{TWILIO_VERIFY_SERVICE_SID}/Verifications",
+            data={"To": phone_e164, "Channel": "sms"},
+            auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN),
+            timeout=12.0,
+        )
+        data = response.json()
+        if response.is_success:
+            return True, "인증번호를 전송했습니다. 문자로 받은 코드를 입력해 주세요."
+        return False, data.get("message", "인증번호 전송에 실패했습니다.")
+    except Exception as exc:
+        return False, f"인증번호 전송 중 오류가 발생했습니다: {exc}"
+
+
+def verify_phone_code(phone_e164, code):
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_VERIFY_SERVICE_SID):
+        return False, "휴대폰 인증 환경변수가 설정되지 않았습니다."
+
+    try:
+        response = httpx.post(
+            f"https://verify.twilio.com/v2/Services/{TWILIO_VERIFY_SERVICE_SID}/VerificationCheck",
+            data={"To": phone_e164, "Code": (code or "").strip()},
+            auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN),
+            timeout=12.0,
+        )
+        data = response.json()
+        if response.is_success and data.get("status") == "approved":
+            return True, "휴대폰 인증이 완료되었습니다."
+        return False, data.get("message", "인증번호가 올바르지 않습니다.")
+    except Exception as exc:
+        return False, f"인증 확인 중 오류가 발생했습니다: {exc}"
+
+
+def search_road_addresses(keyword):
+    if not JUSO_API_KEY:
+        return [], "도로명 주소 검색을 사용하려면 JUSO_API_KEY 환경변수를 설정해 주세요."
+
+    try:
+        response = httpx.get(
+            "https://business.juso.go.kr/addrlink/addrLinkApi.do",
+            params={
+                "confmKey": JUSO_API_KEY,
+                "currentPage": 1,
+                "countPerPage": 7,
+                "keyword": keyword,
+                "resultType": "json",
+            },
+            timeout=12.0,
+        )
+        data = response.json()
+        common = data.get("results", {}).get("common", {})
+        if common.get("errorCode") not in (None, "0"):
+            return [], common.get("errorMessage", "주소 검색 결과를 불러오지 못했습니다.")
+        results = data.get("results", {}).get("juso", [])
+        return results, ""
+    except Exception as exc:
+        return [], f"주소 검색 중 오류가 발생했습니다: {exc}"
+
+
+def format_address_option(address_row):
+    road = address_row.get("roadAddrPart1") or address_row.get("roadAddr") or ""
+    detail_hint = address_row.get("bdNm") or address_row.get("detBdNmList") or ""
+    zip_code = address_row.get("zipNo") or ""
+    suffix = f" · {detail_hint}" if detail_hint else ""
+    return f"[{zip_code}] {road}{suffix}"
+
+
+def sync_signup_address_selection(results, selected_index):
+    if results and 0 <= selected_index < len(results):
+        selected = results[selected_index]
+        st.session_state["signup_address_road"] = selected.get("roadAddrPart1") or selected.get("roadAddr") or ""
+        st.session_state["signup_postal_code"] = selected.get("zipNo") or ""
+
+
+def reset_signup_phone_verification():
+    st.session_state["signup_phone_verified"] = False
+    st.session_state["signup_verified_phone"] = ""
+    st.session_state["signup_verification_sent"] = False
+    st.session_state["signup_verification_target"] = ""
+    st.session_state["signup_verification_code"] = ""
+
 # ─────────────────────────────────────────
 # 인증 시스템
 # ─────────────────────────────────────────
@@ -461,6 +591,21 @@ def check_auth():
 
         else:
             st.markdown("#### 회원가입")
+            signup_defaults = {
+                "signup_phone_verified": False,
+                "signup_verified_phone": "",
+                "signup_verification_sent": False,
+                "signup_verification_target": "",
+                "signup_verification_code": "",
+                "signup_address_results": [],
+                "signup_address_choice": 0,
+                "signup_address_road": "",
+                "signup_address_detail": "",
+                "signup_postal_code": "",
+            }
+            for key, default in signup_defaults.items():
+                if key not in st.session_state:
+                    st.session_state[key] = default
 
             # 역할 선택 (3가지)
             role_map = {
@@ -473,28 +618,163 @@ def check_auth():
 
             st.markdown("---")
             full_name = st.text_input("이름 / 업체명")
-            phone     = st.text_input("연락처")
-            email     = st.text_input("이메일")
+            phone = st.text_input("휴대폰 번호", placeholder="010-1234-5678")
+            st.caption("회원가입은 휴대폰 인증 완료 후 진행됩니다.")
+            if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_VERIFY_SERVICE_SID):
+                st.info("운영 환경에서 Twilio Verify 키를 설정하면 문자 인증이 바로 활성화됩니다.")
+            normalized_phone = normalize_phone(phone)
+            verified_phone = st.session_state.get("signup_verified_phone")
+            verification_target = st.session_state.get("signup_verification_target")
+            if verified_phone and normalized_phone != verified_phone:
+                reset_signup_phone_verification()
+            elif st.session_state.get("signup_verification_sent") and verification_target and normalized_phone != verification_target:
+                reset_signup_phone_verification()
+
+            send_col, verify_col = st.columns([1, 1])
+            with send_col:
+                if st.button("인증번호 보내기", use_container_width=True):
+                    if not normalized_phone:
+                        st.error("휴대폰 번호는 010-1234-5678 형식으로 입력해 주세요.")
+                    else:
+                        sent, message = send_phone_verification(to_e164_kr(phone))
+                        if sent:
+                            st.session_state["signup_verification_sent"] = True
+                            st.session_state["signup_verification_target"] = normalized_phone
+                            st.success(message)
+                        else:
+                            st.error(message)
+
+            if st.session_state.get("signup_verification_sent") and st.session_state.get("signup_verification_target") == normalized_phone:
+                verification_code = st.text_input("인증번호", key="signup_verification_code", placeholder="문자로 받은 6자리 인증번호")
+                with verify_col:
+                    if st.button("인증 확인", use_container_width=True):
+                        if not verification_code.strip():
+                            st.error("인증번호를 입력해 주세요.")
+                        else:
+                            verified, message = verify_phone_code(to_e164_kr(phone), verification_code)
+                            if verified:
+                                st.session_state["signup_phone_verified"] = True
+                                st.session_state["signup_verified_phone"] = normalized_phone
+                                st.success(message)
+                            else:
+                                st.error(message)
+
+            if st.session_state.get("signup_phone_verified") and st.session_state.get("signup_verified_phone") == normalized_phone:
+                st.success(f"휴대폰 인증 완료: {format_phone_display(phone)}")
+
+            email = st.text_input("이메일", placeholder="name@example.com")
+            if email and not is_valid_email(email):
+                st.caption("이메일은 name@example.com 형식으로 입력해 주세요.")
+
+            if actual_role in {"HOST", "BRAND"}:
+                st.markdown("##### 주소 입력")
+                if not JUSO_API_KEY:
+                    st.info("JUSO_API_KEY를 설정하면 도로명 주소 검색 결과를 바로 선택할 수 있습니다. 지금도 직접 입력은 가능합니다.")
+                address_keyword = st.text_input("도로명 주소 검색", placeholder="예: 마포구 양화로 45")
+                if st.button("주소 검색", use_container_width=True):
+                    if not address_keyword.strip():
+                        st.error("검색할 도로명 주소를 입력해 주세요.")
+                    else:
+                        results, message = search_road_addresses(address_keyword.strip())
+                        st.session_state["signup_address_results"] = results
+                        st.session_state["signup_address_choice"] = 0
+                        if results:
+                            sync_signup_address_selection(results, 0)
+                            st.success("검색 결과를 불러왔습니다. 아래에서 정확한 주소를 선택해 주세요.")
+                        else:
+                            st.warning(message or "검색 결과가 없습니다. 도로명, 건물명으로 다시 검색해 주세요.")
+
+                address_results = st.session_state.get("signup_address_results", [])
+                if address_results:
+                    selected_index = st.selectbox(
+                        "검색 결과",
+                        options=list(range(len(address_results))),
+                        format_func=lambda idx: format_address_option(address_results[idx]),
+                        key="signup_address_choice",
+                    )
+                    sync_signup_address_selection(address_results, selected_index)
+
+                st.text_input(
+                    signup_address_label(actual_role),
+                    key="signup_address_road",
+                    placeholder="검색 결과를 선택하거나 도로명 주소를 직접 입력해 주세요.",
+                )
+                st.text_input("상세 주소", key="signup_address_detail", placeholder="동/호수, 층수 등을 입력해 주세요.")
+                st.text_input("우편번호", key="signup_postal_code", placeholder="주소 검색 시 자동 입력됩니다.")
+
             signup_path = st.selectbox("가입 경로", ["SNS", "지인소개", "검색", "광고", "기타"])
             new_username = st.text_input("사용할 아이디")
             new_password = st.text_input("비밀번호", type="password")
 
             if st.button("가입 신청", use_container_width=True, type="primary"):
-                conn = database.get_db_connection()
-                cursor = conn.cursor()
-                try:
-                    q = ('INSERT INTO hosts (username,password,name,phone,email,signup_path,role,is_master) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
-                         if database.DATABASE_URL else
-                         'INSERT INTO hosts (username,password,name,phone,email,signup_path,role,is_master) VALUES (?,?,?,?,?,?,?,?)')
-                    cursor.execute(q, (new_username, new_password, full_name, phone, email, signup_path, actual_role, False))
-                    conn.commit()
-                    st.success(f"✅ 가입 완료! [{role_label}] 계정으로 로그인해 주세요.")
-                    st.session_state['auth_mode'] = 'login'
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"가입 오류 (아이디 중복 등): {e}")
-                finally:
-                    conn.close()
+                if not full_name.strip():
+                    st.error("이름 또는 업체명을 입력해 주세요.")
+                elif not normalized_phone:
+                    st.error("휴대폰 번호 형식을 다시 확인해 주세요.")
+                elif not (st.session_state.get("signup_phone_verified") and st.session_state.get("signup_verified_phone") == normalized_phone):
+                    st.error("회원가입 전에 휴대폰 인증을 완료해 주세요.")
+                elif not is_valid_email(email):
+                    st.error("이메일 형식을 올바르게 입력해 주세요.")
+                elif actual_role in {"HOST", "BRAND"} and not st.session_state.get("signup_address_road", "").strip():
+                    st.error(f"{signup_address_label(actual_role)}를 입력해 주세요.")
+                elif not new_username.strip() or not new_password.strip():
+                    st.error("아이디와 비밀번호를 모두 입력해 주세요.")
+                else:
+                    conn = database.get_db_connection()
+                    cursor = conn.cursor()
+                    verified_at = pd.Timestamp.now(tz=None).strftime("%Y-%m-%d %H:%M:%S")
+                    formatted_phone = format_phone_display(phone)
+                    address_road = st.session_state.get("signup_address_road", "").strip()
+                    address_detail = st.session_state.get("signup_address_detail", "").strip()
+                    postal_code = st.session_state.get("signup_postal_code", "").strip()
+                    try:
+                        q = (
+                            'INSERT INTO hosts (username,password,name,phone,email,address_road,address_detail,postal_code,phone_verified,phone_verified_at,signup_path,role,is_master) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id'
+                            if database.DATABASE_URL else
+                            'INSERT INTO hosts (username,password,name,phone,email,address_road,address_detail,postal_code,phone_verified,phone_verified_at,signup_path,role,is_master) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                        )
+                        cursor.execute(
+                            q,
+                            (
+                                new_username.strip(),
+                                new_password,
+                                full_name.strip(),
+                                formatted_phone,
+                                email.strip().lower(),
+                                address_road or None,
+                                address_detail or None,
+                                postal_code or None,
+                                True,
+                                verified_at,
+                                signup_path,
+                                actual_role,
+                                False,
+                            ),
+                        )
+                        new_host_id = cursor.fetchone()[0] if database.DATABASE_URL else cursor.lastrowid
+
+                        if actual_role == "HOST" and address_road:
+                            venue_location = " ".join(piece for piece in [address_road, address_detail] if piece).strip()
+                            venue_query = (
+                                "INSERT INTO host_venues (host_id, location, description) VALUES (%s,%s,%s) ON CONFLICT (host_id) DO NOTHING"
+                                if database.DATABASE_URL else
+                                "INSERT OR IGNORE INTO host_venues (host_id, location, description) VALUES (?,?,?)"
+                            )
+                            cursor.execute(venue_query, (new_host_id, venue_location, None))
+
+                        conn.commit()
+                        reset_signup_phone_verification()
+                        st.session_state["signup_address_results"] = []
+                        st.session_state["signup_address_road"] = ""
+                        st.session_state["signup_address_detail"] = ""
+                        st.session_state["signup_postal_code"] = ""
+                        st.success(f"✅ 가입 완료! [{role_label}] 계정으로 로그인해 주세요.")
+                        st.session_state['auth_mode'] = 'login'
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"가입 오류 (아이디 중복 등): {e}")
+                    finally:
+                        conn.close()
 
             if st.button("로그인으로 돌아가기", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
