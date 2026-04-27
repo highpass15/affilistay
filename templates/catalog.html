@@ -43,6 +43,20 @@
         }
         .scroll-x::-webkit-scrollbar { display: none; }
         .scroll-x { scrollbar-width: none; }
+        .auto-scroll-row {
+            position: relative;
+            mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
+        }
+        .auto-scroll-row::after {
+            content: "";
+            position: sticky;
+            right: 0;
+            width: 3rem;
+            flex: 0 0 3rem;
+            background: linear-gradient(90deg, rgba(246, 242, 235, 0), rgba(246, 242, 235, 0.96));
+            pointer-events: none;
+        }
         .safe-text {
             min-width: 0;
             overflow-wrap: anywhere;
@@ -101,7 +115,7 @@
 
             {% if view == 'products' %}
             <section class="mb-6 space-y-3">
-                <div class="scroll-x flex gap-2 overflow-x-auto pb-1">
+                <div class="auto-scroll-row scroll-x flex gap-2 overflow-x-auto pb-1" data-auto-scroll="categories">
                     <a href="/catalog?view=products&category=all&room={{ room }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == 'all' %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/80 text-stone-600{% endif %}">
                         <span class="chip-icon {% if category == 'all' %}!bg-white/20{% endif %}">✨</span>
                         전체
@@ -217,5 +231,82 @@
             {% endif %}
         </main>
     </div>
+    <script>
+        (() => {
+            const startAutoScroll = () => {
+                const row = document.querySelector('[data-auto-scroll="categories"]');
+                if (!row) return;
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+                let direction = 1;
+                let pauseUntil = 0;
+                let lastTick = performance.now();
+
+                const speed = 0.045;
+                const edgePauseMs = 1400;
+
+                const canScroll = () => row.scrollWidth - row.clientWidth > 32;
+
+                const pause = (ms = 2200) => {
+                    pauseUntil = performance.now() + ms;
+                };
+
+                const tick = (now) => {
+                    if (!canScroll() || document.hidden) {
+                        lastTick = now;
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+
+                    if (window.innerWidth < 960) {
+                        lastTick = now;
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+
+                    if (now < pauseUntil) {
+                        lastTick = now;
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+
+                    const maxScroll = row.scrollWidth - row.clientWidth;
+                    const distance = (now - lastTick) * speed * direction;
+                    row.scrollLeft += distance;
+                    lastTick = now;
+
+                    if (row.scrollLeft >= maxScroll - 1) {
+                        row.scrollLeft = maxScroll;
+                        direction = -1;
+                        pauseUntil = now + edgePauseMs;
+                    } else if (row.scrollLeft <= 1) {
+                        row.scrollLeft = 0;
+                        direction = 1;
+                        pauseUntil = now + edgePauseMs;
+                    }
+
+                    requestAnimationFrame(tick);
+                };
+
+                ['pointerenter', 'pointerdown', 'wheel', 'touchstart', 'focusin'].forEach((eventName) => {
+                    row.addEventListener(eventName, () => pause(), { passive: true });
+                });
+
+                ['pointerleave', 'touchend'].forEach((eventName) => {
+                    row.addEventListener(eventName, () => pause(900), { passive: true });
+                });
+
+                window.addEventListener('resize', () => pause(900), { passive: true });
+                document.addEventListener('visibilitychange', () => pause(1200));
+                requestAnimationFrame(tick);
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', startAutoScroll, { once: true });
+            } else {
+                startAutoScroll();
+            }
+        })();
+    </script>
 </body>
 </html>
