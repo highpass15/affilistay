@@ -463,7 +463,7 @@ def _build_gallery_images(primary_image, image_rows):
     return gallery
 
 
-def _decorate_recommendation_products(products, image_map):
+def _decorate_recommendation_products(products, image_map, gallery_map=None):
     products = _decorate_catalog_products(products, image_map, gallery_map)
     for product in products:
         showroom_path = f"/showrooms/{product['owner_id']}" if product.get("owner_id") else "/catalog?view=spaces"
@@ -477,6 +477,7 @@ def _decorate_recommendation_products(products, image_map):
 
 def _build_product_recommendations(conn, product):
     image_map = _catalog_image_map(conn)
+    gallery_map = _catalog_gallery_map(conn)
     owner_id = product.get("owner_id")
     product_id = product.get("id")
     current_room = product.get("room_category")
@@ -503,7 +504,7 @@ def _build_product_recommendations(conn, product):
         """,
         (owner_id, product_id),
     )
-    same_owner_products = _decorate_recommendation_products(same_owner_products, image_map)
+    same_owner_products = _decorate_recommendation_products(same_owner_products, image_map, gallery_map)
 
     same_showroom_products = same_owner_products
     if current_room:
@@ -543,7 +544,7 @@ def _build_product_recommendations(conn, product):
         """,
         (owner_id,),
     )
-    similar_candidates = _decorate_recommendation_products(similar_candidates, image_map)
+    similar_candidates = _decorate_recommendation_products(similar_candidates, image_map, gallery_map)
 
     def recommendation_score(item):
         category_match = item.get("product_category") == current_category
