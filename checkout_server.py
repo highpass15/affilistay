@@ -514,6 +514,14 @@ def _build_gallery_images(primary_image, image_rows):
     return gallery
 
 
+def _display_date(value):
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y.%m.%d")
+    if value is None:
+        return ""
+    return str(value)[:10]
+
+
 def _decorate_recommendation_products(products, image_map, gallery_map=None):
     products = _decorate_catalog_products(products, image_map, gallery_map)
     for product in products:
@@ -1015,13 +1023,14 @@ async def product_detail(
         )
     except Exception:
         options_db = []
-    options = [
-        {
-            "name": opt["name"],
-            "values": [value.strip() for value in opt["values"].split(",") if value.strip()],
-        }
-        for opt in options_db
-    ]
+    options = []
+    for opt in options_db:
+        option_name = str(opt.get("name") or "").strip()
+        raw_values = opt.get("values") or ""
+        option_values = [value.strip() for value in str(raw_values).split(",") if value and value.strip()]
+        if not option_name or not option_values:
+            continue
+        options.append({"name": option_name, "values": option_values})
 
     try:
         reviews = _fetch_all(
@@ -1043,7 +1052,21 @@ async def product_detail(
     except Exception:
         inquiries = []
 
-    recommendation_groups = _build_product_recommendations(conn, product)
+    for review in reviews:
+        review["display_date"] = _display_date(review.get("created_at"))
+    for inquiry in inquiries:
+        inquiry["display_date"] = _display_date(inquiry.get("created_at"))
+
+    try:
+        recommendation_groups = _build_product_recommendations(conn, product)
+    except Exception as exc:
+        print(f"[Product Detail Recommendation Error] product_id={product_id}: {exc}")
+        recommendation_groups = {
+            "same_showroom_products": [],
+            "host_curated_products": [],
+            "similar_products": [],
+        }
+
     gallery_images = _build_gallery_images(product.get("image_url"), images)
     product["room_icon"] = ROOM_ICONS.get(product.get("room_category"), "⌂")
     product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "✦")

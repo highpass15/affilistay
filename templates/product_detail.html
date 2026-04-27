@@ -961,7 +961,7 @@
                         <div class="list-card">
                             <div class="list-head">
                                 <span class="list-name">{{ review.customer_name }}</span>
-                                <span>{{ review.created_at.strftime('%Y.%m.%d') }}</span>
+                                <span>{{ review.display_date }}</span>
                             </div>
                             <div class="list-text">평점 {{ review.rating }}/5 · {{ review.comment }}</div>
                         </div>
@@ -994,7 +994,7 @@
                         <div class="list-card">
                             <div class="list-head">
                                 <span class="list-name">{{ inquiry.customer_name }} · {{ inquiry.type }}</span>
-                                <span>{{ inquiry.created_at.strftime('%Y.%m.%d') }}</span>
+                                <span>{{ inquiry.display_date }}</span>
                             </div>
                             <div class="list-text">{{ inquiry.content }}</div>
                         </div>
