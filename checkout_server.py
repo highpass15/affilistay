@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request, Form, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from database import get_db_connection, init_db
+from database import get_db_connection, get_public_content_version, init_db
 import os
 import httpx
 import time
@@ -78,6 +78,14 @@ def force_migrate():
         return {"status": "error", "msg": str(e), "traceback": traceback.format_exc()}
     finally:
         conn.close()
+
+
+@app.get("/api/public-content-version")
+def public_content_version():
+    return JSONResponse(
+        {"version": get_public_content_version()},
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 # ???? ???/??? ??
 ROOM_CATEGORIES = {
@@ -613,6 +621,7 @@ async def catalog_page(
     if view not in {"products", "spaces"}:
         view = "products"
 
+    public_content_version = get_public_content_version()
     conn = get_db_connection()
     products = []
     hosts = []
@@ -652,12 +661,14 @@ async def catalog_page(
             "admin_url": ADMIN_URL,
             "current_url": current_url,
             "current_url_encoded": _encode_return_to(current_url),
+            "public_content_version": public_content_version,
         },
     )
 
 
 @app.get("/showrooms/{host_id}", response_class=HTMLResponse)
 async def showroom_detail(request: Request, host_id: int):
+    public_content_version = get_public_content_version()
     conn = get_db_connection()
     showroom, products = _build_showroom_context(conn, host_id)
     conn.close()
@@ -676,6 +687,7 @@ async def showroom_detail(request: Request, host_id: int):
             "admin_url": ADMIN_URL,
             "current_url": current_url,
             "current_url_encoded": _encode_return_to(current_url),
+            "public_content_version": public_content_version,
         },
     )
 
@@ -689,6 +701,7 @@ async def shop_page(request: Request, qr_code_id: str, category: str = Query(def
     QR 코드 ID로 진입 → 해당 제품의 호스트(owner_id) 기반으로
     같은 숙소의 모든 입점제품을 카테고리별로 표시합니다.
     """
+    public_content_version = get_public_content_version()
     conn = get_db_connection()
 
     # 1. QR 코드에 해당하는 제품 조회 → owner_id 추출
@@ -758,6 +771,7 @@ async def shop_page(request: Request, qr_code_id: str, category: str = Query(def
             "categorized": categorized,
             "active_category": category,
             "all_products": products,
+            "public_content_version": public_content_version,
         }
     )
 
@@ -773,6 +787,7 @@ async def product_detail(
     return_to: str = Query(default=""),
 ):
     """개별 제품 상세 페이지"""
+    public_content_version = get_public_content_version()
     conn = get_db_connection()
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
 
@@ -806,8 +821,8 @@ async def product_detail(
     try:
         options_db = _fetch_all(
             conn,
-            "SELECT name, values FROM product_options WHERE product_id = %s",
-            "SELECT name, values FROM product_options WHERE product_id = ?",
+            'SELECT name, "values" FROM product_options WHERE product_id = %s',
+            'SELECT name, "values" FROM product_options WHERE product_id = ?',
             (product_id,)
         )
     except Exception:
@@ -866,6 +881,7 @@ async def product_detail(
             "cross_sell_products": cross_sell_products,
             "return_to": return_to,
             "return_to_encoded": _encode_return_to(return_to),
+            "public_content_version": public_content_version,
         }
     )
 

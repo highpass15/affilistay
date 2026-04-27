@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import base64
+import time
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -17,6 +18,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mvp_v2_ecommerce.db')
+PUBLIC_CONTENT_META_KEY = "public_content_version"
 
 # 수파베이스 클라이언트 초기화
 supabase = None
@@ -216,6 +218,13 @@ def init_db():
             duration_seconds INTEGER DEFAULT 0
         )
         """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS site_meta (
+            meta_key TEXT PRIMARY KEY,
+            meta_value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
     else:
 
         # SQLite
@@ -363,6 +372,13 @@ def init_db():
             duration_seconds INTEGER DEFAULT 0
         )
         """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS site_meta (
+            meta_key TEXT PRIMARY KEY,
+            meta_value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
 
     # 마스터 계정 초기화
 
@@ -409,6 +425,7 @@ def init_db():
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT",
             "CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, rating INTEGER, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS product_inquiries (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, type TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS site_meta (meta_key TEXT PRIMARY KEY, meta_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         ]
         for sql in migrations:
             try:
@@ -426,7 +443,8 @@ def init_db():
             "CREATE TABLE IF NOT EXISTS product_images (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, image_data TEXT NOT NULL, sort_order INTEGER DEFAULT 0)",
             'CREATE TABLE IF NOT EXISTS product_options (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, name TEXT NOT NULL, "values" TEXT NOT NULL)',
             "CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, rating INTEGER DEFAULT 5, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS product_inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            "CREATE TABLE IF NOT EXISTS product_inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS site_meta (meta_key TEXT PRIMARY KEY, meta_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         ]
         for sql in sqlite_migrations:
             try:
@@ -473,6 +491,85 @@ def fetch_product_options(conn, product_id):
     )
     cursor.execute(query, (product_id,))
     return cursor.fetchall()
+
+
+def _new_public_version():
+    return str(time.time_ns())
+
+
+def _ensure_site_meta_table(cursor):
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS site_meta (
+            meta_key TEXT PRIMARY KEY,
+            meta_value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+
+def _seed_public_content_version(cursor):
+    _ensure_site_meta_table(cursor)
+    initial_version = _new_public_version()
+    if DATABASE_URL:
+        cursor.execute(
+            """
+            INSERT INTO site_meta (meta_key, meta_value, updated_at)
+            VALUES (%s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (meta_key) DO NOTHING
+            """,
+            (PUBLIC_CONTENT_META_KEY, initial_version),
+        )
+    else:
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO site_meta (meta_key, meta_value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            """,
+            (PUBLIC_CONTENT_META_KEY, initial_version),
+        )
+
+
+def bump_public_content_version(conn):
+    cursor = conn.cursor()
+    _seed_public_content_version(cursor)
+    next_version = _new_public_version()
+    if DATABASE_URL:
+        cursor.execute(
+            "UPDATE site_meta SET meta_value=%s, updated_at=CURRENT_TIMESTAMP WHERE meta_key=%s",
+            (next_version, PUBLIC_CONTENT_META_KEY),
+        )
+    else:
+        cursor.execute(
+            "UPDATE site_meta SET meta_value=?, updated_at=CURRENT_TIMESTAMP WHERE meta_key=?",
+            (next_version, PUBLIC_CONTENT_META_KEY),
+        )
+    return next_version
+
+
+def get_public_content_version():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        _seed_public_content_version(cursor)
+        query = (
+            "SELECT meta_value FROM site_meta WHERE meta_key=%s"
+            if DATABASE_URL else
+            "SELECT meta_value FROM site_meta WHERE meta_key=?"
+        )
+        cursor.execute(query, (PUBLIC_CONTENT_META_KEY,))
+        row = cursor.fetchone()
+        conn.commit()
+        if not row:
+            return _new_public_version()
+        if isinstance(row, sqlite3.Row):
+            return row["meta_value"]
+        if isinstance(row, dict):
+            return row.get("meta_value")
+        return row[0]
+    finally:
+        conn.close()
 
 
 # ── 수파베이스 동기화 ────────────────────────────────

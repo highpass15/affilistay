@@ -108,6 +108,53 @@ st.markdown(
         font-size: 0.92rem;
         margin-bottom: 0.85rem;
     }
+    .guide-card {
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        padding: 1rem 1.05rem;
+        background: rgba(255,255,255,0.025);
+        margin-bottom: 0.9rem;
+    }
+    .guide-kicker {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.62);
+        margin-bottom: 0.45rem;
+    }
+    .guide-title {
+        font-size: 1.08rem;
+        font-weight: 800;
+        margin-bottom: 0.35rem;
+    }
+    .guide-copy {
+        font-size: 0.92rem;
+        color: rgba(250,250,250,0.72);
+        line-height: 1.6;
+    }
+    .guide-list {
+        display: grid;
+        gap: 0.55rem;
+        margin-top: 0.8rem;
+    }
+    .guide-step {
+        border-radius: 18px;
+        padding: 0.8rem 0.9rem;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.07);
+    }
+    .guide-step strong {
+        display: block;
+        font-size: 0.92rem;
+        margin-bottom: 0.2rem;
+    }
+    .guide-step span {
+        display: block;
+        font-size: 0.84rem;
+        line-height: 1.55;
+        color: rgba(250,250,250,0.72);
+    }
     @media (max-width: 900px) {
         .host-hero-grid {
             grid-template-columns: 1fr;
@@ -296,6 +343,79 @@ def render_b64_gallery(images, columns_count=5):
             with col:
                 show_img(image, width=120)
 
+
+def render_host_upload_guide(mode):
+    if mode == "create":
+        st.markdown(
+            """
+            <div class="guide-card">
+                <div class="guide-kicker">Upload flow</div>
+                <div class="guide-title">오늘의집처럼 단계별로 올리면 덜 헷갈려요.</div>
+                <div class="guide-copy">이미지, 기본 정보, 가격과 공간, 상세 설명 순서로 채우면 쇼룸 완성도가 가장 빠르게 올라갑니다.</div>
+                <div class="guide-list">
+                    <div class="guide-step">
+                        <strong>1. 대표 이미지부터 고르기</strong>
+                        <span>첫 이미지는 고객 화면의 대표 카드로 바로 노출됩니다. 밝고 용도가 잘 보이는 컷이 좋아요.</span>
+                    </div>
+                    <div class="guide-step">
+                        <strong>2. 공간과 카테고리 맞추기</strong>
+                        <span>거실·침실 같은 배치 공간과 품목 카테고리를 함께 맞춰 두면 카탈로그에서 바로 찾기 쉬워집니다.</span>
+                    </div>
+                    <div class="guide-step">
+                        <strong>3. 상세 설명은 짧고 분명하게</strong>
+                        <span>소재, 사용감, 추천 포인트를 고객 언어로 정리해 두면 전환이 좋아집니다.</span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="guide-card">
+                <div class="guide-kicker">Editing flow</div>
+                <div class="guide-title">변경 즉시 쇼룸이 새 정보를 감지합니다.</div>
+                <div class="guide-copy">제품명, 대표 이미지, 한줄 설명, 상세 설명을 손보면 고객 페이지가 자동으로 새 정보를 불러옵니다.</div>
+                <div class="guide-list">
+                    <div class="guide-step">
+                        <strong>대표 이미지 교체</strong>
+                        <span>새 갤러리를 올리면 기존 이미지가 한 번에 교체됩니다. 첫 이미지가 대표로 사용됩니다.</span>
+                    </div>
+                    <div class="guide-step">
+                        <strong>가격과 옵션 정리</strong>
+                        <span>정가와 판매가를 함께 맞춰 두고, 옵션은 줄바꿈으로 정리하면 고객이 선택하기 쉬워져요.</span>
+                    </div>
+                    <div class="guide-step">
+                        <strong>쇼룸 반영 확인</strong>
+                        <span>저장 후 퍼블릭 페이지에서 새로고침 버튼 없이도 몇 초 안에 변경사항이 반영됩니다.</span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_product_summary_metrics(df_products, gallery_map):
+    total_products = int(len(df_products))
+    detailed_ready = 0
+    gallery_ready = 0
+    room_mix = set()
+    for _, product in df_products.iterrows():
+        if (product.get("detailed_description") or "").strip():
+            detailed_ready += 1
+        if len(gallery_map.get(int(product["id"]), [])) >= 2:
+            gallery_ready += 1
+        if product.get("room_category"):
+            room_mix.add(product.get("room_category"))
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("등록 상품", f"{total_products}개")
+    c2.metric("상세 설명 완성", f"{detailed_ready}개")
+    c3.metric("다중 이미지 적용", f"{gallery_ready}개")
+    st.caption(f"현재 {len(room_mix)}개 공간 카테고리에 제품이 배치되어 있어요.")
+
 # ─────────────────────────────────────────
 # 인증 시스템
 # ─────────────────────────────────────────
@@ -410,78 +530,6 @@ def render_tab_qr(host_id, is_master):
     current_role = st.session_state.get('role')
     if current_role == 'HOST' and not is_master:
         render_host_income_billboard(load_host_income_snapshot(host_id))
-
-    with st.container(border=True):
-        st.markdown("#### 🛍️ 새 쇼룸 상품 등록")
-        st.caption("새 제품을 올리고 QR과 상세페이지까지 한 번에 연결하세요.")
-        with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                brand_name = st.text_input("브랜드명 *")
-                product_name = st.text_input("제품명 *")
-                room_label = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
-                prod_cat_label = st.selectbox("품목 카테고리 *", list(PROD_CAT_MAP.keys()))
-            with c2:
-                original_price = st.number_input("정가 *", min_value=0, step=1000, format="%d")
-                price = st.number_input("판매가 *", min_value=0, step=1000, format="%d")
-                prod_description = st.text_input("리스트 한줄 설명", placeholder="예: 체크인 직후 눈길을 끄는 무드등")
-                prod_images = st.file_uploader("제품 이미지 (첫 이미지가 대표)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True)
-
-            detailed_description = st.text_area("상세 설명", placeholder="소재, 특징, 사용 포인트를 자세히 적어주세요.", height=140)
-            options_raw = st.text_area("옵션", placeholder="예: 색상: 화이트, 블랙\n사이즈: S, M, L", height=90)
-            submitted = st.form_submit_button("🎯 등록 & QR 생성", use_container_width=True, type="primary")
-
-    if submitted:
-        if not brand_name or not product_name or price <= 0 or not prod_images:
-            st.error("브랜드명, 제품명, 가격, 대표 이미지는 꼭 입력해 주세요.")
-        else:
-            qr_id = str(uuid.uuid4())[:12]
-            url = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
-            main_img_b64 = database.file_to_base64(prod_images[0])
-            conn = database.get_db_connection()
-            try:
-                cursor = conn.cursor()
-                insert_query = (
-                    'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id'
-                    if database.DATABASE_URL else
-                    'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
-                )
-                cursor.execute(
-                    insert_query,
-                    (
-                        brand_name,
-                        product_name,
-                        price,
-                        original_price or price,
-                        qr_id,
-                        host_id,
-                        ROOM_MAP[room_label],
-                        PROD_CAT_MAP[prod_cat_label],
-                        prod_description or None,
-                        detailed_description or None,
-                        main_img_b64,
-                    ),
-                )
-                new_product_id = cursor.fetchone()[0] if database.DATABASE_URL else cursor.lastrowid
-                replace_product_media(cursor, new_product_id, prod_images)
-                replace_product_options(cursor, new_product_id, options_raw)
-                conn.commit()
-                st.success(f"✅ '{product_name}' 등록이 완료됐어요.")
-                buf = make_qr(url)
-                q1, q2 = st.columns([1, 2])
-                with q1:
-                    st.image(buf, width=180)
-                    buf.seek(0)
-                    st.download_button("📥 QR 다운로드", buf, f"QR_{product_name}.png", "image/png", use_container_width=True)
-                with q2:
-                    st.code(url, language=None)
-            except Exception as e:
-                st.error(f"오류: {e}")
-            finally:
-                conn.close()
-
-    st.markdown("---")
-    st.subheader("🛠️ 등록된 상품 관리")
     conn = database.get_db_connection()
     if is_master:
         product_query = """
@@ -519,139 +567,303 @@ def render_tab_qr(host_id, is_master):
         gallery_map[product_id] = gallery_images
         option_map[product_id] = build_options_text(database.fetch_product_options(conn, product_id))
     conn.close()
+    workspace_mode = st.radio(
+        "상품 작업 모드",
+        ["신규 상품 등록", "기존 상품 수정"],
+        horizontal=True,
+        key=f"product_workspace_{host_id}_{'master' if is_master else 'host'}",
+        label_visibility="collapsed",
+    )
 
-    if df_p.empty:
-        st.info("등록된 제품이 없습니다.")
-    else:
-        for index, (_, product) in enumerate(df_p.iterrows()):
-            product_id = int(product['id'])
-            room_value = product.get('room_category') or 'living_room'
-            category_value = product.get('product_category') or 'lifestyle'
-            gallery_images = gallery_map.get(product_id, [])
-            option_text = option_map.get(product_id, "")
-            badge_text = f"{ROOM_ICON_MAP.get(room_value, '🏠')} {ROOM_LABEL_MAP.get(room_value, room_value)} · {PROD_CAT_LABEL_MAP.get(category_value, category_value)}"
-
-            with st.expander(f"{product['product_name']}  ·  {badge_text}", expanded=index == 0):
-                top_left, top_right = st.columns([0.95, 1.55], gap="large")
-                with top_left:
-                    show_img(gallery_images[0] if gallery_images else product.get('image_url'), width=240)
-                    st.caption("현재 등록된 갤러리")
-                    render_b64_gallery(gallery_images[:5], columns_count=min(5, max(len(gallery_images[:5]), 1)))
-                    qr_url = f"{CHECKOUT_BASE_URL}/shop/{product['qr_code_id']}"
-                    qr_buffer = make_qr(qr_url)
-                    st.code(qr_url, language=None)
-                    qr_buffer.seek(0)
-                    st.download_button(
-                        "📥 이 상품 QR 다운로드",
-                        qr_buffer,
-                        f"QR_{product['product_name']}.png",
-                        "image/png",
-                        key=f"product_qr_{product_id}",
-                        use_container_width=True,
+    if workspace_mode == "신규 상품 등록":
+        left, right = st.columns([1.45, 0.85], gap="large")
+        with left:
+            with st.container(border=True):
+                st.markdown("#### 🛍️ 새 쇼룸 상품 등록")
+                st.caption("이미지부터 상세 소개까지 한 화면에서 정리하고 저장 즉시 쇼룸에 반영하세요.")
+                with st.form(f"product_register_form_{host_id}", clear_on_submit=True):
+                    st.markdown("##### 1. 대표 이미지와 갤러리")
+                    prod_images = st.file_uploader(
+                        "제품 이미지 업로드",
+                        type=["jpg", "jpeg", "png", "webp"],
+                        accept_multiple_files=True,
+                        help="첫 이미지가 대표 이미지로 노출됩니다.",
                     )
+                    st.caption("대표 이미지는 밝고 제품 전체가 잘 보이는 컷이 가장 좋아요.")
 
-                with top_right:
-                    st.markdown(f"**상품 ID #{product_id}**")
-                    meta1, meta2, meta3 = st.columns(3)
-                    meta1.metric("판매가", f"{int(product['price']):,}원")
-                    meta2.metric("정가", f"{int((product['original_price'] or product['price'])):,}원")
-                    meta3.metric("할인율", f"{int(max((product['original_price'] or product['price']) - product['price'], 0) / max((product['original_price'] or product['price']), 1) * 100)}%")
+                    st.markdown("##### 2. 기본 정보")
+                    info_left, info_right = st.columns(2)
+                    with info_left:
+                        brand_name = st.text_input("브랜드명 *")
+                        product_name = st.text_input("제품명 *")
+                        prod_description = st.text_input("리스트 한줄 설명", placeholder="예: 체크인 직후 눈길을 끄는 무드등")
+                    with info_right:
+                        room_label = st.selectbox("배치 공간 *", list(ROOM_MAP.keys()))
+                        prod_cat_label = st.selectbox("품목 카테고리 *", list(PROD_CAT_MAP.keys()))
+                        original_price = st.number_input("정가 *", min_value=0, step=1000, format="%d")
 
-                    with st.form(f"product_edit_form_{product_id}"):
-                        e1, e2 = st.columns(2)
-                        with e1:
-                            edit_brand = st.text_input("브랜드명", value=product['brand_name'], key=f"brand_{product_id}")
-                            edit_name = st.text_input("제품명", value=product['product_name'], key=f"name_{product_id}")
-                            edit_room = st.selectbox(
-                                "배치 공간",
-                                list(ROOM_MAP.keys()),
-                                index=list(ROOM_MAP.values()).index(room_value) if room_value in ROOM_MAP.values() else 0,
-                                key=f"room_{product_id}",
-                            )
-                            edit_category = st.selectbox(
-                                "품목 카테고리",
-                                list(PROD_CAT_MAP.keys()),
-                                index=list(PROD_CAT_MAP.values()).index(category_value) if category_value in PROD_CAT_MAP.values() else 0,
-                                key=f"category_{product_id}",
-                            )
-                        with e2:
-                            edit_original_price = st.number_input("정가", min_value=0, step=1000, format="%d", value=int(product['original_price'] or product['price']), key=f"origin_{product_id}")
-                            edit_price = st.number_input("판매가", min_value=0, step=1000, format="%d", value=int(product['price']), key=f"price_{product_id}")
-                            edit_description = st.text_input("리스트 한줄 설명", value=product.get('description') or "", key=f"desc_{product_id}")
-                            replacement_images = st.file_uploader(
-                                "새 갤러리 이미지 (업로드 시 기존 이미지 전체 교체)",
-                                type=["jpg", "jpeg", "png", "webp"],
-                                accept_multiple_files=True,
-                                key=f"gallery_{product_id}",
-                            )
+                    st.markdown("##### 3. 가격과 쇼룸 배치")
+                    price_cols = st.columns([1, 1])
+                    with price_cols[0]:
+                        price = st.number_input("판매가 *", min_value=0, step=1000, format="%d")
+                    with price_cols[1]:
+                        st.markdown("**현재 배치 기준**")
+                        st.caption("위에서 선택한 공간과 카테고리가 바로 카탈로그 필터에 반영됩니다.")
 
-                        edit_detailed_description = st.text_area(
-                            "상세 설명",
-                            value=product.get('detailed_description') or "",
-                            height=140,
-                            key=f"detail_{product_id}",
+                    st.markdown("##### 4. 상세 소개와 옵션")
+                    detailed_description = st.text_area(
+                        "상세 설명",
+                        placeholder="소재, 사용감, 추천 포인트를 고객이 읽기 쉽게 적어주세요.",
+                        height=160,
+                    )
+                    options_raw = st.text_area(
+                        "옵션",
+                        placeholder="예: 색상: 화이트, 블랙\n사이즈: S, M, L",
+                        height=100,
+                    )
+                    submitted = st.form_submit_button("🎯 상품 저장하고 QR 만들기", use_container_width=True, type="primary")
+
+            if submitted:
+                if not brand_name or not product_name or price <= 0 or not prod_images:
+                    st.error("브랜드명, 제품명, 판매가, 대표 이미지는 꼭 입력해 주세요.")
+                else:
+                    qr_id = str(uuid.uuid4())[:12]
+                    url = f"{CHECKOUT_BASE_URL}/shop/{qr_id}"
+                    main_img_b64 = database.file_to_base64(prod_images[0])
+                    conn_save = database.get_db_connection()
+                    try:
+                        cursor = conn_save.cursor()
+                        insert_query = (
+                            'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id'
+                            if database.DATABASE_URL else
+                            'INSERT INTO products (brand_name,product_name,price,original_price,qr_code_id,owner_id,room_category,product_category,description,detailed_description,image_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
                         )
-                        edit_options_raw = st.text_area(
-                            "옵션",
-                            value=option_text,
-                            height=90,
-                            key=f"options_{product_id}",
+                        cursor.execute(
+                            insert_query,
+                            (
+                                brand_name,
+                                product_name,
+                                price,
+                                original_price or price,
+                                qr_id,
+                                host_id,
+                                ROOM_MAP[room_label],
+                                PROD_CAT_MAP[prod_cat_label],
+                                prod_description or None,
+                                detailed_description or None,
+                                main_img_b64,
+                            ),
                         )
-                        save_product = st.form_submit_button("💾 상품 정보 저장", use_container_width=True, type="primary")
+                        new_product_id = cursor.fetchone()[0] if database.DATABASE_URL else cursor.lastrowid
+                        replace_product_media(cursor, new_product_id, prod_images)
+                        replace_product_options(cursor, new_product_id, options_raw)
+                        database.bump_public_content_version(conn_save)
+                        conn_save.commit()
+                        st.success(f"✅ '{product_name}' 등록이 완료됐어요. 쇼룸도 자동 반영을 시작합니다.")
+                        qr_buffer = make_qr(url)
+                        q1, q2 = st.columns([1, 2])
+                        with q1:
+                            st.image(qr_buffer, width=180)
+                            qr_buffer.seek(0)
+                            st.download_button("📥 QR 다운로드", qr_buffer, f"QR_{product_name}.png", "image/png", use_container_width=True)
+                        with q2:
+                            st.code(url, language=None)
+                    except Exception as e:
+                        st.error(f"오류: {e}")
+                    finally:
+                        conn_save.close()
 
-                    if save_product:
-                        if not edit_brand or not edit_name or edit_price <= 0:
-                            st.error("브랜드명, 제품명, 판매가는 비워둘 수 없습니다.")
-                        else:
-                            conn_edit = database.get_db_connection()
-                            cursor = conn_edit.cursor()
-                            try:
-                                next_main_image = product.get('image_url')
-                                if replacement_images:
-                                    next_main_image = database.file_to_base64(replacement_images[0])
+        with right:
+            render_host_upload_guide("create")
+            with st.container(border=True):
+                st.markdown("#### 바로 반영되는 항목")
+                st.caption("저장 직후 고객 페이지가 새 정보를 감지하는 핵심 항목입니다.")
+                st.markdown("- 대표 이미지\n- 제품명과 한줄 설명\n- 공간 배치와 카테고리\n- 상세 설명과 옵션")
+    else:
+        st.subheader("🛠️ 등록된 상품 관리")
+        if df_p.empty:
+            st.info("등록된 제품이 없습니다. 먼저 신규 상품을 올려 주세요.")
+            return
 
-                                update_query = (
-                                    """
-                                    UPDATE products
-                                    SET brand_name=%s, product_name=%s, price=%s, original_price=%s,
-                                        room_category=%s, product_category=%s, description=%s,
-                                        detailed_description=%s, image_url=%s
-                                    WHERE id=%s
-                                    """
-                                    if database.DATABASE_URL else
-                                    """
-                                    UPDATE products
-                                    SET brand_name=?, product_name=?, price=?, original_price=?,
-                                        room_category=?, product_category=?, description=?,
-                                        detailed_description=?, image_url=?
-                                    WHERE id=?
-                                    """
+        render_product_summary_metrics(df_p, gallery_map)
+        search_col, room_col = st.columns([1.9, 1])
+        search_query = search_col.text_input(
+            "상품 검색",
+            placeholder="제품명 또는 브랜드명을 입력해 빠르게 찾으세요.",
+            key=f"product_search_{host_id}_{'master' if is_master else 'host'}",
+        )
+        room_filter = room_col.selectbox(
+            "공간 필터",
+            ["전체"] + list(ROOM_MAP.keys()),
+            key=f"product_room_filter_{host_id}_{'master' if is_master else 'host'}",
+        )
+        filtered_df = df_p.copy()
+        if search_query:
+            mask = (
+                filtered_df["product_name"].fillna("").str.contains(search_query, case=False) |
+                filtered_df["brand_name"].fillna("").str.contains(search_query, case=False)
+            )
+            filtered_df = filtered_df[mask]
+        if room_filter != "전체":
+            filtered_df = filtered_df[filtered_df["room_category"] == ROOM_MAP[room_filter]]
+
+        guide_left, guide_right = st.columns([1.4, 0.9], gap="large")
+        with guide_right:
+            render_host_upload_guide("edit")
+        with guide_left:
+            if filtered_df.empty:
+                st.info("조건에 맞는 상품이 아직 없습니다. 검색어나 공간 필터를 바꿔 보세요.")
+            else:
+                for index, (_, product) in enumerate(filtered_df.iterrows()):
+                    product_id = int(product['id'])
+                    room_value = product.get('room_category') or 'living_room'
+                    category_value = product.get('product_category') or 'lifestyle'
+                    gallery_images = gallery_map.get(product_id, [])
+                    option_text = option_map.get(product_id, "")
+                    badge_text = f"{ROOM_ICON_MAP.get(room_value, '🏠')} {ROOM_LABEL_MAP.get(room_value, room_value)} · {PROD_CAT_LABEL_MAP.get(category_value, category_value)}"
+
+                    with st.expander(f"{product['product_name']}  ·  {badge_text}", expanded=index == 0):
+                        top_left, top_right = st.columns([0.95, 1.55], gap="large")
+                        with top_left:
+                            show_img(gallery_images[0] if gallery_images else product.get('image_url'), width=240)
+                            st.caption("현재 등록된 갤러리")
+                            render_b64_gallery(gallery_images[:5], columns_count=min(5, max(len(gallery_images[:5]), 1)))
+                            qr_url = f"{CHECKOUT_BASE_URL}/shop/{product['qr_code_id']}"
+                            qr_buffer = make_qr(qr_url)
+                            st.code(qr_url, language=None)
+                            qr_buffer.seek(0)
+                            st.download_button(
+                                "📥 이 상품 QR 다운로드",
+                                qr_buffer,
+                                f"QR_{product['product_name']}.png",
+                                "image/png",
+                                key=f"product_qr_{product_id}",
+                                use_container_width=True,
+                            )
+
+                        with top_right:
+                            st.markdown(f"**상품 ID #{product_id}**")
+                            meta1, meta2, meta3 = st.columns(3)
+                            meta1.metric("판매가", f"{int(product['price']):,}원")
+                            meta2.metric("정가", f"{int((product['original_price'] or product['price'])):,}원")
+                            meta3.metric("할인율", f"{int(max((product['original_price'] or product['price']) - product['price'], 0) / max((product['original_price'] or product['price']), 1) * 100)}%")
+
+                            with st.form(f"product_edit_form_{product_id}"):
+                                st.markdown("##### 쇼룸에 보이는 기본 정보")
+                                e1, e2 = st.columns(2)
+                                with e1:
+                                    edit_brand = st.text_input("브랜드명", value=product['brand_name'], key=f"brand_{product_id}")
+                                    edit_name = st.text_input("제품명", value=product['product_name'], key=f"name_{product_id}")
+                                    edit_description = st.text_input("리스트 한줄 설명", value=product.get('description') or "", key=f"desc_{product_id}")
+                                with e2:
+                                    edit_room = st.selectbox(
+                                        "배치 공간",
+                                        list(ROOM_MAP.keys()),
+                                        index=list(ROOM_MAP.values()).index(room_value) if room_value in ROOM_MAP.values() else 0,
+                                        key=f"room_{product_id}",
+                                    )
+                                    edit_category = st.selectbox(
+                                        "품목 카테고리",
+                                        list(PROD_CAT_MAP.keys()),
+                                        index=list(PROD_CAT_MAP.values()).index(category_value) if category_value in PROD_CAT_MAP.values() else 0,
+                                        key=f"category_{product_id}",
+                                    )
+                                    replacement_images = st.file_uploader(
+                                        "새 갤러리 이미지 (업로드 시 기존 이미지 전체 교체)",
+                                        type=["jpg", "jpeg", "png", "webp"],
+                                        accept_multiple_files=True,
+                                        key=f"gallery_{product_id}",
+                                    )
+
+                                st.markdown("##### 가격과 상세 소개")
+                                price_left, price_right = st.columns(2)
+                                with price_left:
+                                    edit_original_price = st.number_input(
+                                        "정가",
+                                        min_value=0,
+                                        step=1000,
+                                        format="%d",
+                                        value=int(product['original_price'] or product['price']),
+                                        key=f"origin_{product_id}",
+                                    )
+                                with price_right:
+                                    edit_price = st.number_input(
+                                        "판매가",
+                                        min_value=0,
+                                        step=1000,
+                                        format="%d",
+                                        value=int(product['price']),
+                                        key=f"price_{product_id}",
+                                    )
+
+                                edit_detailed_description = st.text_area(
+                                    "상세 설명",
+                                    value=product.get('detailed_description') or "",
+                                    height=160,
+                                    key=f"detail_{product_id}",
                                 )
-                                cursor.execute(
-                                    update_query,
-                                    (
-                                        edit_brand,
-                                        edit_name,
-                                        edit_price,
-                                        edit_original_price or edit_price,
-                                        ROOM_MAP[edit_room],
-                                        PROD_CAT_MAP[edit_category],
-                                        edit_description or None,
-                                        edit_detailed_description or None,
-                                        next_main_image,
-                                        product_id,
-                                    ),
+                                edit_options_raw = st.text_area(
+                                    "옵션",
+                                    value=option_text,
+                                    height=100,
+                                    key=f"options_{product_id}",
                                 )
-                                if replacement_images:
-                                    replace_product_media(cursor, product_id, replacement_images)
-                                replace_product_options(cursor, product_id, edit_options_raw)
-                                conn_edit.commit()
-                                st.success(f"✅ '{edit_name}' 정보가 저장되었습니다.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"오류: {e}")
-                            finally:
-                                conn_edit.close()
+                                save_product = st.form_submit_button("💾 변경 저장하고 쇼룸 반영", use_container_width=True, type="primary")
+
+                            if save_product:
+                                if not edit_brand or not edit_name or edit_price <= 0:
+                                    st.error("브랜드명, 제품명, 판매가는 비워둘 수 없습니다.")
+                                else:
+                                    conn_edit = database.get_db_connection()
+                                    cursor = conn_edit.cursor()
+                                    try:
+                                        next_main_image = product.get('image_url')
+                                        if replacement_images:
+                                            next_main_image = database.file_to_base64(replacement_images[0])
+
+                                        update_query = (
+                                            """
+                                            UPDATE products
+                                            SET brand_name=%s, product_name=%s, price=%s, original_price=%s,
+                                                room_category=%s, product_category=%s, description=%s,
+                                                detailed_description=%s, image_url=%s
+                                            WHERE id=%s
+                                            """
+                                            if database.DATABASE_URL else
+                                            """
+                                            UPDATE products
+                                            SET brand_name=?, product_name=?, price=?, original_price=?,
+                                                room_category=?, product_category=?, description=?,
+                                                detailed_description=?, image_url=?
+                                            WHERE id=?
+                                            """
+                                        )
+                                        cursor.execute(
+                                            update_query,
+                                            (
+                                                edit_brand,
+                                                edit_name,
+                                                edit_price,
+                                                edit_original_price or edit_price,
+                                                ROOM_MAP[edit_room],
+                                                PROD_CAT_MAP[edit_category],
+                                                edit_description or None,
+                                                edit_detailed_description or None,
+                                                next_main_image,
+                                                product_id,
+                                            ),
+                                        )
+                                        if replacement_images:
+                                            replace_product_media(cursor, product_id, replacement_images)
+                                        replace_product_options(cursor, product_id, edit_options_raw)
+                                        database.bump_public_content_version(conn_edit)
+                                        conn_edit.commit()
+                                        st.success(f"✅ '{edit_name}' 정보가 저장되었습니다. 고객 페이지도 자동 업데이트를 감지합니다.")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"오류: {e}")
+                                    finally:
+                                        conn_edit.close()
 
 def render_tab_orders(host_id, is_master):
     st.subheader("📦 주문 현황")
@@ -1068,6 +1280,7 @@ with tab_list[4]:
                          if database.DATABASE_URL else
                          'INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (?,?,?,?,?,?,?,?)')
                     cursor.execute(q, (host_id, location, description, *next_images))
+                database.bump_public_content_version(conn)
                 conn.commit()
                 st.success("✅ 숙소 정보가 저장되었습니다!")
                 st.rerun()
