@@ -135,6 +135,21 @@
             transition: transform 420ms ease;
             will-change: transform;
         }
+        .product-carousel-track {
+            transition: transform 520ms ease;
+            will-change: transform;
+        }
+        .product-carousel-dot {
+            height: 0.42rem;
+            width: 0.42rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.48);
+            transition: background 160ms ease, width 160ms ease;
+        }
+        .product-carousel-dot.is-active {
+            width: 1.15rem;
+            background: white;
+        }
         .space-carousel-button {
             display: inline-flex;
             height: 2.5rem;
@@ -250,8 +265,23 @@
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {% for product in products %}
                     <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1">
-                        <div class="aspect-[1.18/1] bg-[#efe8dd]">
+                        <div class="relative aspect-[1.18/1] overflow-hidden bg-[#efe8dd]" data-product-carousel {% if product.gallery_count > 1 %}data-product-delay="1000"{% endif %}>
+                            {% if product.gallery_count > 1 %}
+                            <div class="product-carousel-track flex h-full" data-product-track>
+                                {% for image in product.gallery_images %}
+                                <div class="h-full min-w-full" data-product-slide>
+                                    <img src="data:image/jpeg;base64,{{ image }}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="pointer-events-none absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+                                {% for image in product.gallery_images %}
+                                <span class="product-carousel-dot {% if loop.first %}is-active{% endif %}" data-product-dot></span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
                             <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
+                            {% endif %}
                         </div>
                         <div class="space-y-4 p-4 sm:p-5">
                             <div class="flex flex-wrap items-center gap-2">
@@ -530,14 +560,71 @@
                 });
             };
 
+            const startProductCarousels = () => {
+                const carousels = document.querySelectorAll('[data-product-carousel]');
+                if (!carousels.length) return;
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+                carousels.forEach((carousel) => {
+                    const slides = [...carousel.querySelectorAll('[data-product-slide]')];
+                    const track = carousel.querySelector('[data-product-track]');
+                    const dots = [...carousel.querySelectorAll('[data-product-dot]')];
+                    if (!track || slides.length < 2) return;
+
+                    let index = 0;
+                    let timer = null;
+                    const delay = Number(carousel.dataset.productDelay || 1000);
+
+                    const render = () => {
+                        track.style.transform = `translateX(-${index * 100}%)`;
+                        dots.forEach((dot, dotIndex) => {
+                            dot.classList.toggle('is-active', dotIndex === index);
+                        });
+                    };
+
+                    const clearTimer = () => {
+                        if (timer) {
+                            window.clearInterval(timer);
+                            timer = null;
+                        }
+                    };
+
+                    const schedule = () => {
+                        clearTimer();
+                        timer = window.setInterval(() => {
+                            index = (index + 1) % slides.length;
+                            render();
+                        }, delay);
+                    };
+
+                    carousel.addEventListener('pointerenter', clearTimer);
+                    carousel.addEventListener('pointerleave', schedule);
+                    carousel.addEventListener('touchstart', clearTimer, { passive: true });
+                    carousel.addEventListener('touchend', schedule, { passive: true });
+
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            clearTimer();
+                        } else {
+                            schedule();
+                        }
+                    });
+
+                    render();
+                    window.setTimeout(schedule, delay);
+                });
+            };
+
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                     startAutoScroll();
                     startSpaceCarousels();
+                    startProductCarousels();
                 }, { once: true });
             } else {
                 startAutoScroll();
                 startSpaceCarousels();
+                startProductCarousels();
             }
         })();
     </script>

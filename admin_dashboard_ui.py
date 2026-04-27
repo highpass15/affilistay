@@ -1511,67 +1511,59 @@ with tab_list[4]:
         current_images = [existing.get(key) if existing is not None else None for key in VENUE_IMAGE_KEYS]
 
         with st.container(border=True):
-            st.markdown("#### 쇼룸 공간 정보")
-            st.caption("사진은 최대 5장까지 등록할 수 있어요. 빈 칸은 그대로 두면 기존 이미지가 유지됩니다.")
+            st.markdown("#### ?? ?? ??")
+            st.caption("?? ??? ??? ? ?? ???? ?? ???? ?? ??? ?????.")
             with st.form("venue_form"):
-                location = st.text_input("숙소 위치 (주소 또는 지역명)", value=existing['location'] if existing is not None else "")
-                description = st.text_area("숙소 소개", value=existing['description'] if existing is not None else "", height=120)
-                st.markdown("**숙소 내부 사진 (최대 5장)**")
-
-                uploaded_slots = {}
-                clear_slots = {}
-                for start in range(0, len(VENUE_IMAGE_KEYS), 3):
-                    cols = st.columns(min(3, len(VENUE_IMAGE_KEYS) - start))
-                    for col, image_key in zip(cols, VENUE_IMAGE_KEYS[start:start + 3]):
-                        slot_index = VENUE_IMAGE_KEYS.index(image_key) + 1
-                        with col:
-                            st.markdown(f"**사진 {slot_index}**")
-                            show_img(current_images[slot_index - 1], width=180)
-                            uploaded_slots[image_key] = st.file_uploader(
-                                f"사진 {slot_index} 업로드",
-                                type=["jpg", "jpeg", "png", "webp"],
-                                key=f"venue_{slot_index}",
-                            )
-                            clear_slots[image_key] = st.checkbox("이 슬롯 비우기", value=False, key=f"venue_clear_{slot_index}")
-
-                save_venue = st.form_submit_button("💾 숙소 정보 저장", use_container_width=True, type="primary")
+                location = st.text_input("?? ?? (?? ?? ???)", value=existing['location'] if existing is not None else "")
+                description = st.text_area("?? ??", value=existing['description'] if existing is not None else "", height=120)
+                st.markdown("**?? ?? ???**")
+                render_b64_gallery(current_images, columns_count=5)
+                uploaded_gallery = st.file_uploader(
+                    "? ?? ?? 1~5?",
+                    type=["jpg", "jpeg", "png", "webp"],
+                    accept_multiple_files=True,
+                    key="venue_gallery_batch",
+                    help="?? ?? ? ?? ??? ?? ???? ? ?? ???? ?????.",
+                )
+                clear_gallery = st.checkbox("?? ?? ?? ?? ???", value=False, key="venue_gallery_clear")
+                save_venue = st.form_submit_button("?? ?? ?? ??", use_container_width=True, type="primary")
 
         if save_venue:
-            next_images = []
-            for image_key in VENUE_IMAGE_KEYS:
-                current_value = existing.get(image_key) if existing is not None else None
-                if clear_slots[image_key]:
-                    next_images.append(None)
-                elif uploaded_slots[image_key]:
-                    next_images.append(database.file_to_base64(uploaded_slots[image_key]))
-                else:
-                    next_images.append(current_value)
+            if uploaded_gallery and len(uploaded_gallery) > 5:
+                st.error("?? ??? ? ?? ?? 5??? ???? ? ???.")
+            else:
+                next_images = current_images[:]
+                if clear_gallery:
+                    next_images = [None] * len(VENUE_IMAGE_KEYS)
+                if uploaded_gallery:
+                    uploaded_images = [database.file_to_base64(file) for file in uploaded_gallery[:5]]
+                    next_images = uploaded_images + [None] * (len(VENUE_IMAGE_KEYS) - len(uploaded_images))
 
-            conn = database.get_db_connection()
-            cursor = conn.cursor()
-            try:
-                if existing is not None:
-                    q = ('UPDATE host_venues SET location=%s,description=%s,image1=%s,image2=%s,image3=%s,image4=%s,image5=%s WHERE host_id=%s'
-                         if database.DATABASE_URL else
-                         'UPDATE host_venues SET location=?,description=?,image1=?,image2=?,image3=?,image4=?,image5=? WHERE host_id=?')
-                    cursor.execute(q, (location, description, *next_images, host_id))
-                else:
-                    q = ('INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
-                         if database.DATABASE_URL else
-                         'INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (?,?,?,?,?,?,?,?)')
-                    cursor.execute(q, (host_id, location, description, *next_images))
-                database.bump_public_content_version(conn)
-                conn.commit()
-                st.success("✅ 숙소 정보가 저장되었습니다!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"오류: {e}")
-            finally:
-                conn.close()
+                conn = database.get_db_connection()
+                cursor = conn.cursor()
+                try:
+                    if existing is not None:
+                        q = ('UPDATE host_venues SET location=%s,description=%s,image1=%s,image2=%s,image3=%s,image4=%s,image5=%s WHERE host_id=%s'
+                             if database.DATABASE_URL else
+                             'UPDATE host_venues SET location=?,description=?,image1=?,image2=?,image3=?,image4=?,image5=? WHERE host_id=?')
+                        cursor.execute(q, (location, description, *next_images, host_id))
+                    else:
+                        q = ('INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
+                             if database.DATABASE_URL else
+                             'INSERT INTO host_venues (host_id,location,description,image1,image2,image3,image4,image5) VALUES (?,?,?,?,?,?,?,?)')
+                        cursor.execute(q, (host_id, location, description, *next_images))
+                    database.bump_public_content_version(conn)
+                    conn.commit()
+                    st.success("? ?? ??? ???????!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"??: {e}")
+                finally:
+                    conn.close()
 
         if existing is not None:
             st.markdown("---")
-            st.markdown("**현재 등록된 쇼룸 갤러리**")
+            st.markdown("**?? ??? ?? ???**")
             render_b64_gallery([existing.get(key) for key in VENUE_IMAGE_KEYS], columns_count=5)
 
 # ═══════════════════════════════════════

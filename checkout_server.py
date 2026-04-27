@@ -387,6 +387,21 @@ def _catalog_image_map(conn):
     return image_map
 
 
+def _catalog_gallery_map(conn):
+    try:
+        rows = _fetch_all(
+            conn,
+            "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
+            "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
+        )
+    except Exception:
+        return {}
+    gallery_map = {}
+    for row in rows:
+        gallery_map.setdefault(row["product_id"], []).append(row["image_data"])
+    return gallery_map
+
+
 
 def _category_items(labels, icons):
     return [
@@ -405,15 +420,22 @@ def _encode_return_to(path):
     return quote(path, safe="")
 
 
-def _decorate_catalog_products(products, image_map):
+def _decorate_catalog_products(products, image_map, gallery_map=None):
+    gallery_map = gallery_map or {}
     for product in products:
         original_price = product.get("original_price") or product.get("price") or 0
         price = product.get("price") or 0
-        product["primary_image"] = product.get("image_url") or image_map.get(product["id"])
-        product["room_label"] = ROOM_CATEGORIES.get(product.get("room_category"), "추천")
-        product["room_icon"] = ROOM_ICONS.get(product.get("room_category"), "🏠")
-        product["category_label"] = PRODUCT_CATEGORIES.get(product.get("product_category"), "큐레이션")
-        product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "🛍️")
+        gallery_images = _build_gallery_images(
+            product.get("image_url"),
+            [{"image_data": image_data} for image_data in gallery_map.get(product["id"], [])],
+        )
+        product["primary_image"] = gallery_images[0] if gallery_images else None
+        product["gallery_images"] = gallery_images
+        product["gallery_count"] = len(gallery_images)
+        product["room_label"] = ROOM_CATEGORIES.get(product.get("room_category"), "??")
+        product["room_icon"] = ROOM_ICONS.get(product.get("room_category"), "?")
+        product["category_label"] = PRODUCT_CATEGORIES.get(product.get("product_category"), "????")
+        product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "?")
         product["discount_rate"] = int(((original_price - price) / original_price) * 100) if original_price and original_price > price else 0
     return products
 
@@ -442,7 +464,7 @@ def _build_gallery_images(primary_image, image_rows):
 
 
 def _decorate_recommendation_products(products, image_map):
-    products = _decorate_catalog_products(products, image_map)
+    products = _decorate_catalog_products(products, image_map, gallery_map)
     for product in products:
         showroom_path = f"/showrooms/{product['owner_id']}" if product.get("owner_id") else "/catalog?view=spaces"
         product["showroom_path"] = showroom_path
@@ -691,7 +713,9 @@ def _build_showroom_context(conn, host_id):
         "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.owner_id = ? ORDER BY p.room_category, p.id DESC",
         (host_id,),
     )
-    return showroom, _decorate_catalog_products(products, _catalog_image_map(conn))
+    image_map = _catalog_image_map(conn)
+    gallery_map = _catalog_gallery_map(conn)
+    return showroom, _decorate_catalog_products(products, image_map, gallery_map)
 
 
 # ─────────────────────────────────────────
@@ -772,7 +796,8 @@ async def catalog_page(
             products = [p for p in products if p.get("room_category") == room]
 
         image_map = _catalog_image_map(conn)
-        products = _decorate_catalog_products(products, image_map)
+        gallery_map = _catalog_gallery_map(conn)
+        products = _decorate_catalog_products(products, image_map, gallery_map)
     else:
         hosts = _build_catalog_hosts(conn)
 
