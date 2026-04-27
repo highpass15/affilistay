@@ -95,28 +95,28 @@ ROOM_ICONS = {
 }
 
 PRODUCT_CATEGORIES = {
+    "lighting": "조명",
+    "hairdryer": "헤어드라이어",
     "furniture": "가구",
     "fabric": "패브릭",
     "appliance": "가전·디지털",
     "kitchenware": "주방용품",
     "food": "식품",
     "deco": "데코·식물",
-    "lighting": "조명",
     "storage": "수납·정리",
-    "hairdryer": "헤어드라이어",
     "lifestyle": "생활용품",
 }
 
 PRODUCT_ICONS = {
+    "lighting": "💡",
+    "hairdryer": "💨",
     "furniture": "🪑",
     "fabric": "🧵",
     "appliance": "🔌",
     "kitchenware": "🍽️",
     "food": "🥯",
     "deco": "🪴",
-    "lighting": "💡",
     "storage": "📦",
-    "hairdryer": "💨",
     "lifestyle": "🧴",
 }
 
@@ -561,34 +561,42 @@ async def catalog_page(
     room: str = Query(default="all"),
 ):
     """QR 접속 없이 플랫폼 전체 입점제품 및 숙소(호스트) 공간 구경"""
-    conn = get_db_connection()
-
-    if category != "all" and category in PRODUCT_CATEGORIES:
-        products = _fetch_all(
-            conn,
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id DESC",
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id DESC",
-            (category,),
-        )
-    else:
-        products = _fetch_all(
-            conn,
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
-            "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
-        )
-
-    if room != "all" and room in ROOM_CATEGORIES:
-        products = [p for p in products if p.get("room_category") == room]
-
-    image_map = _catalog_image_map(conn)
-    products = _decorate_catalog_products(products, image_map)
-    hosts = _build_catalog_hosts(conn)
-    conn.close()
-
     if view not in {"products", "spaces"}:
         view = "products"
 
-    current_url = f"/catalog?view={view}&category={category}&room={room}"
+    conn = get_db_connection()
+    products = []
+    hosts = []
+
+    if view == "products":
+        if category != "all" and category in PRODUCT_CATEGORIES:
+            products = _fetch_all(
+                conn,
+                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = %s ORDER BY p.id DESC",
+                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id WHERE p.product_category = ? ORDER BY p.id DESC",
+                (category,),
+            )
+        else:
+            products = _fetch_all(
+                conn,
+                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
+                "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY p.id DESC",
+            )
+
+        if room != "all" and room in ROOM_CATEGORIES:
+            products = [p for p in products if p.get("room_category") == room]
+
+        image_map = _catalog_image_map(conn)
+        products = _decorate_catalog_products(products, image_map)
+    else:
+        hosts = _build_catalog_hosts(conn)
+
+    conn.close()
+
+    if view == "products":
+        current_url = f"/catalog?view={view}&category={category}&room={room}"
+    else:
+        current_url = "/catalog?view=spaces"
 
     return templates.TemplateResponse(
         request=request,
