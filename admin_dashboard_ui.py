@@ -559,7 +559,7 @@ def check_auth():
 
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
-        st.markdown("<h2 style='text-align:center;font-weight:300;letter-spacing:0.05em'>AFFILISTAY.</h2>", unsafe_allow_html=True)
+        st.image("static/affilistay-logo.png", width=220)
 
         if st.session_state['auth_mode'] == 'login':
             st.markdown("#### 로그인")
@@ -796,7 +796,7 @@ ROLE_LABELS = {"HOST": "숙소 호스트", "BRAND": "입점사(브랜드)", "GUE
 role_display = "MASTER" if is_master else ROLE_LABELS.get(role, "파트너")
 
 with st.sidebar:
-    st.markdown(f"### AFFILISTAY.")
+    st.image("static/affilistay-logo.png", width=170)
     st.caption(f"**{uname}** ({role_display})")
     st.markdown("---")
     if st.button("🚪 로그아웃", use_container_width=True):

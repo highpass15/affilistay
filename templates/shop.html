@@ -48,11 +48,19 @@
         }
 
         .header-logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
             text-decoration: none;
-            letter-spacing: -0.5px;
+            display: inline-flex;
+            align-items: center;
+            max-width: 170px;
+            min-width: 0;
+        }
+
+        .header-logo img {
+            display: block;
+            width: auto;
+            height: 28px;
+            max-width: 100%;
+            object-fit: contain;
         }
 
         .header-icons {
@@ -303,7 +311,7 @@
     <header class="shop-header">
         <div style="display:flex; align-items:center; gap:16px;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            <a href="/" class="header-logo">AFFILISTAY</a>
+            <a href="/" class="header-logo"><img src="/static/affilistay-logo.png?v=2" alt="AFFILISTAY"></a>
         </div>
         <div class="header-icons">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>

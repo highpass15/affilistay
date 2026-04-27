@@ -236,11 +236,18 @@
         }
 
         .complete-footer .logo {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.3em;
-            color: var(--text-muted);
-            text-transform: uppercase;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .complete-footer .logo img {
+            display: block;
+            width: auto;
+            height: 20px;
+            max-width: 150px;
+            object-fit: contain;
+            opacity: 0.55;
         }
 
         .complete-footer p {
@@ -311,7 +318,7 @@
 
         <!-- 푸터 -->
         <div class="complete-footer">
-            <div class="logo">AFFILISTAY</div>
+            <div class="logo"><img src="/static/affilistay-logo.png?v=2" alt="AFFILISTAY"></div>
             <p>Stay as a Showroom</p>
         </div>
 
