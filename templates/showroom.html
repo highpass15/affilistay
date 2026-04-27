@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ showroom.host_name }} | AFFILISTAY Showroom</title>
+    <title>{{ showroom.host_name }} | AFFILISTAY 쇼룸</title>
+    <meta name="description" content="{{ showroom.host_name }} 쇼룸에 비치된 제품을 모바일에서 둘러보세요.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
@@ -11,110 +12,109 @@
     <style>
         :root {
             --bg: #f5f1ea;
-            --surface: #fbf8f3;
+            --surface: rgba(255, 255, 255, 0.8);
             --card: #ffffff;
-            --line: rgba(24, 22, 18, 0.08);
             --text: #1c1813;
-            --muted: #72685f;
+            --muted: #6d645b;
             --soft: #b39a82;
+            --soft-2: #eee5d9;
         }
         body {
             font-family: "Outfit", sans-serif;
             background: var(--bg);
             color: var(--text);
+            word-break: keep-all;
         }
         body::before {
             content: "";
             position: fixed;
             inset: 0;
             background: url("https://www.transparenttextures.com/patterns/natural-paper.png");
-            opacity: 0.24;
+            opacity: 0.18;
             pointer-events: none;
         }
         .shell { position: relative; z-index: 1; }
         .serif { font-family: "Cormorant Garamond", serif; }
+        .safe-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: keep-all;
+        }
     </style>
 </head>
 <body>
     <div class="shell min-h-screen">
-        <header class="sticky top-0 z-40 border-b border-black/5 bg-[rgba(251,248,243,0.86)] backdrop-blur-xl">
-            <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
-                <div class="flex items-center gap-3">
-                    <a href="/catalog?view=spaces" class="rounded-full border border-black/10 bg-white/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] transition hover:bg-white">
+        <header class="sticky top-0 z-40 border-b border-black/5 bg-[rgba(251,248,243,0.9)] backdrop-blur-xl">
+            <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+                <div class="flex min-w-0 items-center gap-3">
+                    <a href="/catalog?view=spaces" class="shrink-0 rounded-full border border-black/10 bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-700 transition hover:bg-white">
                         Back
                     </a>
-                    <div>
-                        <p class="text-lg font-semibold tracking-[0.28em] md:text-xl">AFFILISTAY</p>
-                        <p class="text-[11px] text-stone-400">Showroom detail</p>
+                    <div class="min-w-0">
+                        <p class="truncate text-lg font-semibold tracking-[0.26em] sm:text-xl">AFFILISTAY</p>
+                        <p class="mt-1 text-xs text-stone-400">Showroom detail</p>
                     </div>
                 </div>
-                <a href="{{ admin_url }}" class="hidden rounded-full border border-black/10 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] transition hover:bg-black hover:text-white md:inline-flex">
+                <a href="{{ admin_url }}" class="hidden rounded-full border border-black/10 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-700 transition hover:bg-black hover:text-white sm:inline-flex">
                     Partner Access
                 </a>
             </div>
         </header>
 
-        <main class="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-10">
-            <section class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-                <div class="overflow-hidden rounded-[2rem] border border-black/6 bg-[#ebe2d7] shadow-[0_12px_34px_rgba(18,16,12,0.06)]">
-                    <img src="{% if showroom.venue_image %}data:image/jpeg;base64,{{ showroom.venue_image }}{% elif showroom.venue_image2 %}data:image/jpeg;base64,{{ showroom.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ showroom.host_name }}" class="aspect-[1.2/1] h-full w-full object-cover">
+        <main class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+            <section class="grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
+                <div class="overflow-hidden rounded-[1.9rem] border border-black/6 bg-[#ebe2d7] shadow-[0_12px_34px_rgba(18,16,12,0.06)]">
+                    <img src="{% if showroom.venue_image %}data:image/jpeg;base64,{{ showroom.venue_image }}{% elif showroom.venue_image2 %}data:image/jpeg;base64,{{ showroom.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ showroom.host_name }}" class="aspect-[1.15/1] h-full w-full object-cover">
                 </div>
-                <div class="flex flex-col justify-center">
+                <div class="rounded-[1.9rem] border border-black/6 bg-[var(--surface)] p-5 shadow-[0_12px_34px_rgba(18,16,12,0.04)] sm:p-6">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Stay Showroom</p>
-                    <h1 class="serif mt-3 text-4xl leading-tight md:text-5xl">{{ showroom.host_name }}</h1>
+                    <h1 class="serif mt-3 text-4xl leading-tight sm:text-5xl">{{ showroom.host_name }}</h1>
                     <p class="mt-4 text-sm text-stone-500">{{ showroom.location or "위치 준비 중" }}</p>
-                    <p class="mt-6 text-[15px] leading-8 text-[var(--muted)]">
-                        {{ showroom.description or "공간의 분위기와 실제 사용 장면 안에서 제품을 발견할 수 있는 어필리스테이 쇼룸입니다. 머무는 경험이 자연스럽게 구매로 이어지도록 큐레이션했습니다." }}
+                    <p class="mt-5 text-[15px] leading-7 text-[var(--muted)]">
+                        {{ showroom.description or "공간의 분위기와 실제 사용 장면 안에서 제품을 자연스럽게 발견할 수 있도록 구성한 어필리스테이 쇼룸입니다." }}
                     </p>
-                    <div class="mt-8 flex flex-wrap gap-3">
-                        <div class="rounded-full border border-black/8 bg-white/70 px-4 py-3 text-sm text-stone-600">제품 {{ products|length }}개</div>
-                        <div class="rounded-full border border-black/8 bg-white/70 px-4 py-3 text-sm text-stone-600">큐레이션 쇼룸</div>
+                    <div class="mt-6 flex flex-wrap gap-2">
+                        <span class="rounded-full bg-[var(--soft-2)] px-3 py-2 text-sm font-medium text-stone-700">🏠 스테이 쇼룸</span>
+                        <span class="rounded-full bg-white px-3 py-2 text-sm font-medium text-stone-600">🛍️ 제품 {{ products|length }}개</span>
                     </div>
                 </div>
             </section>
 
-            <section class="mt-12">
-                <div class="mb-6 flex items-end justify-between gap-4">
-                    <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Products In Stay</p>
-                        <h2 class="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">이 숙소에 비치된 제품</h2>
-                    </div>
+            <section class="mt-10">
+                <div class="mb-5">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Products In Stay</p>
+                    <h2 class="mt-2 text-[1.75rem] font-semibold tracking-tight text-stone-900 sm:text-3xl">이 숙소에 비치된 제품</h2>
                 </div>
 
                 {% if products %}
-                <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {% for product in products %}
-                    <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="overflow-hidden rounded-[1.5rem] border border-black/6 bg-[var(--card)] shadow-[0_10px_30px_rgba(18,16,12,0.04)] transition hover:-translate-y-1">
-                        <div class="aspect-[0.9/1] bg-[#f0ebe4]">
+                    <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}" class="overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1">
+                        <div class="aspect-[1.16/1] bg-[#f0ebe4]">
                             <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
                         </div>
-                        <div class="p-4 md:p-5">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">{{ product.brand_name }}</p>
-                                    <h3 class="mt-2 line-clamp-2 text-[15px] font-semibold leading-6 text-stone-900 md:text-base">{{ product.product_name }}</h3>
-                                </div>
-                                <span class="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] text-stone-500">{{ product.room_label }}</span>
+                        <div class="space-y-4 p-4 sm:p-5">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="rounded-full bg-[var(--soft-2)] px-3 py-1.5 text-xs font-medium text-stone-700">{{ product.room_icon }} {{ product.room_label }}</span>
+                                <span class="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-600">{{ product.category_icon }} {{ product.category_label }}</span>
+                                {% if product.discount_rate > 0 %}
+                                <span class="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-500">{{ product.discount_rate }}% 할인</span>
+                                {% endif %}
                             </div>
-                            {% if product.description %}
-                            <p class="mt-2 line-clamp-2 text-[13px] leading-6 text-[var(--muted)]">{{ product.description }}</p>
-                            {% endif %}
-                            <div class="mt-4 flex items-end justify-between gap-3">
-                                <div>
-                                    <div class="mb-1 flex items-center gap-2">
-                                        {% if product.discount_rate > 0 %}
-                                        <span class="text-sm font-semibold text-rose-500">{{ product.discount_rate }}%</span>
-                                        {% endif %}
-                                        {% if product.original_price and product.original_price > product.price %}
-                                        <p class="text-xs text-stone-400 line-through">{{ "{:,}".format(product.original_price) }}원</p>
-                                        {% endif %}
-                                    </div>
-                                    <p class="text-xl font-semibold tracking-tight">{{ "{:,}".format(product.price) }}원</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">{{ product.category_label }}</p>
-                                    <p class="mt-1 text-[12px] font-medium text-stone-600">{{ product.room_label }}</p>
-                                </div>
+
+                            <div class="safe-text">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">{{ product.brand_name }}</p>
+                                <h3 class="mt-2 text-[1.1rem] font-semibold leading-7 text-stone-900">{{ product.product_name }}</h3>
+                                {% if product.description %}
+                                <p class="mt-2 text-[14px] leading-6 text-[var(--muted)]">{{ product.description }}</p>
+                                {% endif %}
+                            </div>
+
+                            <div class="border-t border-black/6 pt-4">
+                                {% if product.original_price and product.original_price > product.price %}
+                                <p class="text-sm text-stone-400 line-through">{{ "{:,}".format(product.original_price) }}원</p>
+                                {% endif %}
+                                <p class="mt-1 text-[1.7rem] font-semibold tracking-tight text-stone-900">{{ "{:,}".format(product.price) }}원</p>
                             </div>
                         </div>
                     </a>

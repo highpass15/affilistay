@@ -52,7 +52,7 @@ def run_migrations():
         conn.close()
 
 # 클라우드 어드민 주소를 고정하여 즉시 연결되도록 합니다.
-ADMIN_URL = 'https://affilistay-admin.onrender.com/'
+ADMIN_URL = "https://affilistay-admin.onrender.com/"
 
 @app.get("/api/force-migrate")
 def force_migrate():
@@ -78,25 +78,45 @@ def force_migrate():
     finally:
         conn.close()
 
-# 카테고리 한글 매핑
+# ???? ???/??? ??
 ROOM_CATEGORIES = {
-    'living_room': '거실',
-    'bedroom': '침실',
-    'kitchen': '주방',
-    'bathroom': '화장실',
+    "living_room": "거실",
+    "bedroom": "침실",
+    "kitchen": "주방",
+    "bathroom": "욕실",
+}
+
+ROOM_ICONS = {
+    "living_room": "🛋️",
+    "bedroom": "🛏️",
+    "kitchen": "🍳",
+    "bathroom": "🛁",
 }
 
 PRODUCT_CATEGORIES = {
-    'furniture': '가구',
-    'fabric': '패브릭',
-    'appliance': '가전·디지털',
-    'kitchenware': '주방용품',
-    'food': '식품',
-    'deco': '데코·식물',
-    'lighting': '조명',
-    'storage': '수납·정리',
-    'hairdryer': '헤어드라이어',
-    'lifestyle': '생활용품'
+    "furniture": "가구",
+    "fabric": "패브릭",
+    "appliance": "가전·디지털",
+    "kitchenware": "주방용품",
+    "food": "식품",
+    "deco": "데코·식물",
+    "lighting": "조명",
+    "storage": "수납·정리",
+    "hairdryer": "헤어드라이어",
+    "lifestyle": "생활용품",
+}
+
+PRODUCT_ICONS = {
+    "furniture": "🪑",
+    "fabric": "🧵",
+    "appliance": "🔌",
+    "kitchenware": "🍽️",
+    "food": "🥯",
+    "deco": "🪴",
+    "lighting": "💡",
+    "storage": "📦",
+    "hairdryer": "💨",
+    "lifestyle": "🧴",
 }
 
 # 정적 파일(이미지 등) 서비스 설정
@@ -344,15 +364,26 @@ def _fetch_one(conn, query_pg, query_sqlite, params=None):
 
 
 def _catalog_image_map(conn):
-    rows = _fetch_all(
-        conn,
-        "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
-        "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
-    )
+    try:
+        rows = _fetch_all(
+            conn,
+            "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
+            "SELECT product_id, image_data, sort_order FROM product_images ORDER BY product_id, sort_order, id",
+        )
+    except Exception:
+        return {}
     image_map = {}
     for row in rows:
         image_map.setdefault(row["product_id"], row["image_data"])
     return image_map
+
+
+
+def _category_items(labels, icons):
+    return [
+        {"key": key, "label": label, "icon": icons.get(key, "•")}
+        for key, label in labels.items()
+    ]
 
 
 def _decorate_catalog_products(products, image_map):
@@ -361,49 +392,55 @@ def _decorate_catalog_products(products, image_map):
         price = product.get("price") or 0
         product["primary_image"] = product.get("image_url") or image_map.get(product["id"])
         product["room_label"] = ROOM_CATEGORIES.get(product.get("room_category"), "추천")
+        product["room_icon"] = ROOM_ICONS.get(product.get("room_category"), "🏠")
         product["category_label"] = PRODUCT_CATEGORIES.get(product.get("product_category"), "큐레이션")
+        product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "🛍️")
         product["discount_rate"] = int(((original_price - price) / original_price) * 100) if original_price and original_price > price else 0
     return products
 
 
 def _build_catalog_hosts(conn):
-    hosts = _fetch_all(
-        conn,
-        """
-        SELECT
-            h.id,
-            h.name as host_name,
-            MIN(p.qr_code_id) as qr_code_id,
-            v.location,
-            v.description,
-            v.image1 as venue_image,
-            v.image2 as venue_image2,
-            COUNT(p.id) as product_count
-        FROM hosts h
-        JOIN products p ON h.id = p.owner_id
-        LEFT JOIN host_venues v ON h.id = v.host_id
-        GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
-        ORDER BY product_count DESC, h.id DESC
-        """,
-        """
-        SELECT
-            h.id,
-            h.name as host_name,
-            MIN(p.qr_code_id) as qr_code_id,
-            v.location,
-            v.description,
-            v.image1 as venue_image,
-            v.image2 as venue_image2,
-            COUNT(p.id) as product_count
-        FROM hosts h
-        JOIN products p ON h.id = p.owner_id
-        LEFT JOIN host_venues v ON h.id = v.host_id
-        GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
-        ORDER BY product_count DESC, h.id DESC
-        """,
-    )
+    try:
+        hosts = _fetch_all(
+            conn,
+            """
+            SELECT
+                h.id,
+                h.name as host_name,
+                MIN(p.qr_code_id) as qr_code_id,
+                v.location,
+                v.description,
+                v.image1 as venue_image,
+                v.image2 as venue_image2,
+                COUNT(p.id) as product_count
+            FROM hosts h
+            JOIN products p ON h.id = p.owner_id
+            LEFT JOIN host_venues v ON h.id = v.host_id
+            GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
+            ORDER BY product_count DESC, h.id DESC
+            """,
+            """
+            SELECT
+                h.id,
+                h.name as host_name,
+                MIN(p.qr_code_id) as qr_code_id,
+                v.location,
+                v.description,
+                v.image1 as venue_image,
+                v.image2 as venue_image2,
+                COUNT(p.id) as product_count
+            FROM hosts h
+            JOIN products p ON h.id = p.owner_id
+            LEFT JOIN host_venues v ON h.id = v.host_id
+            GROUP BY h.id, h.name, v.location, v.description, v.image1, v.image2
+            ORDER BY product_count DESC, h.id DESC
+            """,
+        )
+    except Exception:
+        return []
     for host in hosts:
         host["entry_path"] = f"/showrooms/{host['id']}"
+        host["space_icon"] = "🏠"
     return hosts
 
 
@@ -548,7 +585,9 @@ async def catalog_page(
             "products": products,
             "hosts": hosts,
             "prod_categories": PRODUCT_CATEGORIES,
+            "prod_category_items": _category_items(PRODUCT_CATEGORIES, PRODUCT_ICONS),
             "room_categories": ROOM_CATEGORIES,
+            "room_category_items": _category_items(ROOM_CATEGORIES, ROOM_ICONS),
             "has_space_data": len(hosts) > 0,
             "admin_url": ADMIN_URL,
         },
