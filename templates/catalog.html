@@ -45,8 +45,6 @@
         .scroll-x { scrollbar-width: none; }
         .auto-scroll-row {
             position: relative;
-            mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
-            -webkit-mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
         }
         .auto-scroll-row::after {
             content: "";
@@ -71,6 +69,44 @@
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.76);
             font-size: 0.95rem;
+        }
+        .browse-card {
+            position: relative;
+            z-index: 12;
+            border: 1px solid rgba(24, 22, 18, 0.06);
+            border-radius: 1.7rem;
+            background: rgba(255, 255, 255, 0.76);
+            box-shadow: 0 12px 32px rgba(18, 16, 12, 0.05);
+            padding: 1rem;
+        }
+        .browse-group {
+            display: grid;
+            gap: 0.7rem;
+        }
+        .browse-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--soft);
+        }
+        .browse-switch {
+            position: relative;
+            z-index: 20;
+            isolation: isolate;
+        }
+        .browse-switch a {
+            touch-action: manipulation;
+        }
+        .filter-row {
+            display: flex;
+            gap: 0.55rem;
+            overflow-x: auto;
+            padding-bottom: 0.1rem;
+            padding-right: 0.25rem;
+        }
+        .filter-row > a {
+            flex: 0 0 auto;
         }
         .space-carousel-track {
             transition: transform 420ms ease;
@@ -104,6 +140,26 @@
             width: 1.4rem;
             background: white;
         }
+        @media (min-width: 960px) {
+            .auto-scroll-row {
+                mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
+                -webkit-mask-image: linear-gradient(to right, transparent 0, black 1.5rem, black calc(100% - 3rem), transparent 100%);
+            }
+        }
+        @media (max-width: 959px) {
+            .auto-scroll-row::after {
+                display: none;
+            }
+        }
+        @media (max-width: 640px) {
+            .browse-card {
+                padding: 0.9rem;
+                border-radius: 1.45rem;
+            }
+            .filter-row {
+                gap: 0.5rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -134,45 +190,59 @@
                 </p>
             </section>
 
-            <section class="mb-5">
-                <div class="grid grid-cols-2 rounded-full border border-black/8 bg-white/80 p-1 shadow-sm">
-                    <a href="/catalog?view=products&category={{ category }}&room={{ room }}" class="rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'products' %}bg-[var(--accent)] text-white{% else %}text-stone-500 hover:text-stone-900{% endif %}">
-                        제품별 보기
-                    </a>
-                    <a href="/catalog?view=spaces&category={{ category }}&room={{ room }}" class="rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'spaces' %}bg-[var(--accent)] text-white{% else %}text-stone-500 hover:text-stone-900{% endif %}">
-                        숙소별 보기
-                    </a>
+            <section class="mb-6 browse-card space-y-4 sm:space-y-5">
+                <div class="browse-group">
+                    <p class="browse-label">보기 방식</p>
+                    <div class="browse-switch grid grid-cols-2 rounded-full border border-black/8 bg-white/90 p-1 shadow-sm">
+                        <a href="/catalog?view=products&category={{ category }}&room={{ room }}" class="block rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'products' %}bg-[var(--accent)] text-white shadow-[0_8px_18px_rgba(34,31,26,0.18)]{% else %}text-stone-500 hover:text-stone-900{% endif %}">
+                            제품별 보기
+                        </a>
+                        <a href="/catalog?view=spaces&category={{ category }}&room={{ room }}" class="block rounded-full px-4 py-3 text-center text-sm font-semibold transition {% if view == 'spaces' %}bg-[var(--accent)] text-white shadow-[0_8px_18px_rgba(34,31,26,0.18)]{% else %}text-stone-500 hover:text-stone-900{% endif %}">
+                            숙소별 보기
+                        </a>
+                    </div>
                 </div>
+
+                {% if view == 'products' %}
+                <div class="browse-group">
+                    <p class="browse-label">제품 카테고리</p>
+                    <div class="auto-scroll-row filter-row scroll-x" data-auto-scroll="categories">
+                        <a href="/catalog?view=products&category=all&room={{ room }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == 'all' %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/90 text-stone-600{% endif %}">
+                            <span class="chip-icon {% if category == 'all' %}!bg-white/20{% endif %}">✨</span>
+                            전체
+                        </a>
+                        {% for item in prod_category_items %}
+                        <a href="/catalog?view=products&category={{ item.key }}&room={{ room }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == item.key %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/90 text-stone-600{% endif %}">
+                            <span class="chip-icon {% if category == item.key %}!bg-white/20{% endif %}">{{ item.icon }}</span>
+                            {{ item.label }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="browse-group">
+                    <p class="browse-label">공간 선택</p>
+                    <div class="filter-row scroll-x">
+                        <a href="/catalog?view=products&category={{ category }}&room=all" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == 'all' %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/90 text-stone-500{% endif %}">
+                            <span class="chip-icon">🏷️</span>
+                            전체 공간
+                        </a>
+                        {% for item in room_category_items %}
+                        <a href="/catalog?view=products&category={{ category }}&room={{ item.key }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == item.key %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/90 text-stone-500{% endif %}">
+                            <span class="chip-icon">{{ item.icon }}</span>
+                            {{ item.label }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="rounded-[1.35rem] border border-black/6 bg-white/72 px-4 py-4 text-sm leading-6 text-[var(--muted)]">
+                    숙소 카드를 누르면 쇼룸 이미지와 비치된 제품을 한 번에 확인할 수 있어요.
+                </div>
+                {% endif %}
             </section>
 
             {% if view == 'products' %}
-            <section class="mb-6 space-y-3">
-                <div class="auto-scroll-row scroll-x flex gap-2 overflow-x-auto pb-1" data-auto-scroll="categories">
-                    <a href="/catalog?view=products&category=all&room={{ room }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == 'all' %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/80 text-stone-600{% endif %}">
-                        <span class="chip-icon {% if category == 'all' %}!bg-white/20{% endif %}">✨</span>
-                        전체
-                    </a>
-                    {% for item in prod_category_items %}
-                    <a href="/catalog?view=products&category={{ item.key }}&room={{ room }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == item.key %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/80 text-stone-600{% endif %}">
-                        <span class="chip-icon {% if category == item.key %}!bg-white/20{% endif %}">{{ item.icon }}</span>
-                        {{ item.label }}
-                    </a>
-                    {% endfor %}
-                </div>
-                <div class="scroll-x flex gap-2 overflow-x-auto pb-1">
-                    <a href="/catalog?view=products&category={{ category }}&room=all" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == 'all' %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/80 text-stone-500{% endif %}">
-                        <span class="chip-icon">🏷️</span>
-                        전체 공간
-                    </a>
-                    {% for item in room_category_items %}
-                    <a href="/catalog?view=products&category={{ category }}&room={{ item.key }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if room == item.key %}border-[var(--soft)] bg-[var(--soft-2)] text-stone-900{% else %}border-black/8 bg-white/80 text-stone-500{% endif %}">
-                        <span class="chip-icon">{{ item.icon }}</span>
-                        {{ item.label }}
-                    </a>
-                    {% endfor %}
-                </div>
-            </section>
-
             <section>
                 {% if products %}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
