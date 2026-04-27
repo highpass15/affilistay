@@ -771,7 +771,8 @@ def _fetch_catalog_products(conn, category):
     except Exception:
         products = _fetch_all(conn, base_pg, base_sqlite)
 
-    if category != "all":
+    has_category_data = any("product_category" in p for p in products)
+    if category != "all" and has_category_data:
         products = [p for p in products if p.get("product_category") == category]
     return products
 
@@ -910,7 +911,8 @@ async def catalog_page(
     if view == "products":
         products = _fetch_catalog_products(conn, category)
 
-        if room != "all" and room in ROOM_CATEGORIES:
+        has_room_data = any("room_category" in p for p in products)
+        if room != "all" and room in ROOM_CATEGORIES and has_room_data:
             products = [p for p in products if p.get("room_category") == room]
 
         image_map = _catalog_image_map(conn)

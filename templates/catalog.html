@@ -304,7 +304,7 @@
                     <p class="browse-label">제품 카테고리</p>
                     <div class="auto-scroll-row filter-row scroll-x" data-auto-scroll="categories">
                         {% for item in prod_category_items %}
-                        <a href="/catalog?view=products&category={{ item.key }}&room={{ room }}" data-nav-link class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == item.key %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/90 text-stone-600{% endif %}">
+                        <a href="/catalog?view=products&category={{ item.key }}&room=all" data-nav-link class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-3 text-sm font-medium transition {% if category == item.key %}border-[var(--accent)] bg-[var(--accent)] text-white{% else %}border-black/8 bg-white/90 text-stone-600{% endif %}">
                             <span class="chip-icon {% if category == item.key %}!bg-white/20{% endif %}">{{ item.icon }}</span>
                             {{ item.label }}
                             {% if item.count > 0 %}
@@ -510,6 +510,7 @@
                         copy.querySelectorAll('a').forEach((anchor) => {
                             anchor.tabIndex = -1;
                             anchor.dataset.navLink = 'true';
+                            anchor.removeAttribute('data-nav-bound');
                         });
                         track.appendChild(copy);
                     };
