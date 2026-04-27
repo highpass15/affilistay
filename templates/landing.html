@@ -122,6 +122,24 @@
         /* 텍스트 줄바꿈 방지 및 가독성 */
         .keep-all { word-break: keep-all; }
 
+        .hero-copy .hero-kicker {
+            color: #756b61;
+            font-weight: 500;
+            letter-spacing: 0.48em;
+        }
+
+        .hero-copy .hero-title {
+            color: #2f2f2d;
+            font-weight: 300;
+            letter-spacing: 0.14em;
+            line-height: 1.04;
+        }
+
+        .hero-copy .hero-title span {
+            color: #665f57;
+            font-weight: 300;
+        }
+
         @media (max-width: 767px) {
             body {
                 background-color: #f6f2eb;
@@ -191,13 +209,13 @@
             .hero-copy .hero-kicker {
                 margin-bottom: 0.95rem;
                 font-size: 10px;
-                letter-spacing: 0.38em;
+                letter-spacing: 0.34em;
             }
 
             .hero-copy .hero-title {
-                font-size: clamp(2.35rem, 10.2vw, 3.55rem);
-                line-height: 0.92;
-                letter-spacing: 0;
+                font-size: clamp(2rem, 8.4vw, 3.05rem);
+                line-height: 1.08;
+                letter-spacing: 0.1em;
                 margin-bottom: 1.15rem;
             }
 
