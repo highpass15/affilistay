@@ -99,14 +99,37 @@
             touch-action: manipulation;
         }
         .filter-row {
-            display: flex;
-            gap: 0.55rem;
-            overflow-x: auto;
+            --row-gap: 0.55rem;
+            position: relative;
+            overflow: hidden;
             padding-bottom: 0.1rem;
             padding-right: 0.25rem;
+            touch-action: pan-y;
         }
-        .filter-row > a {
+        .filter-row-track {
+            display: flex;
+            width: max-content;
+            will-change: transform;
+        }
+        .filter-row-set {
+            display: flex;
             flex: 0 0 auto;
+            align-items: center;
+            gap: var(--row-gap);
+            padding-right: var(--row-gap);
+        }
+        .filter-row.is-ready .filter-row-track {
+            animation: filterMarquee var(--filter-duration, 26s) linear infinite;
+        }
+        .filter-row.is-paused .filter-row-track {
+            animation-play-state: paused;
+        }
+        .filter-row-set > a {
+            flex: 0 0 auto;
+        }
+        @keyframes filterMarquee {
+            from { transform: translateX(0); }
+            to { transform: translateX(calc(-1 * var(--filter-loop-width, 0px))); }
         }
         .space-carousel-track {
             transition: transform 420ms ease;
@@ -157,7 +180,7 @@
                 border-radius: 1.45rem;
             }
             .filter-row {
-                gap: 0.5rem;
+                --row-gap: 0.5rem;
             }
         }
     </style>
@@ -217,10 +240,6 @@
                         </a>
                         {% endfor %}
                     </div>
-                </div>
-                {% else %}
-                <div class="rounded-[1.35rem] border border-black/6 bg-white/72 px-4 py-4 text-sm leading-6 text-[var(--muted)]">
-                    숙소 카드를 누르면 쇼룸 이미지와 비치된 제품을 한 번에 확인할 수 있어요.
                 </div>
                 {% endif %}
             </section>
@@ -351,48 +370,48 @@
                 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
                 rows.forEach((row, index) => {
-                    let direction = 1;
-                    let pauseUntil = performance.now() + 500 + (index * 220);
-                    let lastTick = performance.now();
+                    const originalItems = [...row.querySelectorAll(':scope > a')];
+                    if (!originalItems.length) return;
 
-                    const speed = window.innerWidth < 640 ? 0.026 : 0.04;
-                    const edgePauseMs = 1350;
+                    const track = document.createElement('div');
+                    track.className = 'filter-row-track';
 
-                    const canScroll = () => row.scrollWidth - row.clientWidth > 32;
+                    const firstSet = document.createElement('div');
+                    firstSet.className = 'filter-row-set';
+                    originalItems.forEach((item) => firstSet.appendChild(item));
+                    track.appendChild(firstSet);
+                    row.replaceChildren(track);
 
-                    const pause = (ms = 2200) => {
-                        pauseUntil = performance.now() + ms;
+                    const cloneSet = () => {
+                        const copy = firstSet.cloneNode(true);
+                        copy.setAttribute('aria-hidden', 'true');
+                        copy.querySelectorAll('a').forEach((anchor) => {
+                            anchor.tabIndex = -1;
+                        });
+                        track.appendChild(copy);
                     };
 
-                    const tick = (now) => {
-                        if (!canScroll() || document.hidden) {
-                            lastTick = now;
-                            requestAnimationFrame(tick);
-                            return;
-                        }
+                    cloneSet();
 
-                        if (now < pauseUntil) {
-                            lastTick = now;
-                            requestAnimationFrame(tick);
-                            return;
-                        }
+                    const baseWidth = Math.ceil(firstSet.getBoundingClientRect().width);
+                    const minimumTrackWidth = row.clientWidth + baseWidth;
+                    while (track.scrollWidth < minimumTrackWidth) {
+                        cloneSet();
+                    }
 
-                        const maxScroll = row.scrollWidth - row.clientWidth;
-                        const distance = (now - lastTick) * speed * direction;
-                        row.scrollLeft += distance;
-                        lastTick = now;
+                    const pxPerSecond = window.innerWidth < 640 ? 28 : 40;
+                    row.style.setProperty('--filter-loop-width', `${baseWidth}px`);
+                    row.style.setProperty('--filter-duration', `${Math.max(18, baseWidth / pxPerSecond)}s`);
+                    row.classList.add('is-ready');
 
-                        if (row.scrollLeft >= maxScroll - 1) {
-                            row.scrollLeft = maxScroll;
-                            direction = -1;
-                            pauseUntil = now + edgePauseMs;
-                        } else if (row.scrollLeft <= 1) {
-                            row.scrollLeft = 0;
-                            direction = 1;
-                            pauseUntil = now + edgePauseMs;
-                        }
-
-                        requestAnimationFrame(tick);
+                    let resumeTimer = null;
+                    const pause = (ms = 1800) => {
+                        row.classList.add('is-paused');
+                        if (resumeTimer) window.clearTimeout(resumeTimer);
+                        resumeTimer = window.setTimeout(() => {
+                            row.classList.remove('is-paused');
+                            resumeTimer = null;
+                        }, ms);
                     };
 
                     ['pointerenter', 'pointerdown', 'wheel', 'touchstart', 'focusin'].forEach((eventName) => {
@@ -400,12 +419,16 @@
                     });
 
                     ['pointerleave', 'touchend'].forEach((eventName) => {
-                        row.addEventListener(eventName, () => pause(900), { passive: true });
+                        row.addEventListener(eventName, () => pause(650), { passive: true });
                     });
 
-                    window.addEventListener('resize', () => pause(900), { passive: true });
-                    document.addEventListener('visibilitychange', () => pause(1200));
-                    requestAnimationFrame(tick);
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            row.classList.add('is-paused');
+                        } else {
+                            pause(500 + (index * 150));
+                        }
+                    });
                 });
             };
 
