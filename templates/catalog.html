@@ -72,6 +72,38 @@
             background: rgba(255, 255, 255, 0.76);
             font-size: 0.95rem;
         }
+        .space-carousel-track {
+            transition: transform 420ms ease;
+            will-change: transform;
+        }
+        .space-carousel-button {
+            display: inline-flex;
+            height: 2.5rem;
+            width: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            background: rgba(28, 24, 19, 0.62);
+            color: white;
+            backdrop-filter: blur(8px);
+            transition: background 160ms ease, transform 160ms ease;
+        }
+        .space-carousel-button:hover {
+            background: rgba(28, 24, 19, 0.78);
+            transform: scale(1.04);
+        }
+        .space-carousel-dot {
+            height: 0.45rem;
+            width: 0.45rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.55);
+            transition: transform 160ms ease, background 160ms ease, width 160ms ease;
+        }
+        .space-carousel-dot.is-active {
+            width: 1.4rem;
+            background: white;
+        }
     </style>
 </head>
 <body>
@@ -195,8 +227,35 @@
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     {% for host in hosts %}
                     <a href="{{ host.entry_path }}" class="overflow-hidden rounded-[1.75rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1">
-                        <div class="aspect-[1.22/1] bg-[#eee7dd]">
-                            <img src="{% if host.venue_image %}data:image/jpeg;base64,{{ host.venue_image }}{% elif host.venue_image2 %}data:image/jpeg;base64,{{ host.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ host.host_name }}" class="h-full w-full object-cover">
+                        <div class="relative aspect-[1.22/1] overflow-hidden bg-[#eee7dd]" data-space-carousel {% if host.gallery_count > 1 %}data-space-delay="3000"{% endif %}>
+                            <div class="space-carousel-track flex h-full" data-space-track>
+                                {% if host.gallery_count > 0 %}
+                                    {% for image in host.gallery_images %}
+                                    <div class="h-full min-w-full" data-space-slide>
+                                        <img src="data:image/jpeg;base64,{{ image }}" alt="{{ host.host_name }}" class="h-full w-full object-cover">
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="h-full min-w-full" data-space-slide>
+                                        <img src="/static/hero.png" alt="{{ host.host_name }}" class="h-full w-full object-cover">
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if host.gallery_count > 1 %}
+                            <div class="pointer-events-none absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+                                {% for image in host.gallery_images %}
+                                <span class="space-carousel-dot {% if loop.first %}is-active{% endif %}" data-space-dot></span>
+                                {% endfor %}
+                            </div>
+                            <div class="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3">
+                                <button type="button" class="space-carousel-button pointer-events-auto" data-stop-link data-space-prev aria-label="이전 이미지">
+                                    <span aria-hidden="true">‹</span>
+                                </button>
+                                <button type="button" class="space-carousel-button pointer-events-auto" data-stop-link data-space-next aria-label="다음 이미지">
+                                    <span aria-hidden="true">›</span>
+                                </button>
+                            </div>
+                            {% endif %}
                         </div>
                         <div class="space-y-4 p-5 sm:p-6">
                             <div class="flex items-center gap-2">
@@ -301,10 +360,106 @@
                 requestAnimationFrame(tick);
             };
 
+            const startSpaceCarousels = () => {
+                const carousels = document.querySelectorAll('[data-space-carousel]');
+                if (!carousels.length) return;
+
+                carousels.forEach((carousel) => {
+                    const slides = [...carousel.querySelectorAll('[data-space-slide]')];
+                    const track = carousel.querySelector('[data-space-track]');
+                    const dots = [...carousel.querySelectorAll('[data-space-dot]')];
+                    const nextButton = carousel.querySelector('[data-space-next]');
+                    const prevButton = carousel.querySelector('[data-space-prev]');
+
+                    if (!track || slides.length < 2) return;
+
+                    let index = 0;
+                    let timer = null;
+                    let touchStartX = 0;
+                    let touchDeltaX = 0;
+                    const delay = Number(carousel.dataset.spaceDelay || 3000);
+
+                    const render = () => {
+                        track.style.transform = `translateX(-${index * 100}%)`;
+                        dots.forEach((dot, dotIndex) => {
+                            dot.classList.toggle('is-active', dotIndex === index);
+                        });
+                    };
+
+                    const clearTimer = () => {
+                        if (timer) {
+                            window.clearInterval(timer);
+                            timer = null;
+                        }
+                    };
+
+                    const schedule = () => {
+                        clearTimer();
+                        timer = window.setInterval(() => {
+                            index = (index + 1) % slides.length;
+                            render();
+                        }, delay);
+                    };
+
+                    const move = (direction) => {
+                        index = (index + direction + slides.length) % slides.length;
+                        render();
+                        schedule();
+                    };
+
+                    [nextButton, prevButton].forEach((button) => {
+                        if (!button) return;
+                        button.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        });
+                    });
+
+                    nextButton?.addEventListener('click', () => move(1));
+                    prevButton?.addEventListener('click', () => move(-1));
+
+                    carousel.addEventListener('touchstart', (event) => {
+                        touchStartX = event.touches[0].clientX;
+                        touchDeltaX = 0;
+                        clearTimer();
+                    }, { passive: true });
+
+                    carousel.addEventListener('touchmove', (event) => {
+                        touchDeltaX = event.touches[0].clientX - touchStartX;
+                    }, { passive: true });
+
+                    carousel.addEventListener('touchend', () => {
+                        if (Math.abs(touchDeltaX) > 36) {
+                            move(touchDeltaX < 0 ? 1 : -1);
+                        } else {
+                            schedule();
+                        }
+                    }, { passive: true });
+
+                    carousel.addEventListener('pointerenter', clearTimer);
+                    carousel.addEventListener('pointerleave', schedule);
+
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            clearTimer();
+                        } else {
+                            schedule();
+                        }
+                    });
+
+                    render();
+                    window.setTimeout(schedule, delay);
+                });
+            };
+
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', startAutoScroll, { once: true });
+                document.addEventListener('DOMContentLoaded', () => {
+                    startAutoScroll();
+                    startSpaceCarousels();
+                }, { once: true });
             } else {
                 startAutoScroll();
+                startSpaceCarousels();
             }
         })();
     </script>

@@ -441,6 +441,8 @@ def _build_catalog_hosts(conn):
     for host in hosts:
         host["entry_path"] = f"/showrooms/{host['id']}"
         host["space_icon"] = "🏠"
+        host["gallery_images"] = [img for img in [host.get("venue_image"), host.get("venue_image2")] if img]
+        host["gallery_count"] = len(host["gallery_images"])
     return hosts
 
 
