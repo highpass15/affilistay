@@ -127,6 +127,8 @@
             scroll-snap-type: x mandatory;
             scroll-behavior: smooth;
             overscroll-behavior-x: contain;
+            touch-action: pan-x pinch-zoom;
+            -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
             background: #ece4d9;
         }
@@ -257,6 +259,8 @@
             color: var(--danger);
             font-size: 0.92rem;
             font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
         }
 
         .price-main {
@@ -266,15 +270,18 @@
             flex-wrap: wrap;
         }
 
-        .price-main strong {
+        .price-main .sale-price {
             font-size: clamp(2rem, 7vw, 2.8rem);
             line-height: 1;
             letter-spacing: -0.05em;
         }
 
-        .price-main span {
+        .price-main .original-price {
             font-size: 0.98rem;
             color: var(--muted);
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+            text-decoration-color: rgba(109, 100, 91, 0.65);
         }
 
         .price-sub {
@@ -654,6 +661,19 @@
             color: var(--muted);
         }
 
+        .sticky-price.is-discount .label {
+            color: var(--danger);
+        }
+
+        .sticky-price .original {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+            text-decoration-color: rgba(109, 100, 91, 0.62);
+        }
+
         .sticky-price .value {
             font-size: 1.52rem;
             font-weight: 700;
@@ -818,10 +838,10 @@
                 <div class="discount">{{ ((product.original_price - product.price) / product.original_price * 100) | int }}% 할인</div>
                 {% endif %}
                 <div class="price-main">
-                    <strong>{{ "{:,}".format(product.price) }}원</strong>
                     {% if product.original_price and product.original_price > product.price %}
-                    <span><s>{{ "{:,}".format(product.original_price) }}원</s></span>
+                    <span class="original-price">{{ "{:,}".format(product.original_price) }}원</span>
                     {% endif %}
+                    <strong class="sale-price">{{ "{:,}".format(product.price) }}원</strong>
                 </div>
             </div>
             <div class="price-sub">배송비는 브랜드별로 달라질 수 있으며 주문 단계에서 다시 안내됩니다.</div>
@@ -1042,9 +1062,12 @@
 
     <div class="sticky-bar">
         <div class="sticky-inner">
-            <div class="sticky-price">
+            <div class="sticky-price {% if product.original_price and product.original_price > product.price %}is-discount{% endif %}">
                 <span class="label">{% if product.original_price and product.original_price > product.price %}{{ ((product.original_price - product.price) / product.original_price * 100) | int }}% Discount{% else %}Guest Price{% endif %}</span>
-                <span class="value">{{ "{:,}".format(product.price) }}원</span>
+                {% if product.original_price and product.original_price > product.price %}
+                <span class="original">정가 {{ "{:,}".format(product.original_price) }}원</span>
+                {% endif %}
+                <span class="value">판매가 {{ "{:,}".format(product.price) }}원</span>
             </div>
             <button type="button" class="sticky-btn secondary" onclick="addToCart()">장바구니</button>
             <a
@@ -1111,6 +1134,11 @@
             heroCarousel.addEventListener("pointerdown", stopHeroAutoSlide, { passive: true });
             heroCarousel.addEventListener("pointerup", startHeroAutoSlide, { passive: true });
             heroCarousel.addEventListener("pointercancel", startHeroAutoSlide, { passive: true });
+            heroCarousel.addEventListener("touchstart", stopHeroAutoSlide, { passive: true });
+            heroCarousel.addEventListener("touchend", startHeroAutoSlide, { passive: true });
+            window.addEventListener("resize", () => {
+                heroCarousel.scrollTo({ left: heroAutoIndex * heroCarousel.clientWidth, behavior: "auto" });
+            });
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) stopHeroAutoSlide();
                 else startHeroAutoSlide();

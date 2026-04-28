@@ -140,9 +140,14 @@
             font-weight: 300;
         }
 
+        .landing-tabbar {
+            display: none;
+        }
+
         @media (max-width: 767px) {
             body {
                 background-color: #f6f2eb;
+                padding-bottom: calc(74px + env(safe-area-inset-bottom));
             }
 
             body::before {
@@ -183,8 +188,8 @@
                 height: auto;
                 min-height: 100svh;
                 align-items: flex-start;
-                padding-top: 6.1rem;
-                padding-bottom: 3rem;
+                padding-top: 4.9rem;
+                padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
                 background: #f6f2eb;
             }
 
@@ -203,20 +208,20 @@
                 max-width: none;
                 width: 100%;
                 margin-top: 0;
-                padding-top: clamp(3.2rem, 12.5svh, 5.8rem);
+                padding-top: clamp(1.2rem, 5svh, 2.4rem);
             }
 
             .hero-copy .hero-kicker {
-                margin-bottom: 0.95rem;
+                margin-bottom: 0.75rem;
                 font-size: 10px;
                 letter-spacing: 0.34em;
             }
 
             .hero-copy .hero-title {
-                font-size: clamp(2rem, 8.4vw, 3.05rem);
-                line-height: 1.08;
+                font-size: clamp(1.9rem, 7.8vw, 2.85rem);
+                line-height: 1.04;
                 letter-spacing: 0.1em;
-                margin-bottom: 1.15rem;
+                margin-bottom: 0.95rem;
             }
 
             .hero-copy .hero-title span {
@@ -227,12 +232,13 @@
                 max-width: 26rem;
                 color: #5d544c;
                 font-size: 14px;
-                line-height: 1.72;
-                margin-bottom: 1.35rem;
+                line-height: 1.62;
+                margin-bottom: 1rem;
             }
 
             .hero-actions {
                 gap: 0.75rem;
+                margin-top: 0.9rem;
             }
 
             .hero-actions .hero-primary-btn,
@@ -247,6 +253,74 @@
             .hero-overlay-mobile {
                 background:
                     linear-gradient(180deg, rgba(246,242,235,0.04) 0%, rgba(246,242,235,0.14) 22%, rgba(246,242,235,0.52) 46%, rgba(246,242,235,0.9) 72%, #f6f2eb 100%);
+            }
+
+            .landing-tabbar {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 70;
+                display: block;
+                border-top: 1px solid rgba(24, 22, 18, 0.08);
+                background: rgba(255, 253, 249, 0.94);
+                padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+                backdrop-filter: blur(18px);
+                -webkit-backdrop-filter: blur(18px);
+            }
+
+            .landing-tabbar-inner {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.25rem;
+                max-width: 620px;
+                margin: 0 auto;
+            }
+
+            .landing-tab {
+                position: relative;
+                display: flex;
+                min-height: 3.15rem;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.18rem;
+                border-radius: 1rem;
+                color: #8a8279;
+                font-size: 0.72rem;
+                font-weight: 600;
+                text-decoration: none;
+            }
+
+            .landing-tab .icon {
+                font-size: 1.25rem;
+                line-height: 1;
+            }
+
+            .landing-tab.is-active {
+                background: #221f1a;
+                color: white;
+            }
+
+            .landing-badge {
+                position: absolute;
+                top: 0.28rem;
+                right: calc(50% - 1.35rem);
+                min-width: 1.05rem;
+                height: 1.05rem;
+                padding: 0 0.25rem;
+                border-radius: 999px;
+                background: #e65d58;
+                color: white;
+                font-size: 0.65rem;
+                font-weight: 800;
+                line-height: 1.05rem;
+                text-align: center;
+                display: none;
+            }
+
+            .landing-badge.is-visible {
+                display: inline-block;
             }
         }
     </style>
@@ -462,6 +536,28 @@
             <p class="text-[8px] text-gray-300 tracking-[0.5em] uppercase">© 2026 AFFILISTAY. ALL RIGHTS RESERVED.</p>
         </div>
     </footer>
+
+    <nav class="landing-tabbar" aria-label="고객 메뉴">
+        <div class="landing-tabbar-inner">
+            <a href="/" class="landing-tab is-active">
+                <span class="icon" aria-hidden="true">⌂</span>
+                <span>홈</span>
+            </a>
+            <a href="/catalog" class="landing-tab">
+                <span class="icon" aria-hidden="true">▦</span>
+                <span>쇼핑</span>
+            </a>
+            <a href="/wishlist" class="landing-tab">
+                <span class="landing-badge" data-wishlist-count></span>
+                <span class="icon" aria-hidden="true">♡</span>
+                <span>찜</span>
+            </a>
+            <a href="/mypage" class="landing-tab">
+                <span class="icon" aria-hidden="true">♙</span>
+                <span>마이</span>
+            </a>
+        </div>
+    </nav>
 
 
     <!-- Signup Overlay (Hidden by Default) -->
@@ -769,6 +865,28 @@
 
         document.getElementById('hostForm').addEventListener('submit', (e) => submitInquiry(e, 'hostForm', 'host'));
         document.getElementById('brandForm').addEventListener('submit', (e) => submitInquiry(e, 'brandForm', 'brand'));
+
+        (() => {
+            const WISHLIST_KEY = 'affilistay_wishlist';
+            const readWishlist = () => {
+                try {
+                    return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]');
+                } catch (error) {
+                    return [];
+                }
+            };
+
+            const updateWishlistCount = () => {
+                const count = readWishlist().length;
+                document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
+                    badge.textContent = count;
+                    badge.classList.toggle('is-visible', count > 0);
+                });
+            };
+
+            updateWishlistCount();
+            window.addEventListener('storage', updateWishlistCount);
+        })();
     </script>
 </body>
 </html>
