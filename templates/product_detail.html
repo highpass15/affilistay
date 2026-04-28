@@ -125,6 +125,8 @@
             overflow-x: auto;
             display: flex;
             scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            overscroll-behavior-x: contain;
             scrollbar-width: none;
             background: #ece4d9;
         }
@@ -180,18 +182,18 @@
         }
 
         .panel {
-            margin-top: -22px;
+            margin-top: -10px;
             border-radius: 28px 28px 0 0;
             background: linear-gradient(180deg, rgba(249, 246, 240, 0.98), rgba(246, 242, 235, 0.98));
             box-shadow: 0 -10px 28px rgba(18, 16, 12, 0.04);
-            padding: 22px 18px 34px;
+            padding: 34px 18px 34px;
         }
 
         .chip-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 14px;
+            gap: 10px;
+            margin: 0 0 22px;
         }
 
         .chip {
@@ -199,10 +201,11 @@
             align-items: center;
             gap: 6px;
             border-radius: 999px;
-            padding: 8px 12px;
+            min-height: 44px;
+            padding: 10px 14px;
             background: white;
             border: 1px solid var(--line);
-            font-size: 0.82rem;
+            font-size: 0.9rem;
             font-weight: 500;
             color: #5f554c;
         }
@@ -291,38 +294,31 @@
         }
 
         .showroom-card {
-            padding: 18px;
+            padding: 16px;
             display: grid;
             gap: 14px;
         }
 
         .showroom-head {
             display: flex;
-            align-items: start;
+            align-items: center;
             justify-content: space-between;
             gap: 12px;
         }
 
         .showroom-label {
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: var(--soft);
+            display: none;
         }
 
         .showroom-name {
-            margin-top: 6px;
+            margin-top: 0;
             font-size: 1.08rem;
             font-weight: 700;
             line-height: 1.4;
         }
 
         .showroom-meta {
-            margin-top: 4px;
-            font-size: 0.92rem;
-            line-height: 1.65;
-            color: var(--muted);
+            display: none;
         }
 
         .ghost-link {
@@ -333,8 +329,9 @@
             padding: 0 16px;
             border-radius: 999px;
             border: 1px solid var(--line);
-            background: var(--accent-2);
-            font-size: 0.9rem;
+            background: var(--accent);
+            color: white;
+            font-size: 0.88rem;
             font-weight: 600;
             white-space: nowrap;
         }
@@ -398,6 +395,25 @@
             line-height: 1.8;
             color: var(--muted);
             white-space: pre-line;
+        }
+
+        .story-card {
+            padding: 22px 18px 24px;
+        }
+
+        .story-card .section-title {
+            margin-top: 8px;
+            font-size: 1.08rem;
+            line-height: 1.55;
+            letter-spacing: -0.01em;
+        }
+
+        .story-card .section-body {
+            margin-top: 14px;
+            font-size: 1rem;
+            line-height: 1.95;
+            color: #554b42;
+            overflow-wrap: anywhere;
         }
 
         .recommend-wrap {
@@ -719,6 +735,16 @@
         @media (max-width: 420px) {
             .hero-topbar { padding: 14px; }
             .panel { padding-left: 16px; padding-right: 16px; }
+            .showroom-head {
+                gap: 10px;
+            }
+            .showroom-name {
+                font-size: 1rem;
+            }
+            .ghost-link {
+                min-width: 108px;
+                padding: 0 14px;
+            }
             .sticky-inner {
                 grid-template-columns: 1fr 1fr;
             }
@@ -803,12 +829,8 @@
             <section class="showroom-card">
                 <div class="showroom-head">
                     <div>
-                        <div class="showroom-label">Showroom Context</div>
+                        <div class="showroom-label">Showroom</div>
                         <div class="showroom-name">{{ product.host_name or "AFFILISTAY Host" }}</div>
-                        <div class="showroom-meta">
-                            {{ product.host_location or "숙소 위치 정보 준비 중" }}<br>
-                            실제 머무는 공간에서 발견한 제품이라는 맥락까지 함께 보고 싶다면 쇼룸 전체를 둘러보세요.
-                        </div>
                     </div>
                     <a href="{{ showroom_path }}" class="ghost-link">숙소 둘러보기</a>
                 </div>
@@ -837,9 +859,9 @@
             {% endif %}
 
             {% if product.detailed_description %}
-            <section class="section-card">
+            <section class="section-card story-card">
                 <div class="section-eyebrow">Product Story</div>
-                <h2 class="section-title">이 제품을 공간에 두면 어떤 결이 생기는지</h2>
+                <h2 class="section-title">제품 상세 설명</h2>
                 <div class="section-body">{{ product.detailed_description }}</div>
             </section>
             {% endif %}
@@ -1056,13 +1078,44 @@
     <script>
         const heroCarousel = document.getElementById("hero-carousel");
         const heroDots = Array.from(document.querySelectorAll(".hero-dot"));
-        if (heroCarousel && heroDots.length > 0) {
+        const heroSlides = heroCarousel ? Array.from(heroCarousel.querySelectorAll(".hero-slide")) : [];
+        let heroAutoIndex = 0;
+        let heroAutoTimer = null;
+
+        if (heroCarousel && heroSlides.length > 1) {
             heroCarousel.addEventListener("scroll", () => {
                 const index = Math.round(heroCarousel.scrollLeft / heroCarousel.clientWidth);
+                heroAutoIndex = index;
                 heroDots.forEach((dot, dotIndex) => {
                     dot.classList.toggle("is-active", dotIndex === index);
                 });
             }, { passive: true });
+
+            const startHeroAutoSlide = () => {
+                if (heroAutoTimer || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+                heroAutoTimer = window.setInterval(() => {
+                    heroAutoIndex = (heroAutoIndex + 1) % heroSlides.length;
+                    heroCarousel.scrollTo({
+                        left: heroAutoIndex * heroCarousel.clientWidth,
+                        behavior: "smooth"
+                    });
+                }, 1000);
+            };
+
+            const stopHeroAutoSlide = () => {
+                if (!heroAutoTimer) return;
+                window.clearInterval(heroAutoTimer);
+                heroAutoTimer = null;
+            };
+
+            heroCarousel.addEventListener("pointerdown", stopHeroAutoSlide, { passive: true });
+            heroCarousel.addEventListener("pointerup", startHeroAutoSlide, { passive: true });
+            heroCarousel.addEventListener("pointercancel", startHeroAutoSlide, { passive: true });
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) stopHeroAutoSlide();
+                else startHeroAutoSlide();
+            });
+            startHeroAutoSlide();
         }
 
         const selectedOptions = {};
