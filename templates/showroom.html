@@ -24,6 +24,7 @@
             background: var(--bg);
             color: var(--text);
             word-break: keep-all;
+            padding-bottom: calc(76px + env(safe-area-inset-bottom));
         }
         body::before {
             content: "";
@@ -40,6 +41,58 @@
             overflow-wrap: anywhere;
             word-break: keep-all;
         }
+        .bottom-tabbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 60;
+            border-top: 1px solid rgba(24, 22, 18, 0.09);
+            background: rgba(255, 253, 249, 0.94);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+        }
+        .bottom-tabbar-inner {
+            margin: 0 auto;
+            display: grid;
+            max-width: 620px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+        .bottom-tab {
+            position: relative;
+            display: flex;
+            min-height: 3.15rem;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.18rem;
+            border-radius: 1rem;
+            color: #8a8279;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .bottom-tab .icon { font-size: 1.25rem; line-height: 1; }
+        .bottom-tab.is-active { background: #221f1a; color: white; }
+        .bottom-badge {
+            position: absolute;
+            top: 0.28rem;
+            right: calc(50% - 1.35rem);
+            min-width: 1.05rem;
+            height: 1.05rem;
+            padding: 0 0.25rem;
+            border-radius: 999px;
+            background: #e65d58;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            line-height: 1.05rem;
+            text-align: center;
+            display: none;
+        }
+        .bottom-badge.is-visible { display: inline-block; }
     </style>
 </head>
 <body>
@@ -61,40 +114,11 @@
             </div>
         </header>
 
-        <main class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-            <section class="grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
-                <div class="space-y-3">
-                    <div class="overflow-hidden rounded-[1.9rem] border border-black/6 bg-[#ebe2d7] shadow-[0_12px_34px_rgba(18,16,12,0.06)]">
-                        <img src="{% if showroom.gallery_images %}data:image/jpeg;base64,{{ showroom.gallery_images[0] }}{% elif showroom.venue_image %}data:image/jpeg;base64,{{ showroom.venue_image }}{% elif showroom.venue_image2 %}data:image/jpeg;base64,{{ showroom.venue_image2 }}{% else %}/static/hero.png{% endif %}" alt="{{ showroom.host_name }}" class="aspect-[1.15/1] h-full w-full object-cover">
-                    </div>
-                    {% if showroom.gallery_images and showroom.gallery_images|length > 1 %}
-                    <div class="grid grid-cols-4 gap-3 sm:grid-cols-5">
-                        {% for image in showroom.gallery_images[1:5] %}
-                        <div class="overflow-hidden rounded-[1.1rem] border border-black/6 bg-[#efe6db]">
-                            <img src="data:image/jpeg;base64,{{ image }}" alt="{{ showroom.host_name }}" class="aspect-square h-full w-full object-cover">
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="rounded-[1.9rem] border border-black/6 bg-[var(--surface)] p-5 shadow-[0_12px_34px_rgba(18,16,12,0.04)] sm:p-6">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Stay Showroom</p>
-                    <h1 class="serif mt-3 text-4xl leading-tight sm:text-5xl">{{ showroom.host_name }}</h1>
-                    <p class="mt-4 text-sm text-stone-500">{{ showroom.location or "위치 준비 중" }}</p>
-                    <p class="mt-5 text-[15px] leading-7 text-[var(--muted)]">
-                        {{ showroom.description or "공간의 분위기와 실제 사용 장면 안에서 제품을 자연스럽게 발견할 수 있도록 구성한 어필리스테이 쇼룸입니다." }}
-                    </p>
-                    <div class="mt-6 flex flex-wrap gap-2">
-                        <span class="rounded-full bg-[var(--soft-2)] px-3 py-2 text-sm font-medium text-stone-700">🏠 스테이 쇼룸</span>
-                        <span class="rounded-full bg-white px-3 py-2 text-sm font-medium text-stone-600">🛍️ 제품 {{ products|length }}개</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="mt-10">
+        <main class="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8">
+            <section>
                 <div class="mb-5">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--soft)]">Products In Stay</p>
-                    <h2 class="mt-2 text-[1.75rem] font-semibold tracking-tight text-stone-900 sm:text-3xl">이 숙소에 비치된 제품</h2>
+                    <h1 class="mt-2 text-[1.75rem] font-semibold tracking-tight text-stone-900 sm:text-3xl">{{ showroom.host_name }} 제품</h1>
                 </div>
 
                 {% if products %}
@@ -139,11 +163,33 @@
             </section>
         </main>
     </div>
+    <nav class="bottom-tabbar" aria-label="고객 메뉴">
+        <div class="bottom-tabbar-inner">
+            <a href="/" class="bottom-tab"><span class="icon">⌂</span><span>홈</span></a>
+            <a href="/catalog?view=products&category=all&room=all" class="bottom-tab is-active"><span class="icon">▦</span><span>쇼핑</span></a>
+            <a href="/wishlist" class="bottom-tab"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♡</span><span>찜</span></a>
+            <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
+        </div>
+    </nav>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
         data-live-message="이 숙소 쇼룸에 새 정보가 반영되어 다시 불러오고 있어요."
         data-live-interval="5000"
     ></script>
+    <script>
+        (() => {
+            const WISHLIST_KEY = 'affilistay_wishlist';
+            const readWishlist = () => {
+                try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]'); }
+                catch (error) { return []; }
+            };
+            const count = readWishlist().length;
+            document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
+                badge.textContent = count;
+                badge.classList.toggle('is-visible', count > 0);
+            });
+        })();
+    </script>
 </body>
 </html>

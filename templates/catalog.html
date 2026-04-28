@@ -305,7 +305,7 @@
                 <a href="/" class="justify-self-start rounded-full border border-black/10 bg-white/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-700 transition hover:bg-white">
                     Home
                 </a>
-                <a href="/catalog" class="min-w-0 justify-self-center" aria-label="AFFILISTAY catalog">
+                <a href="/catalog?view=products&category=all&room=all" class="min-w-0 justify-self-center" aria-label="AFFILISTAY catalog">
                     <img src="/static/affilistay-logo.png?v=2" alt="AFFILISTAY" class="block h-5 w-auto max-w-[118px] sm:h-6 sm:max-w-[165px]">
                 </a>
                 <div class="flex shrink-0 items-center gap-2">
@@ -318,59 +318,11 @@
                         로그인
                     </a>
                     {% endif %}
-                    {% if customer_logged_in %}
-                    <a href="#manage-panel" class="rounded-full border border-black/10 bg-[var(--accent)] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-black">
-                        관리 메뉴
-                    </a>
-                    {% endif %}
                 </div>
             </div>
         </header>
 
         <main class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-            {% if customer_logged_in %}
-            <section id="manage-panel" class="mb-4 browse-card space-y-4">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="space-y-1">
-                        <p class="browse-label">Browse &amp; Manage</p>
-                        <p class="text-sm leading-6 text-[var(--muted)]">
-                            {% if customer_logged_in %}
-                            지금 보고 있던 입점제품 둘러보기는 그대로 두고, 관리 화면은 새 탭에서 열 수 있어요.
-                            {% else %}
-                            로그인해도 지금 보던 입점제품 둘러보기로 바로 돌아오도록 연결해뒀어요.
-                            {% endif %}
-                        </p>
-                    </div>
-                    {% if not customer_logged_in %}
-                    <a href="{{ customer_login_url }}" class="inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-black">
-                        로그인 후 둘러보기 계속
-                    </a>
-                    {% endif %}
-                </div>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Product</p>
-                        <p class="mt-2 text-base font-semibold text-stone-900">제품 관리하기</p>
-                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">상품 등록, 가격 수정, QR 재발급을 바로 이어서 진행합니다.</p>
-                    </a>
-                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Host</p>
-                        <p class="mt-2 text-base font-semibold text-stone-900">호스트 센터</p>
-                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">숙소 사진, 수입 보드, 쇼룸 운영 정보를 새 탭에서 관리합니다.</p>
-                    </a>
-                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Brand</p>
-                        <p class="mt-2 text-base font-semibold text-stone-900">입점업체 페이지</p>
-                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">브랜드 상품 풀과 입점 제안을 같은 흐름 안에서 이어서 봅니다.</p>
-                    </a>
-                    <a href="{{ admin_url }}" target="_blank" rel="noopener" class="rounded-[1.25rem] border border-black/8 bg-white/90 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(18,16,12,0.06)]">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--soft)]">Admin</p>
-                        <p class="mt-2 text-base font-semibold text-stone-900">관리자 페이지</p>
-                        <p class="mt-2 text-sm leading-6 text-[var(--muted)]">전체 주문, 정산, 회원가입 문의를 한 번에 확인할 수 있어요.</p>
-                    </a>
-                </div>
-            </section>
-            {% endif %}
             <section class="mb-6 browse-card space-y-4 sm:space-y-5">
                 <div class="browse-group">
                     <div class="browse-switch grid grid-cols-2 rounded-full border border-black/8 bg-white/90 p-1 shadow-sm">
@@ -572,7 +524,7 @@
                 <span class="icon" aria-hidden="true">⌂</span>
                 <span>홈</span>
             </a>
-            <a href="/catalog" class="bottom-tab is-active">
+            <a href="/catalog?view=products&category=all&room=all" class="bottom-tab is-active">
                 <span class="icon" aria-hidden="true">▦</span>
                 <span>쇼핑</span>
             </a>

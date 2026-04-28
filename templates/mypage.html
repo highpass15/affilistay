@@ -208,7 +208,7 @@
 <body>
     <main class="shell">
         <header class="topbar">
-            <a class="icon-btn" href="/catalog" aria-label="쇼핑">⌂</a>
+            <a class="icon-btn" href="/catalog?view=products&category=all&room=all" aria-label="쇼핑">⌂</a>
             <h1 class="page-title">마이페이지</h1>
             <a class="icon-btn" href="/wishlist" aria-label="찜">♡</a>
         </header>
@@ -226,21 +226,31 @@
                     <div class="label">찜</div>
                     <div class="value" data-wish-value>0</div>
                 </a>
-                <div class="stat">
+                <a class="stat" href="/mypage#orders">
                     <div class="icon">▤</div>
                     <div class="label">주문</div>
                     <div class="value">0</div>
-                </div>
-                <div class="stat">
+                </a>
+                <a class="stat" href="/mypage#inquiries">
                     <div class="icon">◌</div>
                     <div class="label">문의</div>
                     <div class="value">0</div>
-                </div>
+                </a>
             </div>
             <div class="rows">
                 <a class="row" href="/wishlist"><span>내 찜 목록</span><span>›</span></a>
-                <a class="row" href="/catalog"><span>입점제품 둘러보기</span><span>›</span></a>
-                <a class="row" href="{{ admin_url }}"><span>호스트/입점업체/관리자 페이지</span><span>›</span></a>
+                <a class="row" href="/catalog?view=products&category=all&room=all"><span>입점제품 둘러보기</span><span>›</span></a>
+                <a class="row" href="{{ admin_url }}" target="_blank" rel="noopener"><span>호스트/입점업체/관리자 페이지</span><span>›</span></a>
+            </div>
+        </section>
+        <section id="orders" class="panel">
+            <div class="rows">
+                <a class="row" href="/catalog?view=products&category=all&room=all"><span>주문할 상품 둘러보기</span><span>›</span></a>
+            </div>
+        </section>
+        <section id="inquiries" class="panel">
+            <div class="rows">
+                <a class="row" href="/catalog?view=products&category=all&room=all"><span>문의할 상품 찾기</span><span>›</span></a>
             </div>
         </section>
         {% if customer_logged_in %}
@@ -252,7 +262,7 @@
     <nav class="bottom-tabbar" aria-label="고객 메뉴">
         <div class="bottom-tabbar-inner">
             <a href="/" class="bottom-tab"><span class="icon">⌂</span><span>홈</span></a>
-            <a href="/catalog" class="bottom-tab"><span class="icon">▦</span><span>쇼핑</span></a>
+            <a href="/catalog?view=products&category=all&room=all" class="bottom-tab"><span class="icon">▦</span><span>쇼핑</span></a>
             <a href="/wishlist" class="bottom-tab"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♡</span><span>찜</span></a>
             <a href="/mypage" class="bottom-tab is-active"><span class="icon">♙</span><span>마이</span></a>
         </div>

@@ -32,7 +32,7 @@
             color: var(--text);
             -webkit-font-smoothing: antialiased;
             word-break: keep-all;
-            padding-bottom: 108px;
+            padding-bottom: calc(184px + env(safe-area-inset-bottom));
         }
 
         body::before {
@@ -630,14 +630,72 @@
             position: fixed;
             left: 0;
             right: 0;
-            bottom: 0;
+            bottom: calc(72px + env(safe-area-inset-bottom));
             z-index: 20;
             background: rgba(248, 245, 239, 0.94);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-top: 1px solid rgba(24, 22, 18, 0.08);
-            padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+            padding: 12px 14px;
         }
+
+        .bottom-tabbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 21;
+            border-top: 1px solid rgba(24, 22, 18, 0.09);
+            background: rgba(255, 253, 249, 0.94);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+        }
+
+        .bottom-tabbar-inner {
+            margin: 0 auto;
+            display: grid;
+            max-width: 620px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+
+        .bottom-tab {
+            position: relative;
+            display: flex;
+            min-height: 3.15rem;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.18rem;
+            border-radius: 1rem;
+            color: #8a8279;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .bottom-tab .icon { font-size: 1.25rem; line-height: 1; }
+        .bottom-tab.is-active { background: var(--accent); color: white; }
+
+        .bottom-badge {
+            position: absolute;
+            top: 0.28rem;
+            right: calc(50% - 1.35rem);
+            min-width: 1.05rem;
+            height: 1.05rem;
+            padding: 0 0.25rem;
+            border-radius: 999px;
+            background: #e65d58;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            line-height: 1.05rem;
+            text-align: center;
+            display: none;
+        }
+
+        .bottom-badge.is-visible { display: inline-block; }
 
         .sticky-inner {
             max-width: 720px;
@@ -1092,6 +1150,15 @@
         </div>
     </div>
 
+    <nav class="bottom-tabbar" aria-label="고객 메뉴">
+        <div class="bottom-tabbar-inner">
+            <a href="/" class="bottom-tab"><span class="icon">⌂</span><span>홈</span></a>
+            <a href="/catalog?view=products&category=all&room=all" class="bottom-tab is-active"><span class="icon">▦</span><span>쇼핑</span></a>
+            <a href="/wishlist" class="bottom-tab"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♡</span><span>찜</span></a>
+            <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
+        </div>
+    </nav>
+
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -1186,6 +1253,19 @@
             return badgeSource.length;
         }
 
+        function updateWishlistBadge() {
+            let count = 0;
+            try {
+                count = JSON.parse(localStorage.getItem("affilistay_wishlist") || "[]").length;
+            } catch (error) {
+                count = 0;
+            }
+            document.querySelectorAll("[data-wishlist-count]").forEach((badge) => {
+                badge.textContent = count;
+                badge.classList.toggle("is-visible", count > 0);
+            });
+        }
+
         function addToCart() {
             const optionGroups = document.querySelectorAll(".option-values");
             if (optionGroups.length > 0 && Object.keys(selectedOptions).length < optionGroups.length) {
@@ -1242,6 +1322,7 @@
             ensureDefaultOptions();
             updateBuyLink();
             updateCartPayloadCount();
+            updateWishlistBadge();
         });
     </script>
 </body>
