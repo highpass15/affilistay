@@ -183,6 +183,37 @@
             background: white;
         }
 
+        .hero-wish-button {
+            position: absolute;
+            right: 18px;
+            bottom: 18px;
+            z-index: 4;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 58px;
+            height: 58px;
+            border: 1px solid rgba(24, 22, 18, 0.12);
+            border-radius: 999px;
+            background: rgba(255, 253, 249, 0.9);
+            color: #221f1a;
+            box-shadow: 0 14px 32px rgba(18, 16, 12, 0.14);
+            font-size: 1.85rem;
+            line-height: 1;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+        }
+
+        .hero-wish-button.is-liked {
+            background: rgba(34, 31, 26, 0.96);
+            color: white;
+        }
+
+        .hero-wish-button:active {
+            transform: scale(0.94);
+        }
+
         .panel {
             margin-top: -10px;
             border-radius: 28px 28px 0 0;
@@ -850,7 +881,7 @@
                 <a href="{{ showroom_path }}" class="hero-btn" aria-label="숙소 둘러보기">⌂</a>
             </div>
 
-            <div class="hero-carousel" id="hero-carousel">
+            <div class="hero-carousel" id="hero-carousel" aria-label="제품 이미지">
                 {% if gallery_images %}
                     {% for image in gallery_images %}
                     <div class="hero-slide">
@@ -873,6 +904,19 @@
                 {% endfor %}
             </div>
             {% endif %}
+            <button
+                type="button"
+                class="hero-wish-button"
+                data-wishlist-toggle
+                data-product-id="{{ product.id }}"
+                data-product-name="{{ product.product_name }}"
+                data-brand-name="{{ product.brand_name }}"
+                data-price="{{ product.price }}"
+                data-url="/shop/{{ qr_code_id }}/product/{{ product.id }}?return_to={{ return_to_encoded }}"
+                data-image="{% if gallery_images %}data:image/jpeg;base64,{{ gallery_images[0] }}{% elif product.image_url %}data:image/jpeg;base64,{{ product.image_url }}{% else %}/static/product.png{% endif %}"
+                aria-label="{{ product.product_name }} 찜하기"
+                aria-pressed="false"
+            >♡</button>
         </section>
 
         <main class="panel">
@@ -1154,7 +1198,7 @@
         <div class="bottom-tabbar-inner">
             <a href="/" class="bottom-tab"><span class="icon">⌂</span><span>홈</span></a>
             <a href="/catalog?view=products&category=all&room=all" class="bottom-tab is-active"><span class="icon">▦</span><span>쇼핑</span></a>
-            <a href="/wishlist" class="bottom-tab"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♡</span><span>찜</span></a>
+            <a href="/wishlist" class="bottom-tab"><span class="bottom-badge" data-wishlist-count></span><span class="icon">♡</span><span>찜목록</span></a>
             <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
         </div>
     </nav>
@@ -1166,6 +1210,7 @@
         data-live-interval="5000"
     ></script>
     <script>
+        const WISHLIST_KEY = "affilistay_wishlist";
         const heroCarousel = document.getElementById("hero-carousel");
         const heroDots = Array.from(document.querySelectorAll(".hero-dot"));
         const heroSlides = heroCarousel ? Array.from(heroCarousel.querySelectorAll(".hero-slide")) : [];
@@ -1173,22 +1218,31 @@
         let heroAutoTimer = null;
 
         if (heroCarousel && heroSlides.length > 1) {
-            heroCarousel.addEventListener("scroll", () => {
-                const index = Math.round(heroCarousel.scrollLeft / heroCarousel.clientWidth);
-                heroAutoIndex = index;
+            const updateHeroDots = (index) => {
                 heroDots.forEach((dot, dotIndex) => {
                     dot.classList.toggle("is-active", dotIndex === index);
                 });
+            };
+
+            const goToHeroSlide = (index, behavior = "smooth") => {
+                heroAutoIndex = (index + heroSlides.length) % heroSlides.length;
+                heroCarousel.scrollTo({
+                    left: heroAutoIndex * heroCarousel.clientWidth,
+                    behavior
+                });
+                updateHeroDots(heroAutoIndex);
+            };
+
+            heroCarousel.addEventListener("scroll", () => {
+                const index = Math.round(heroCarousel.scrollLeft / heroCarousel.clientWidth);
+                heroAutoIndex = index;
+                updateHeroDots(index);
             }, { passive: true });
 
             const startHeroAutoSlide = () => {
-                if (heroAutoTimer || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+                if (heroAutoTimer) return;
                 heroAutoTimer = window.setInterval(() => {
-                    heroAutoIndex = (heroAutoIndex + 1) % heroSlides.length;
-                    heroCarousel.scrollTo({
-                        left: heroAutoIndex * heroCarousel.clientWidth,
-                        behavior: "smooth"
-                    });
+                    goToHeroSlide(heroAutoIndex + 1);
                 }, 1000);
             };
 
@@ -1204,7 +1258,7 @@
             heroCarousel.addEventListener("touchstart", stopHeroAutoSlide, { passive: true });
             heroCarousel.addEventListener("touchend", startHeroAutoSlide, { passive: true });
             window.addEventListener("resize", () => {
-                heroCarousel.scrollTo({ left: heroAutoIndex * heroCarousel.clientWidth, behavior: "auto" });
+                goToHeroSlide(heroAutoIndex, "auto");
             });
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) stopHeroAutoSlide();
@@ -1253,16 +1307,69 @@
             return badgeSource.length;
         }
 
+        function readWishlist() {
+            try {
+                return JSON.parse(localStorage.getItem(WISHLIST_KEY) || "[]");
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function writeWishlist(items) {
+            localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+        }
+
         function updateWishlistBadge() {
             let count = 0;
             try {
-                count = JSON.parse(localStorage.getItem("affilistay_wishlist") || "[]").length;
+                count = readWishlist().length;
             } catch (error) {
                 count = 0;
             }
             document.querySelectorAll("[data-wishlist-count]").forEach((badge) => {
                 badge.textContent = count;
                 badge.classList.toggle("is-visible", count > 0);
+            });
+        }
+
+        function syncWishlistButtons() {
+            const ids = new Set(readWishlist().map((item) => String(item.id)));
+            document.querySelectorAll("[data-wishlist-toggle]").forEach((button) => {
+                const liked = ids.has(String(button.dataset.productId));
+                button.classList.toggle("is-liked", liked);
+                button.setAttribute("aria-pressed", liked ? "true" : "false");
+                button.textContent = liked ? "♥" : "♡";
+            });
+            updateWishlistBadge();
+        }
+
+        function bindWishlistButtons() {
+            document.querySelectorAll("[data-wishlist-toggle]").forEach((button) => {
+                if (button.dataset.wishlistBound === "true") return;
+                button.dataset.wishlistBound = "true";
+                button.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const id = String(button.dataset.productId);
+                    const items = readWishlist();
+                    const existingIndex = items.findIndex((item) => String(item.id) === id);
+                    if (existingIndex >= 0) {
+                        items.splice(existingIndex, 1);
+                    } else {
+                        items.unshift({
+                            id,
+                            name: button.dataset.productName || "",
+                            brand: button.dataset.brandName || "",
+                            price: Number(button.dataset.price || 0),
+                            url: button.dataset.url || window.location.pathname,
+                            image: button.dataset.image || "/static/product.png"
+                        });
+                    }
+
+                    writeWishlist(items);
+                    syncWishlistButtons();
+                });
             });
         }
 
@@ -1318,11 +1425,15 @@
             }, 220);
         }
 
+        bindWishlistButtons();
+        syncWishlistButtons();
+
         window.addEventListener("load", () => {
             ensureDefaultOptions();
             updateBuyLink();
             updateCartPayloadCount();
-            updateWishlistBadge();
+            bindWishlistButtons();
+            syncWishlistButtons();
         });
     </script>
 </body>

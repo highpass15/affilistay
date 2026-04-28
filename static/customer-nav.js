@@ -99,7 +99,7 @@
             </a>
             <a href="/wishlist" class="af-bottom-tab ${active === "wishlist" ? "is-active" : ""}">
                 <span class="af-bottom-badge" data-wishlist-count></span>
-                <span class="icon" aria-hidden="true">♡</span><span>찜</span>
+                <span class="icon" aria-hidden="true">♡</span><span>찜목록</span>
             </a>
             <a href="/mypage" class="af-bottom-tab ${active === "mypage" ? "is-active" : ""}">
                 <span class="icon" aria-hidden="true">♙</span><span>마이</span>
