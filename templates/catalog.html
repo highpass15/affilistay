@@ -195,6 +195,7 @@
             top: 0.75rem;
             right: 0.75rem;
             z-index: 5;
+            cursor: pointer;
             display: inline-flex;
             height: 2.55rem;
             width: 2.55rem;
@@ -208,6 +209,7 @@
             backdrop-filter: blur(10px);
             font-size: 1.15rem;
             line-height: 1;
+            pointer-events: auto;
             transition: transform 160ms ease, background 160ms ease, color 160ms ease;
         }
         .wish-button.is-liked {
@@ -373,7 +375,7 @@
                 {% if products %}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {% for product in products %}
-                    <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="group overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1" aria-label="{{ product.product_name }} 구매 화면으로 이동">
+                    <article class="group overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1">
                         <div class="relative aspect-[1.18/1] overflow-hidden bg-[#efe8dd]" data-product-carousel {% if product.gallery_count > 1 %}data-product-delay="1000"{% endif %}>
                             <button
                                 type="button"
@@ -388,6 +390,7 @@
                                 aria-label="{{ product.product_name }} 찜하기"
                                 aria-pressed="false"
                             >♡</button>
+                            <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block h-full" aria-label="{{ product.product_name }} 구매 화면으로 이동">
                             {% if product.gallery_count > 1 %}
                             <div class="product-carousel-track flex h-full" data-product-track>
                                 {% for image in product.gallery_images %}
@@ -404,8 +407,9 @@
                             {% else %}
                             <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
                             {% endif %}
+                            </a>
                         </div>
-                        <div class="space-y-4 p-4 sm:p-5">
+                        <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block space-y-4 p-4 sm:p-5" aria-label="{{ product.product_name }} 구매 화면으로 이동">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="rounded-full bg-[var(--soft-2)] px-3 py-1.5 text-xs font-medium text-stone-700">{{ product.room_icon }} {{ product.room_label }}</span>
                                 <span class="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-600">{{ product.category_icon }} {{ product.category_label }}</span>
@@ -438,8 +442,8 @@
                                 <span>구매 화면 보기</span>
                                 <span aria-hidden="true">→</span>
                             </div>
-                        </div>
-                    </a>
+                        </a>
+                    </article>
                     {% endfor %}
                 </div>
                 {% else %}
@@ -548,6 +552,9 @@
     <script>
         (() => {
             const WISHLIST_KEY = 'affilistay_wishlist';
+            const PENDING_WISHLIST_KEY = 'affilistay_pending_wishlist';
+            const CUSTOMER_LOGGED_IN = {{ customer_logged_in|default(false)|tojson }};
+            const CUSTOMER_LOGIN_URL = {{ customer_login_url|default("/customer/login?return_url=%2Fcatalog")|tojson }};
 
             const readWishlist = () => {
                 try {
@@ -559,6 +566,29 @@
 
             const writeWishlist = (items) => {
                 localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+            };
+
+            const wishlistPayloadFromButton = (button) => ({
+                product_id: Number(button.dataset.productId || 0),
+                qr_code_id: (button.dataset.url || '').split('/shop/')[1]?.split('/')[0] || '',
+                product_name: button.dataset.productName || '',
+                brand_name: button.dataset.brandName || '',
+                price: Number(button.dataset.price || 0),
+                url: button.dataset.url || '/catalog',
+                image: button.dataset.image || '/static/product.png'
+            });
+
+            const syncWishlistToServer = async (payload) => {
+                if (!CUSTOMER_LOGGED_IN || !payload.product_id) return;
+                try {
+                    await fetch('/api/wishlist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (error) {
+                    console.warn('wishlist sync failed', error);
+                }
             };
 
             const updateWishlistCount = () => {
@@ -587,25 +617,60 @@
                     button.addEventListener('click', (event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        const payload = wishlistPayloadFromButton(button);
                         const id = String(button.dataset.productId);
                         const items = readWishlist();
                         const existingIndex = items.findIndex((item) => String(item.id) === id);
                         if (existingIndex >= 0) {
                             items.splice(existingIndex, 1);
+                            if (!CUSTOMER_LOGGED_IN) {
+                                localStorage.removeItem(PENDING_WISHLIST_KEY);
+                            }
                         } else {
                             items.unshift({
                                 id,
-                                name: button.dataset.productName || '',
-                                brand: button.dataset.brandName || '',
-                                price: Number(button.dataset.price || 0),
-                                url: button.dataset.url || '/catalog',
-                                image: button.dataset.image || '/static/product.png'
+                                name: payload.product_name,
+                                brand: payload.brand_name,
+                                price: payload.price,
+                                url: payload.url,
+                                image: payload.image
                             });
+                            if (CUSTOMER_LOGGED_IN) {
+                                syncWishlistToServer(payload);
+                            } else {
+                                localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
+                            }
                         }
                         writeWishlist(items);
                         syncWishlistButtons();
                     });
                 });
+            };
+
+            const applyPendingWishlist = () => {
+                if (!CUSTOMER_LOGGED_IN) return;
+                try {
+                    const pendingRaw = localStorage.getItem(PENDING_WISHLIST_KEY);
+                    const pending = pendingRaw ? JSON.parse(pendingRaw) : null;
+                    if (!pending || !pending.product_id) return;
+                    const id = String(pending.product_id);
+                    const items = readWishlist();
+                    if (!items.some((item) => String(item.id) === id)) {
+                        items.unshift({
+                            id,
+                            name: pending.product_name || '',
+                            brand: pending.brand_name || '',
+                            price: Number(pending.price || 0),
+                            url: pending.url || '/catalog',
+                            image: pending.image || '/static/product.png'
+                        });
+                        writeWishlist(items);
+                    }
+                    syncWishlistToServer(pending);
+                    localStorage.removeItem(PENDING_WISHLIST_KEY);
+                } catch (error) {
+                    localStorage.removeItem(PENDING_WISHLIST_KEY);
+                }
             };
 
             const bindBrowseLinks = (scope = document) => {
@@ -853,6 +918,7 @@
                 document.addEventListener('DOMContentLoaded', () => {
                     bindBrowseLinks();
                     bindWishlistButtons();
+                    applyPendingWishlist();
                     syncWishlistButtons();
                     startAutoScroll();
                     startSpaceCarousels();
@@ -861,6 +927,7 @@
             } else {
                 bindBrowseLinks();
                 bindWishlistButtons();
+                applyPendingWishlist();
                 syncWishlistButtons();
                 startAutoScroll();
                 startSpaceCarousels();

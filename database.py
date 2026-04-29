@@ -125,6 +125,9 @@ def init_db():
             name TEXT,
             phone TEXT,
             default_address TEXT,
+            fcm_token TEXT,
+            kakao_opt_in BOOLEAN DEFAULT FALSE,
+            push_opt_in BOOLEAN DEFAULT FALSE,
             provider TEXT DEFAULT 'email', -- email, kakao, naver, facebook
             provider_id TEXT, -- SNS 고유 ID
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -151,6 +154,23 @@ def init_db():
             fcm_token TEXT,
             selected_options TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS wishlist_events (
+            id SERIAL PRIMARY KEY,
+            customer_id INTEGER REFERENCES customers(id),
+            product_id INTEGER REFERENCES products(id),
+            qr_code_id TEXT,
+            host_id INTEGER,
+            wishlist_payload TEXT,
+            purchased BOOLEAN DEFAULT FALSE,
+            reminder_status TEXT DEFAULT 'PENDING',
+            reminder_channel TEXT,
+            reminder_sent_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(customer_id, product_id)
         )
         """)
         # ── 신규 테이블 ──────────────────────────────
@@ -301,6 +321,9 @@ def init_db():
             name TEXT,
             phone TEXT,
             default_address TEXT,
+            fcm_token TEXT,
+            kakao_opt_in BOOLEAN DEFAULT FALSE,
+            push_opt_in BOOLEAN DEFAULT FALSE,
             provider TEXT DEFAULT 'email',
             provider_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -323,6 +346,23 @@ def init_db():
             fcm_token TEXT,
             selected_options TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS wishlist_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER,
+            product_id INTEGER,
+            qr_code_id TEXT,
+            host_id INTEGER,
+            wishlist_payload TEXT,
+            purchased BOOLEAN DEFAULT FALSE,
+            reminder_status TEXT DEFAULT 'PENDING',
+            reminder_channel TEXT,
+            reminder_sent_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(customer_id, product_id)
         )
         """)
         cursor.execute("""
@@ -428,6 +468,7 @@ def init_db():
             "ALTER TABLE host_venues ADD COLUMN IF NOT EXISTS image4 TEXT",
             "ALTER TABLE host_venues ADD COLUMN IF NOT EXISTS image5 TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'KRW'",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS exchange_rate REAL DEFAULT 1.0",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS paypal_order_id TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_status TEXT DEFAULT 'PREPARING'",
@@ -435,6 +476,10 @@ def init_db():
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS selected_options TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS fcm_token TEXT",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS kakao_opt_in BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS push_opt_in BOOLEAN DEFAULT FALSE",
+            "CREATE TABLE IF NOT EXISTS wishlist_events (id SERIAL PRIMARY KEY, customer_id INTEGER, product_id INTEGER, qr_code_id TEXT, host_id INTEGER, wishlist_payload TEXT, purchased BOOLEAN DEFAULT FALSE, reminder_status TEXT DEFAULT 'PENDING', reminder_channel TEXT, reminder_sent_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(customer_id, product_id))",
             "CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, rating INTEGER, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS product_inquiries (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, type TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS site_meta (meta_key TEXT PRIMARY KEY, meta_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
@@ -462,6 +507,11 @@ def init_db():
             "ALTER TABLE host_venues ADD COLUMN image3 TEXT",
             "ALTER TABLE host_venues ADD COLUMN image4 TEXT",
             "ALTER TABLE host_venues ADD COLUMN image5 TEXT",
+            "ALTER TABLE orders ADD COLUMN customer_id INTEGER",
+            "ALTER TABLE customers ADD COLUMN fcm_token TEXT",
+            "ALTER TABLE customers ADD COLUMN kakao_opt_in BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE customers ADD COLUMN push_opt_in BOOLEAN DEFAULT FALSE",
+            "CREATE TABLE IF NOT EXISTS wishlist_events (id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, product_id INTEGER, qr_code_id TEXT, host_id INTEGER, wishlist_payload TEXT, purchased BOOLEAN DEFAULT FALSE, reminder_status TEXT DEFAULT 'PENDING', reminder_channel TEXT, reminder_sent_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(customer_id, product_id))",
             "CREATE TABLE IF NOT EXISTS product_images (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, image_data TEXT NOT NULL, sort_order INTEGER DEFAULT 0)",
             'CREATE TABLE IF NOT EXISTS product_options (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, name TEXT NOT NULL, "values" TEXT NOT NULL)',
             "CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, rating INTEGER DEFAULT 5, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",

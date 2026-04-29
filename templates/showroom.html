@@ -93,6 +93,34 @@
             display: none;
         }
         .bottom-badge.is-visible { display: inline-block; }
+        .wish-button {
+            position: absolute;
+            right: 0.9rem;
+            bottom: 0.9rem;
+            z-index: 5;
+            cursor: pointer;
+            display: inline-flex;
+            width: 3.1rem;
+            height: 3.1rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 1px solid rgba(24, 22, 18, 0.13);
+            background: rgba(255, 253, 249, 0.92);
+            color: #221f1a;
+            font-size: 1.55rem;
+            line-height: 1;
+            box-shadow: 0 14px 30px rgba(18, 16, 12, 0.13);
+            pointer-events: auto;
+            transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+        }
+        .wish-button.is-liked {
+            background: #221f1a;
+            color: #fff;
+        }
+        .wish-button:active {
+            transform: scale(0.94);
+        }
     </style>
 </head>
 <body>
@@ -124,11 +152,26 @@
                 {% if products %}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {% for product in products %}
-                    <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1">
-                        <div class="aspect-[1.16/1] bg-[#f0ebe4]">
-                            <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
+                    <article class="overflow-hidden rounded-[1.6rem] border border-black/6 bg-[var(--card)] shadow-[0_12px_32px_rgba(18,16,12,0.05)] transition duration-200 hover:-translate-y-1">
+                        <div class="relative aspect-[1.16/1] bg-[#f0ebe4]">
+                            <button
+                                type="button"
+                                class="wish-button"
+                                data-wishlist-toggle
+                                data-product-id="{{ product.id }}"
+                                data-product-name="{{ product.product_name }}"
+                                data-brand-name="{{ product.brand_name }}"
+                                data-price="{{ product.price }}"
+                                data-url="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}"
+                                data-image="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}"
+                                aria-label="{{ product.product_name }} 찜하기"
+                                aria-pressed="false"
+                            >♡</button>
+                            <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block h-full" aria-label="{{ product.product_name }} 구매 화면으로 이동">
+                                <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
+                            </a>
                         </div>
-                        <div class="space-y-4 p-4 sm:p-5">
+                        <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block space-y-4 p-4 sm:p-5" aria-label="{{ product.product_name }} 구매 화면으로 이동">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="rounded-full bg-[var(--soft-2)] px-3 py-1.5 text-xs font-medium text-stone-700">{{ product.room_icon }} {{ product.room_label }}</span>
                                 <span class="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-600">{{ product.category_icon }} {{ product.category_label }}</span>
@@ -151,8 +194,8 @@
                                 {% endif %}
                                 <p class="mt-1 text-[1.7rem] font-semibold tracking-tight text-stone-900">{{ "{:,}".format(product.price) }}원</p>
                             </div>
-                        </div>
-                    </a>
+                        </a>
+                    </article>
                     {% endfor %}
                 </div>
                 {% else %}
@@ -180,15 +223,110 @@
     <script>
         (() => {
             const WISHLIST_KEY = 'affilistay_wishlist';
+            const PENDING_WISHLIST_KEY = 'affilistay_pending_wishlist';
+            const CUSTOMER_LOGGED_IN = {{ customer_logged_in|default(false)|tojson }};
+            const CUSTOMER_LOGIN_URL = {{ customer_login_url|default("/customer/login?return_url=%2Fcatalog")|tojson }};
             const readWishlist = () => {
                 try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]'); }
                 catch (error) { return []; }
             };
-            const count = readWishlist().length;
-            document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
-                badge.textContent = count;
-                badge.classList.toggle('is-visible', count > 0);
+            const writeWishlist = (items) => localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+            const updateCount = () => {
+                const count = readWishlist().length;
+                document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
+                    badge.textContent = count;
+                    badge.classList.toggle('is-visible', count > 0);
+                });
+            };
+            const payloadFromButton = (button) => ({
+                product_id: Number(button.dataset.productId || 0),
+                qr_code_id: (button.dataset.url || '').split('/shop/')[1]?.split('/')[0] || '',
+                product_name: button.dataset.productName || '',
+                brand_name: button.dataset.brandName || '',
+                price: Number(button.dataset.price || 0),
+                url: button.dataset.url || window.location.pathname,
+                image: button.dataset.image || '/static/product.png'
             });
+            const syncToServer = async (payload) => {
+                if (!CUSTOMER_LOGGED_IN || !payload.product_id) return;
+                try {
+                    await fetch('/api/wishlist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (error) {
+                    console.warn('wishlist sync failed', error);
+                }
+            };
+            const syncButtons = () => {
+                const ids = new Set(readWishlist().map((item) => String(item.id)));
+                document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
+                    const liked = ids.has(String(button.dataset.productId));
+                    button.classList.toggle('is-liked', liked);
+                    button.setAttribute('aria-pressed', liked ? 'true' : 'false');
+                    button.textContent = liked ? '♥' : '♡';
+                });
+                updateCount();
+            };
+            document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const payload = payloadFromButton(button);
+                    const id = String(button.dataset.productId);
+                    const items = readWishlist();
+                    const existingIndex = items.findIndex((item) => String(item.id) === id);
+                    if (existingIndex >= 0) {
+                        items.splice(existingIndex, 1);
+                        if (!CUSTOMER_LOGGED_IN) {
+                            localStorage.removeItem(PENDING_WISHLIST_KEY);
+                        }
+                    } else {
+                        items.unshift({
+                            id,
+                            name: payload.product_name,
+                            brand: payload.brand_name,
+                            price: payload.price,
+                            url: payload.url,
+                            image: payload.image
+                        });
+                        if (CUSTOMER_LOGGED_IN) {
+                            syncToServer(payload);
+                        } else {
+                            localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
+                        }
+                    }
+                    writeWishlist(items);
+                    syncButtons();
+                });
+            });
+            if (CUSTOMER_LOGGED_IN) {
+                try {
+                    const pendingRaw = localStorage.getItem(PENDING_WISHLIST_KEY);
+                    const pending = pendingRaw ? JSON.parse(pendingRaw) : null;
+                    if (pending && pending.product_id) {
+                        const id = String(pending.product_id);
+                        const items = readWishlist();
+                        if (!items.some((item) => String(item.id) === id)) {
+                            items.unshift({
+                                id,
+                                name: pending.product_name || '',
+                                brand: pending.brand_name || '',
+                                price: Number(pending.price || 0),
+                                url: pending.url || window.location.pathname,
+                                image: pending.image || '/static/product.png'
+                            });
+                            writeWishlist(items);
+                        }
+                        syncToServer(pending);
+                        localStorage.removeItem(PENDING_WISHLIST_KEY);
+                    }
+                } catch (error) {
+                    localStorage.removeItem(PENDING_WISHLIST_KEY);
+                }
+            }
+            syncButtons();
         })();
     </script>
 </body>

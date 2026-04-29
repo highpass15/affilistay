@@ -7,9 +7,11 @@ from database import get_db_connection, get_public_content_version, init_db
 import os
 import httpx
 import time
-from typing import Dict, List
+import json
+import sqlite3
+from typing import Dict, List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import quote
 from decimal import Decimal, InvalidOperation
 import fcm_service
@@ -29,6 +31,15 @@ class PageViewEvent(BaseModel):
     duration_seconds: int
     enter_time: str
 
+class WishlistPayload(BaseModel):
+    product_id: int
+    qr_code_id: Optional[str] = None
+    product_name: Optional[str] = None
+    brand_name: Optional[str] = None
+    price: Optional[int] = None
+    url: Optional[str] = None
+    image: Optional[str] = None
+
 app = FastAPI(title="AffiliStay Showroom Platform")
 
 @app.on_event("startup")
@@ -39,16 +50,70 @@ def run_migrations():
     try:
         if _is_pg():
             with conn.cursor() as cur:
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS kakao_opt_in BOOLEAN DEFAULT FALSE")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS push_opt_in BOOLEAN DEFAULT FALSE")
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS wishlist_events (
+                        id SERIAL PRIMARY KEY,
+                        customer_id INTEGER,
+                        product_id INTEGER,
+                        qr_code_id TEXT,
+                        host_id INTEGER,
+                        wishlist_payload TEXT,
+                        purchased BOOLEAN DEFAULT FALSE,
+                        reminder_status TEXT DEFAULT 'PENDING',
+                        reminder_channel TEXT,
+                        reminder_sent_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(customer_id, product_id)
+                    )
+                """)
             conn.commit()
         else:
             try:
-                conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
-                conn.execute("ALTER TABLE orders ADD COLUMN session_id TEXT")
-                conn.commit()
-            except:
+                conn.execute("ALTER TABLE orders ADD COLUMN customer_id INTEGER")
+            except Exception:
                 pass
+            try:
+                conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
+            except Exception:
+                pass
+            try:
+                conn.execute("ALTER TABLE orders ADD COLUMN session_id TEXT")
+            except Exception:
+                pass
+            for sql in [
+                "ALTER TABLE customers ADD COLUMN fcm_token TEXT",
+                "ALTER TABLE customers ADD COLUMN kakao_opt_in BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE customers ADD COLUMN push_opt_in BOOLEAN DEFAULT FALSE",
+                """
+                CREATE TABLE IF NOT EXISTS wishlist_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER,
+                    product_id INTEGER,
+                    qr_code_id TEXT,
+                    host_id INTEGER,
+                    wishlist_payload TEXT,
+                    purchased BOOLEAN DEFAULT FALSE,
+                    reminder_status TEXT DEFAULT 'PENDING',
+                    reminder_channel TEXT,
+                    reminder_sent_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(customer_id, product_id)
+                )
+                """,
+            ]:
+                try:
+                    conn.execute(sql)
+                except Exception:
+                    pass
+            conn.commit()
     except Exception as e:
         print(f"[Migration Error] {e}")
     finally:
@@ -63,16 +128,61 @@ def force_migrate():
     try:
         if _is_pg():
             with conn.cursor() as cur:
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS kakao_opt_in BOOLEAN DEFAULT FALSE")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS push_opt_in BOOLEAN DEFAULT FALSE")
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS wishlist_events (
+                        id SERIAL PRIMARY KEY,
+                        customer_id INTEGER,
+                        product_id INTEGER,
+                        qr_code_id TEXT,
+                        host_id INTEGER,
+                        wishlist_payload TEXT,
+                        purchased BOOLEAN DEFAULT FALSE,
+                        reminder_status TEXT DEFAULT 'PENDING',
+                        reminder_channel TEXT,
+                        reminder_sent_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(customer_id, product_id)
+                    )
+                """)
             conn.commit()
             return {"status": "success", "msg": "pg migrated"}
         else:
-            try:
-                conn.execute("ALTER TABLE orders ADD COLUMN fcm_token TEXT")
-                conn.execute("ALTER TABLE orders ADD COLUMN session_id TEXT")
-            except:
-                pass
+            for sql in [
+                "ALTER TABLE orders ADD COLUMN customer_id INTEGER",
+                "ALTER TABLE orders ADD COLUMN fcm_token TEXT",
+                "ALTER TABLE orders ADD COLUMN session_id TEXT",
+                "ALTER TABLE customers ADD COLUMN fcm_token TEXT",
+                "ALTER TABLE customers ADD COLUMN kakao_opt_in BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE customers ADD COLUMN push_opt_in BOOLEAN DEFAULT FALSE",
+                """
+                CREATE TABLE IF NOT EXISTS wishlist_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER,
+                    product_id INTEGER,
+                    qr_code_id TEXT,
+                    host_id INTEGER,
+                    wishlist_payload TEXT,
+                    purchased BOOLEAN DEFAULT FALSE,
+                    reminder_status TEXT DEFAULT 'PENDING',
+                    reminder_channel TEXT,
+                    reminder_sent_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(customer_id, product_id)
+                )
+                """,
+            ]:
+                try:
+                    conn.execute(sql)
+                except Exception:
+                    pass
             conn.commit()
             return {"status": "success", "msg": "sqlite migrated"}
     except Exception as e:
@@ -191,38 +301,75 @@ async def customer_login_page(request: Request, return_url: str = Query(default=
 @app.post("/customer/login")
 async def customer_login_process(
     request: Request,
-    email: str = Form(...),
+    identifier: str = Form(default=""),
+    email: str = Form(default=""),
     password: str = Form(...),
     return_url: str = Form(default="/")
 ):
-    """
-    ?? ???/???? ??? ??
-    MVP ????? ???? ?? ?? ???? ??/??? ??
-    """
+    """고객/파트너 공용 로그인 처리."""
+    login_id = (identifier or email or "").strip()
+    if not login_id:
+        return RedirectResponse(url=_customer_login_url(return_url), status_code=303)
+
     conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # ???? ?? ?? ??
-    cursor.execute("SELECT id FROM customers WHERE email = %s" if os.environ.get('DATABASE_URL') else "SELECT id FROM customers WHERE email = ?", (email,))
-    customer = cursor.fetchone()
-    
-    if not customer:
-        # ??? ???? ??
-        cursor.execute(
-            "INSERT INTO customers (email, password, provider) VALUES (%s, %s, 'email') RETURNING id" if os.environ.get('DATABASE_URL') else "INSERT INTO customers (email, password, provider) VALUES (?, ?, 'email')",
-            (email, password)
+    try:
+        partner = _fetch_one(
+            conn,
+            """
+            SELECT id, username, role, is_master
+            FROM hosts
+            WHERE (username = %s OR email = %s) AND password = %s
+            """,
+            """
+            SELECT id, username, role, is_master
+            FROM hosts
+            WHERE (username = ? OR email = ?) AND password = ?
+            """,
+            (login_id, login_id, password),
         )
-        if not os.environ.get('DATABASE_URL'):
-            customer_id = cursor.lastrowid
+
+        if partner:
+            response = RedirectResponse(url=ADMIN_URL, status_code=303)
+            response.set_cookie(key="partner_id", value=str(partner.get("id")), httponly=True)
+            response.set_cookie(key="partner_role", value=str(partner.get("role") or ""), httponly=True)
+            response.set_cookie(key="partner_is_master", value="1" if partner.get("is_master") else "0", httponly=True)
+            return response
+
+        customer_email = login_id if "@" in login_id else f"{login_id}@affilistay.local"
+        customer = _fetch_one(
+            conn,
+            "SELECT id FROM customers WHERE email = %s",
+            "SELECT id FROM customers WHERE email = ?",
+            (customer_email,),
+        )
+
+        if not customer:
+            cursor = conn.cursor()
+            if _is_pg():
+                cursor.execute(
+                    """
+                    INSERT INTO customers (email, password, name, provider)
+                    VALUES (%s, %s, %s, 'email')
+                    RETURNING id
+                    """,
+                    (customer_email, password, login_id),
+                )
+                customer_id = cursor.fetchone()[0]
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO customers (email, password, name, provider)
+                    VALUES (?, ?, ?, 'email')
+                    """,
+                    (customer_email, password, login_id),
+                )
+                customer_id = cursor.lastrowid
+            conn.commit()
         else:
-            customer_id = cursor.fetchone()[0]
-        conn.commit()
-    else:
-        customer_id = customer['id'] if isinstance(customer, sqlite3.Row) or os.environ.get('DATABASE_URL') else customer[0]
-        
-    conn.close()
+            customer_id = customer.get("id")
+    finally:
+        conn.close()
     
-    # ??? ??: ?? ?? ?? ?? (???? MVP? ?? ????? ??? ????? ??)
     safe_return_url = _safe_return_to(return_url, "/catalog")
     response = RedirectResponse(url=safe_return_url, status_code=303)
     response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
@@ -267,6 +414,217 @@ async def customer_logout(return_url: str = Query(default="/catalog")):
     response = RedirectResponse(url=safe_return_url, status_code=303)
     response.delete_cookie("customer_id")
     return response
+
+@app.post("/api/wishlist")
+async def save_wishlist_item(request: Request, payload: WishlistPayload):
+    customer_id = _customer_id_from_request(request)
+    if not customer_id:
+        return JSONResponse(
+            content={"status": "login_required", "login_url": _customer_login_url(payload.url or "/catalog")},
+            status_code=401,
+        )
+
+    conn = get_db_connection()
+    try:
+        product = _fetch_one(
+            conn,
+            "SELECT id, owner_id, qr_code_id FROM products WHERE id = %s",
+            "SELECT id, owner_id, qr_code_id FROM products WHERE id = ?",
+            (payload.product_id,),
+        )
+        if not product:
+            return JSONResponse(content={"status": "error", "message": "product_not_found"}, status_code=404)
+
+        qr_code_id = payload.qr_code_id or product.get("qr_code_id")
+        host_id = product.get("owner_id")
+        payload_json = json.dumps(payload.dict(), ensure_ascii=False)
+
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO wishlist_events (
+                        customer_id, product_id, qr_code_id, host_id, wishlist_payload,
+                        purchased, reminder_status, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, FALSE, 'PENDING', CURRENT_TIMESTAMP)
+                    ON CONFLICT (customer_id, product_id)
+                    DO UPDATE SET
+                        qr_code_id = EXCLUDED.qr_code_id,
+                        host_id = EXCLUDED.host_id,
+                        wishlist_payload = EXCLUDED.wishlist_payload,
+                        purchased = FALSE,
+                        reminder_status = 'PENDING',
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (customer_id, payload.product_id, qr_code_id, host_id, payload_json),
+                )
+        else:
+            conn.execute(
+                """
+                INSERT INTO wishlist_events (
+                    customer_id, product_id, qr_code_id, host_id, wishlist_payload,
+                    purchased, reminder_status, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, 0, 'PENDING', CURRENT_TIMESTAMP)
+                ON CONFLICT(customer_id, product_id)
+                DO UPDATE SET
+                    qr_code_id = excluded.qr_code_id,
+                    host_id = excluded.host_id,
+                    wishlist_payload = excluded.wishlist_payload,
+                    purchased = 0,
+                    reminder_status = 'PENDING',
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (customer_id, payload.product_id, qr_code_id, host_id, payload_json),
+            )
+        conn.commit()
+        return {"status": "success"}
+    except Exception as exc:
+        conn.rollback()
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
+    finally:
+        conn.close()
+
+@app.get("/api/wishlist/reminder-candidates")
+async def wishlist_reminder_candidates():
+    now_kst = datetime.utcnow() + timedelta(hours=9)
+    start_kst = (now_kst.date() - timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")
+    end_kst = now_kst.date().strftime("%Y-%m-%d 00:00:00")
+    active_window = 19 <= now_kst.hour < 21
+
+    conn = get_db_connection()
+    try:
+        rows = _fetch_all(
+            conn,
+            """
+            SELECT w.id, w.customer_id, w.product_id, w.wishlist_payload, c.email, c.phone, c.fcm_token
+            FROM wishlist_events w
+            JOIN customers c ON w.customer_id = c.id
+            WHERE w.purchased = FALSE
+              AND w.reminder_status = 'PENDING'
+              AND w.created_at >= %s
+              AND w.created_at < %s
+            ORDER BY w.created_at ASC
+            """,
+            """
+            SELECT w.id, w.customer_id, w.product_id, w.wishlist_payload, c.email, c.phone, c.fcm_token
+            FROM wishlist_events w
+            JOIN customers c ON w.customer_id = c.id
+            WHERE COALESCE(w.purchased, 0) = 0
+              AND w.reminder_status = 'PENDING'
+              AND w.created_at >= ?
+              AND w.created_at < ?
+            ORDER BY w.created_at ASC
+            """,
+            (start_kst, end_kst),
+        )
+        return {
+            "status": "success",
+            "active_window": active_window,
+            "send_window_kst": "19:00-21:00",
+            "message": "전날 방문 숙소 제품에 대해 찜목록에 추가하고 구매하지 않은 목록이 있어요",
+            "count": len(rows),
+            "candidates": rows,
+        }
+    finally:
+        conn.close()
+
+@app.post("/api/wishlist/reminders/run")
+async def run_wishlist_reminders(request: Request):
+    configured_secret = os.getenv("AFFILISTAY_REMINDER_SECRET", "")
+    provided_secret = request.headers.get("x-affilistay-reminder-secret", "")
+    if configured_secret and provided_secret != configured_secret:
+        return JSONResponse(content={"status": "forbidden"}, status_code=403)
+
+    now_kst = datetime.utcnow() + timedelta(hours=9)
+    if not (19 <= now_kst.hour < 21):
+        return {"status": "skipped", "reason": "outside_kst_window", "send_window_kst": "19:00-21:00"}
+
+    conn = get_db_connection()
+    sent = 0
+    queued = 0
+    failed = 0
+    message = "전날 방문 숙소 제품에 대해 찜목록에 추가하고 구매하지 않은 목록이 있어요"
+    try:
+        rows = _fetch_all(
+            conn,
+            """
+            SELECT w.id, c.fcm_token
+            FROM wishlist_events w
+            JOIN customers c ON w.customer_id = c.id
+            WHERE w.purchased = FALSE
+              AND w.reminder_status = 'PENDING'
+              AND w.created_at >= %s
+              AND w.created_at < %s
+            """,
+            """
+            SELECT w.id, c.fcm_token
+            FROM wishlist_events w
+            JOIN customers c ON w.customer_id = c.id
+            WHERE COALESCE(w.purchased, 0) = 0
+              AND w.reminder_status = 'PENDING'
+              AND w.created_at >= ?
+              AND w.created_at < ?
+            """,
+            (
+                (now_kst.date() - timedelta(days=1)).strftime("%Y-%m-%d 00:00:00"),
+                now_kst.date().strftime("%Y-%m-%d 00:00:00"),
+            ),
+        )
+
+        for row in rows:
+            status = "READY"
+            channel = "kakao_or_app_pending"
+            if row.get("fcm_token"):
+                channel = "app_push"
+                ok = fcm_service.send_push_notification(
+                    token=row["fcm_token"],
+                    title="어필리스테이 찜목록 알림",
+                    body=message,
+                    data={"type": "wishlist_abandonment"},
+                )
+                if ok:
+                    status = "SENT"
+                    sent += 1
+                else:
+                    status = "FAILED"
+                    failed += 1
+            else:
+                queued += 1
+
+            if _is_pg():
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        UPDATE wishlist_events
+                        SET reminder_status = %s,
+                            reminder_channel = %s,
+                            reminder_sent_at = CASE WHEN %s = 'SENT' THEN CURRENT_TIMESTAMP ELSE reminder_sent_at END,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        """,
+                        (status, channel, status, row["id"]),
+                    )
+            else:
+                conn.execute(
+                    """
+                    UPDATE wishlist_events
+                    SET reminder_status = ?,
+                        reminder_channel = ?,
+                        reminder_sent_at = CASE WHEN ? = 'SENT' THEN CURRENT_TIMESTAMP ELSE reminder_sent_at END,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (status, channel, status, row["id"]),
+                )
+        conn.commit()
+        return {"status": "success", "sent": sent, "queued_without_channel": queued, "failed": failed}
+    except Exception as exc:
+        conn.rollback()
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
+    finally:
+        conn.close()
 
 @app.get("/partner-entrance")
 async def partner_entrance():
@@ -335,6 +693,7 @@ async def verify_portone_payment(request: Request):
                     """, (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, payment_method, imp_uid))
                     order_id = cursor.lastrowid
                 order_ids.append(order_id)
+                _mark_wishlist_purchased(conn, customer_id, p_id)
 
         conn.commit()
         conn.close()
@@ -476,6 +835,68 @@ def _encode_return_to(path):
     return quote(path, safe="")
 
 
+def _row_value(row, key, index=0, default=None):
+    if row is None:
+        return default
+    try:
+        if isinstance(row, dict):
+            return row.get(key, default)
+        if isinstance(row, sqlite3.Row):
+            return row[key]
+    except Exception:
+        pass
+    try:
+        return row[index]
+    except Exception:
+        return default
+
+
+def _customer_login_url(return_to="/catalog"):
+    safe_return_to = _safe_return_to(return_to, "/catalog")
+    return f"/customer/login?return_url={_encode_return_to(safe_return_to)}"
+
+
+def _customer_id_from_request(request: Request):
+    value = request.cookies.get("customer_id")
+    if not value:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _mark_wishlist_purchased(conn, customer_id, product_id):
+    if not customer_id or not product_id:
+        return
+    try:
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE wishlist_events
+                    SET purchased = TRUE,
+                        reminder_status = 'PURCHASED',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE customer_id = %s AND product_id = %s
+                    """,
+                    (customer_id, product_id),
+                )
+        else:
+            conn.execute(
+                """
+                UPDATE wishlist_events
+                SET purchased = 1,
+                    reminder_status = 'PURCHASED',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE customer_id = ? AND product_id = ?
+                """,
+                (customer_id, product_id),
+            )
+    except Exception as exc:
+        print(f"[Wishlist Purchased Mark Error] {exc}")
+
+
 def _coerce_image_data(value):
     if value is None:
         return None
@@ -486,7 +907,10 @@ def _coerce_image_data(value):
             return value.decode("utf-8")
         except UnicodeDecodeError:
             return base64.b64encode(value).decode("ascii")
-    return str(value)
+    value = str(value).strip()
+    if value.startswith("data:image") and "," in value:
+        value = value.split(",", 1)[1]
+    return value or None
 
 
 def _coerce_int(value, default=0):
@@ -563,16 +987,80 @@ def _unique_products(products: List[dict]) -> List[dict]:
     return unique
 
 
-def _build_gallery_images(primary_image, image_rows):
+def _iter_image_values(image_rows):
+    for row in image_rows or []:
+        if isinstance(row, dict):
+            yield row.get("image_data") or row.get("image")
+        elif isinstance(row, sqlite3.Row):
+            try:
+                yield row["image_data"]
+            except Exception:
+                try:
+                    yield row["image"]
+                except Exception:
+                    yield row[0]
+        else:
+            yield row
+
+
+def _build_gallery_images(primary_image, image_rows, extra_images=None):
     gallery = []
     seen = set()
-    for image_data in [primary_image, *[row.get("image_data") for row in image_rows]]:
+    for image_data in [primary_image, *_iter_image_values(image_rows), *_iter_image_values(extra_images)]:
         image_data = _coerce_image_data(image_data)
         if not image_data or image_data in seen:
             continue
         seen.add(image_data)
         gallery.append(image_data)
     return gallery
+
+
+def _fetch_brand_registered_images(conn, product, limit=6):
+    """Return likely brand-supplied images for this product as a fallback gallery source."""
+    try:
+        rows = _fetch_all(
+            conn,
+            """
+            SELECT bi.image, bi.item_name, h.name as brand_name
+            FROM brand_items bi
+            JOIN hosts h ON bi.brand_id = h.id
+            WHERE bi.image IS NOT NULL AND bi.image != ''
+            ORDER BY bi.id DESC
+            """,
+            """
+            SELECT bi.image, bi.item_name, h.name as brand_name
+            FROM brand_items bi
+            JOIN hosts h ON bi.brand_id = h.id
+            WHERE bi.image IS NOT NULL AND bi.image != ''
+            ORDER BY bi.id DESC
+            """,
+        )
+    except Exception:
+        return []
+
+    def normalize(value):
+        return str(value or "").strip().lower()
+
+    product_name = normalize(product.get("product_name"))
+    brand_name = normalize(product.get("brand_name"))
+    exact_matches = []
+    brand_matches = []
+
+    for row in rows:
+        image = _coerce_image_data(row.get("image"))
+        if not image:
+            continue
+        item_name = normalize(row.get("item_name"))
+        row_brand = normalize(row.get("brand_name"))
+
+        if product_name and item_name and (
+            item_name == product_name or item_name in product_name or product_name in item_name
+        ):
+            exact_matches.append(image)
+        elif brand_name and row_brand == brand_name:
+            brand_matches.append(image)
+
+    return _build_gallery_images(None, exact_matches + brand_matches)[:limit]
 
 
 def _display_date(value):
@@ -963,6 +1451,8 @@ async def catalog_page(
 
 @app.get("/wishlist", response_class=HTMLResponse)
 async def wishlist_page(request: Request):
+    if not _customer_id_from_request(request):
+        return RedirectResponse(url=_customer_login_url("/wishlist"), status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="wishlist.html",
@@ -978,6 +1468,8 @@ async def wishlist_page(request: Request):
 
 @app.get("/mypage", response_class=HTMLResponse)
 async def mypage(request: Request):
+    if not _customer_id_from_request(request):
+        return RedirectResponse(url=_customer_login_url("/mypage"), status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="mypage.html",
@@ -1013,6 +1505,8 @@ async def showroom_detail(request: Request, host_id: int):
             "admin_url": ADMIN_URL,
             "current_url": current_url,
             "current_url_encoded": _encode_return_to(current_url),
+            "customer_logged_in": bool(_customer_id_from_request(request)),
+            "customer_login_url": _customer_login_url(current_url),
             "public_content_version": public_content_version,
         },
     )
@@ -1163,11 +1657,17 @@ async def product_detail(
             "similar_products": [],
         }
 
-    gallery_images = _build_gallery_images(product.get("image_url"), images)
+    brand_registered_images = _fetch_brand_registered_images(conn, product)
+    gallery_images = _build_gallery_images(
+        product.get("image_url"),
+        images,
+        brand_registered_images,
+    )
     product["room_icon"] = ROOM_ICONS.get(product.get("room_category"), "⌂")
     product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "✦")
     conn.close()
 
+    current_url = f"/shop/{qr_code_id}/product/{product_id}?return_to={_encode_return_to(return_to)}"
     context = {
         "request": request,
         "product": product,
@@ -1184,6 +1684,10 @@ async def product_detail(
         "similar_products": recommendation_groups["similar_products"],
         "return_to": return_to,
         "return_to_encoded": _encode_return_to(return_to),
+        "current_url": current_url,
+        "current_url_encoded": _encode_return_to(current_url),
+        "customer_logged_in": bool(_customer_id_from_request(request)),
+        "customer_login_url": _customer_login_url(current_url),
         "public_content_version": public_content_version,
     }
 
@@ -1293,6 +1797,7 @@ async def process_order(
     """주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
     conn = get_db_connection()
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
+    customer_id = _customer_id_from_request(request)
 
     if _is_pg():
         with conn.cursor() as cur:
@@ -1301,9 +1806,9 @@ async def process_order(
             if product:
                 try:
                     cur.execute('''
-                        INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                    ''', (product[0], customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
+                        INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                    ''', (product[0], customer_id, customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
                     order_id = cur.fetchone()[0]
                 except Exception as e:
                     import traceback
@@ -1313,9 +1818,9 @@ async def process_order(
         if product:
             try:
                 cursor = conn.execute('''
-                    INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (product['id'], customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options, fcm_token, session_id))
+                    INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (product['id'], customer_id, customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options, fcm_token, session_id))
                 order_id = cursor.lastrowid
             except Exception as e:
                 import traceback
@@ -1430,8 +1935,6 @@ async def order_cart_form(request: Request, qr_code_id: str, return_to: str = Qu
         }
     )
 
-import json
-
 @app.post("/shop/{qr_code_id}/order_cart")
 async def process_cart_order(
     request: Request,
@@ -1447,6 +1950,7 @@ async def process_cart_order(
 ):
     """장바구니 다중 상품 주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/cart")
+    customer_id = _customer_id_from_request(request)
     
     try:
         items = json.loads(items_json)
@@ -1481,15 +1985,15 @@ async def process_cart_order(
                 if _is_pg():
                     with conn.cursor() as cur:
                         cur.execute('''
-                            INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                        ''', (p_id, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
+                            INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                        ''', (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
                         order_ids.append(cur.fetchone()[0])
                 else:
                     cursor = conn.execute('''
-                        INSERT INTO orders (product_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (p_id, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
+                        INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
                     order_ids.append(cursor.lastrowid)
 
         conn.commit()
@@ -1657,21 +2161,23 @@ async def paypal_return_cart(
             with conn.cursor() as cur:
                 cur.execute(f'''
                     UPDATE orders SET payment_status = 'PAID', currency = %s, exchange_rate = %s
-                    WHERE paypal_order_id = %s RETURNING fcm_token
+                    WHERE paypal_order_id = %s RETURNING fcm_token, customer_id, product_id
                 ''', (currency, exchange_rate, paypal_order_id))
                 rows = cur.fetchall()
                 for row in rows:
                     if row[0] and row[0] not in fcm_tokens:
                         fcm_tokens.append(row[0])
+                    _mark_wishlist_purchased(conn, row[1], row[2])
         else:
             conn.execute(f'''
                 UPDATE orders SET payment_status = 'PAID', currency = ?, exchange_rate = ?
                 WHERE paypal_order_id = ?
             ''', (currency, exchange_rate, paypal_order_id))
-            rows = conn.execute('SELECT fcm_token FROM orders WHERE paypal_order_id = ?', (paypal_order_id,)).fetchall()
+            rows = conn.execute('SELECT fcm_token, customer_id, product_id FROM orders WHERE paypal_order_id = ?', (paypal_order_id,)).fetchall()
             for row in rows:
                 if row[0] and row[0] not in fcm_tokens:
                     fcm_tokens.append(row[0])
+                _mark_wishlist_purchased(conn, row[1], row[2])
         
         conn.commit()
     except Exception as e:
@@ -1757,21 +2263,30 @@ async def paypal_return(
     # 3. DB 업데이트
     conn = get_db_connection()
     fcm_token = None
+    paid_customer_id = None
+    paid_product_id = None
     if _is_pg():
         with conn.cursor() as cur:
             cur.execute('''
                 UPDATE orders SET paypal_order_id = %s, payment_status = 'PAID', currency = %s, exchange_rate = %s
-                WHERE id = %s RETURNING fcm_token
+                WHERE id = %s RETURNING fcm_token, customer_id, product_id
             ''', (paypal_order_id, currency, exchange_rate, order_id))
             row = cur.fetchone()
-            if row: fcm_token = row[0]
+            if row:
+                fcm_token = row[0]
+                paid_customer_id = row[1]
+                paid_product_id = row[2]
     else:
         conn.execute('''
             UPDATE orders SET paypal_order_id = ?, payment_status = 'PAID', currency = ?, exchange_rate = ?
             WHERE id = ?
         ''', (paypal_order_id, currency, exchange_rate, order_id))
-        row = conn.execute('SELECT fcm_token FROM orders WHERE id = ?', (order_id,)).fetchone()
-        if row: fcm_token = row[0]
+        row = conn.execute('SELECT fcm_token, customer_id, product_id FROM orders WHERE id = ?', (order_id,)).fetchone()
+        if row:
+            fcm_token = row[0]
+            paid_customer_id = row[1]
+            paid_product_id = row[2]
+    _mark_wishlist_purchased(conn, paid_customer_id, paid_product_id)
     
     conn.commit()
     conn.close()
