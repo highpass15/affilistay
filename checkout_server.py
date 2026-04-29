@@ -289,13 +289,25 @@ async def api_get_rates():
 # Customer Login (SNS Login)
 # ─────────────────────────────────────────
 @app.get("/customer/login", response_class=HTMLResponse)
-async def customer_login_page(request: Request, return_url: str = Query(default="/")):
+async def customer_login_page(
+    request: Request,
+    return_url: str = Query(default="/"),
+    error: str = Query(default=""),
+):
     """Customer login page."""
     safe_return_url = _safe_return_to(return_url, "/catalog")
+    error_messages = {
+        "missing": "아이디와 비밀번호를 입력해 주세요.",
+        "invalid": "아이디 또는 비밀번호가 올바르지 않습니다.",
+    }
     return templates.TemplateResponse(
         request=request,
         name="customer_login.html",
-        context={"request": request, "return_url": safe_return_url},
+        context={
+            "request": request,
+            "return_url": safe_return_url,
+            "error_message": error_messages.get(error, ""),
+        },
     )
 
 @app.post("/customer/login")
@@ -308,20 +320,24 @@ async def customer_login_process(
 ):
     """고객/파트너 공용 로그인 처리."""
     login_id = (identifier or email or "").strip()
+    safe_return_url = _safe_return_to(return_url, "/catalog")
     if not login_id:
-        return RedirectResponse(url=_customer_login_url(return_url), status_code=303)
+        return RedirectResponse(
+            url=f"/customer/login?return_url={_encode_return_to(safe_return_url)}&error=missing",
+            status_code=303,
+        )
 
     conn = get_db_connection()
     try:
         partner = _fetch_one(
             conn,
             """
-            SELECT id, username, role, is_master
+            SELECT id, username, email, name, role, is_master
             FROM hosts
             WHERE (username = %s OR email = %s) AND password = %s
             """,
             """
-            SELECT id, username, role, is_master
+            SELECT id, username, email, name, role, is_master
             FROM hosts
             WHERE (username = ? OR email = ?) AND password = ?
             """,
@@ -329,48 +345,72 @@ async def customer_login_process(
         )
 
         if partner:
-            response = RedirectResponse(url=ADMIN_URL, status_code=303)
-            response.set_cookie(key="partner_id", value=str(partner.get("id")), httponly=True)
-            response.set_cookie(key="partner_role", value=str(partner.get("role") or ""), httponly=True)
-            response.set_cookie(key="partner_is_master", value="1" if partner.get("is_master") else "0", httponly=True)
+            role = str(partner.get("role") or "").upper()
+            if partner.get("is_master") or role in {"HOST", "BRAND"}:
+                response = RedirectResponse(url=ADMIN_URL, status_code=303)
+                response.set_cookie(key="partner_id", value=str(partner.get("id")), httponly=True)
+                response.set_cookie(key="partner_role", value=str(partner.get("role") or ""), httponly=True)
+                response.set_cookie(key="partner_is_master", value="1" if partner.get("is_master") else "0", httponly=True)
+                return response
+
+            customer_email = (partner.get("email") or "").strip() or f"{partner.get('username')}@affilistay.local"
+            customer = _fetch_one(
+                conn,
+                "SELECT id FROM customers WHERE email = %s",
+                "SELECT id FROM customers WHERE email = ?",
+                (customer_email,),
+            )
+            if customer:
+                customer_id = customer.get("id")
+            else:
+                cursor = conn.cursor()
+                if _is_pg():
+                    cursor.execute(
+                        """
+                        INSERT INTO customers (email, password, name, provider)
+                        VALUES (%s, %s, %s, 'partner_guest')
+                        RETURNING id
+                        """,
+                        (customer_email, password, partner.get("name") or partner.get("username") or login_id),
+                    )
+                    customer_id = cursor.fetchone()[0]
+                else:
+                    cursor.execute(
+                        """
+                        INSERT INTO customers (email, password, name, provider)
+                        VALUES (?, ?, ?, 'partner_guest')
+                        """,
+                        (customer_email, password, partner.get("name") or partner.get("username") or login_id),
+                    )
+                    customer_id = cursor.lastrowid
+                conn.commit()
+            response = RedirectResponse(url=safe_return_url, status_code=303)
+            response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
             return response
 
-        customer_email = login_id if "@" in login_id else f"{login_id}@affilistay.local"
+        if "@" not in login_id:
+            return RedirectResponse(
+                url=f"/customer/login?return_url={_encode_return_to(safe_return_url)}&error=invalid",
+                status_code=303,
+            )
+
+        customer_email = login_id
         customer = _fetch_one(
             conn,
-            "SELECT id FROM customers WHERE email = %s",
-            "SELECT id FROM customers WHERE email = ?",
-            (customer_email,),
+            "SELECT id FROM customers WHERE email = %s AND password = %s",
+            "SELECT id FROM customers WHERE email = ? AND password = ?",
+            (customer_email, password),
         )
 
         if not customer:
-            cursor = conn.cursor()
-            if _is_pg():
-                cursor.execute(
-                    """
-                    INSERT INTO customers (email, password, name, provider)
-                    VALUES (%s, %s, %s, 'email')
-                    RETURNING id
-                    """,
-                    (customer_email, password, login_id),
-                )
-                customer_id = cursor.fetchone()[0]
-            else:
-                cursor.execute(
-                    """
-                    INSERT INTO customers (email, password, name, provider)
-                    VALUES (?, ?, ?, 'email')
-                    """,
-                    (customer_email, password, login_id),
-                )
-                customer_id = cursor.lastrowid
-            conn.commit()
-        else:
-            customer_id = customer.get("id")
+            return RedirectResponse(
+                url=f"/customer/login?return_url={_encode_return_to(safe_return_url)}&error=invalid",
+                status_code=303,
+            )
+        customer_id = customer.get("id")
     finally:
         conn.close()
     
-    safe_return_url = _safe_return_to(return_url, "/catalog")
     response = RedirectResponse(url=safe_return_url, status_code=303)
     response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
     return response

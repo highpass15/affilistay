@@ -166,6 +166,25 @@
             text-decoration: none;
         }
 
+        .login-note {
+            margin: -26px 0 28px;
+            color: var(--text-sub);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .error-message {
+            margin-bottom: 14px;
+            border: 1px solid rgba(199, 73, 58, 0.16);
+            border-radius: 14px;
+            background: rgba(199, 73, 58, 0.06);
+            color: #b64032;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+        }
+
         :root {
             --bg: #F6F2EB;
             --surface: #FFFDF9;
@@ -274,14 +293,19 @@
     <div class="logo">
         <img src="/static/affilistay-logo.png?v=2" alt="AFFILISTAY">
     </div>
+    <p class="login-note">호스트, 입점업체, 관리자 계정은 기존 아이디와 비밀번호로 로그인하세요.</p>
 
     <form method="POST" action="/customer/login">
         <!-- Return URL to redirect back after login -->
         <input type="hidden" name="return_url" value="{{ return_url }}">
+
+        {% if error_message %}
+        <div class="error-message" role="alert">{{ error_message }}</div>
+        {% endif %}
         
         <div class="input-group">
-            <input type="text" name="identifier" placeholder="아이디" autocomplete="username" required>
-            <input type="password" name="password" placeholder="비밀번호" required>
+            <input type="text" name="identifier" placeholder="아이디" aria-label="아이디" autocomplete="username" inputmode="text" required>
+            <input type="password" name="password" placeholder="비밀번호" aria-label="비밀번호" autocomplete="current-password" required>
         </div>
 
         <button type="submit" class="btn-login">로그인</button>
