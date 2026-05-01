@@ -53,6 +53,20 @@ class CartPayload(BaseModel):
     options: Optional[Dict[str, str]] = None
     quantity: int = 1
 
+# 작업 2: QR 상세페이지 행동/공간/구매 맥락 수집 요청 모델
+class AnalyticsEventPayload(BaseModel):
+    event_type: str
+    product_id: Optional[int] = None
+    stay_id: Optional[str] = None
+    location: Optional[str] = None
+    checkin_day: Optional[int] = None
+    duration_seconds: Optional[int] = None
+    scroll_depth: Optional[int] = None
+    is_return_visit: Optional[bool] = False
+    is_purchased: Optional[bool] = False
+    device_type: Optional[str] = None
+    browser_language: Optional[str] = None
+
 app = FastAPI(title="AffiliStay Showroom Platform")
 
 @app.on_event("startup")
@@ -98,6 +112,24 @@ def run_migrations():
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE(customer_id, product_id, cart_signature)
+                    )
+                """)
+                # 작업 2: 분석 이벤트 테이블 보장
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS analytics_events (
+                        id SERIAL PRIMARY KEY,
+                        event_type TEXT,
+                        product_id INTEGER,
+                        stay_id TEXT,
+                        location TEXT,
+                        checkin_day INTEGER,
+                        duration_seconds INTEGER,
+                        scroll_depth INTEGER,
+                        is_return_visit BOOLEAN,
+                        is_purchased BOOLEAN,
+                        device_type TEXT,
+                        browser_language TEXT,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
             conn.commit()
@@ -147,6 +179,24 @@ def run_migrations():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(customer_id, product_id, cart_signature)
+                )
+                """,
+                # 작업 2: 분석 이벤트 테이블 보장
+                """
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_type TEXT,
+                    product_id INTEGER,
+                    stay_id TEXT,
+                    location TEXT,
+                    checkin_day INTEGER,
+                    duration_seconds INTEGER,
+                    scroll_depth INTEGER,
+                    is_return_visit BOOLEAN,
+                    is_purchased BOOLEAN,
+                    device_type TEXT,
+                    browser_language TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
                 """,
             ]:
@@ -233,6 +283,24 @@ def force_migrate():
                         UNIQUE(customer_id, product_id, cart_signature)
                     )
                 """)
+                # 작업 2: 분석 이벤트 테이블 보장
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS analytics_events (
+                        id SERIAL PRIMARY KEY,
+                        event_type TEXT,
+                        product_id INTEGER,
+                        stay_id TEXT,
+                        location TEXT,
+                        checkin_day INTEGER,
+                        duration_seconds INTEGER,
+                        scroll_depth INTEGER,
+                        is_return_visit BOOLEAN,
+                        is_purchased BOOLEAN,
+                        device_type TEXT,
+                        browser_language TEXT,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
             conn.commit()
             return {"status": "success", "msg": "pg migrated"}
         else:
@@ -272,6 +340,24 @@ def force_migrate():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(customer_id, product_id, cart_signature)
+                )
+                """,
+                # 작업 2: 분석 이벤트 테이블 보장
+                """
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_type TEXT,
+                    product_id INTEGER,
+                    stay_id TEXT,
+                    location TEXT,
+                    checkin_day INTEGER,
+                    duration_seconds INTEGER,
+                    scroll_depth INTEGER,
+                    is_return_visit BOOLEAN,
+                    is_purchased BOOLEAN,
+                    device_type TEXT,
+                    browser_language TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
                 """,
             ]:
@@ -779,6 +865,62 @@ async def remove_cart_item(request: Request, payload: CartPayload):
     finally:
         conn.close()
 
+
+# 작업 2: QR 상세페이지 행동/공간/구매 이벤트 수집 API
+@app.post("/api/track")
+async def track_analytics_event(payload: AnalyticsEventPayload):
+    event_type = (payload.event_type or "").strip()
+    if not event_type:
+        return JSONResponse(content={"status": "error", "message": "event_type is required"}, status_code=400)
+
+    conn = get_db_connection()
+    try:
+        values = (
+            event_type,
+            payload.product_id,
+            (payload.stay_id or None),
+            (payload.location or None),
+            payload.checkin_day,
+            payload.duration_seconds,
+            payload.scroll_depth,
+            bool(payload.is_return_visit),
+            bool(payload.is_purchased),
+            (payload.device_type or None),
+            (payload.browser_language or None),
+        )
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analytics_events (
+                        event_type, product_id, stay_id, location, checkin_day,
+                        duration_seconds, scroll_depth, is_return_visit, is_purchased,
+                        device_type, browser_language
+                    )
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    values,
+                )
+        else:
+            conn.execute(
+                """
+                INSERT INTO analytics_events (
+                    event_type, product_id, stay_id, location, checkin_day,
+                    duration_seconds, scroll_depth, is_return_visit, is_purchased,
+                    device_type, browser_language
+                )
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                values,
+            )
+        conn.commit()
+        return {"status": "success"}
+    except Exception as exc:
+        conn.rollback()
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
+    finally:
+        conn.close()
+
 @app.get("/api/wishlist/reminder-candidates")
 async def wishlist_reminder_candidates():
     now_kst = datetime.utcnow() + timedelta(hours=9)
@@ -1174,6 +1316,18 @@ def _safe_return_to(raw_return_to, fallback):
 
 def _encode_return_to(path):
     return quote(path, safe="")
+
+
+# 작업 2: QR URL에서 전달되는 숙박/공간 맥락을 상세페이지 링크로 이어 붙입니다.
+def _analytics_query_string(stay_id=None, location=None, checkin_day=None):
+    params = []
+    if stay_id:
+        params.append(f"stay_id={quote(str(stay_id), safe='')}")
+    if location:
+        params.append(f"location={quote(str(location), safe='')}")
+    if checkin_day is not None:
+        params.append(f"checkin_day={quote(str(checkin_day), safe='')}")
+    return "&".join(params)
 
 
 def _row_value(row, key, index=0, default=None):
@@ -1884,7 +2038,14 @@ async def showroom_detail(request: Request, host_id: int):
 # 숙소 쇼룸 메인 페이지
 # ─────────────────────────────────────────
 @app.get("/shop/{qr_code_id}", response_class=HTMLResponse)
-async def shop_page(request: Request, qr_code_id: str, category: str = Query(default=None)):
+async def shop_page(
+    request: Request,
+    qr_code_id: str,
+    category: str = Query(default=None),
+    stay_id: str = Query(default=""),
+    location: str = Query(default=""),
+    checkin_day: Optional[int] = Query(default=None),
+):
     """
     QR ??? ?? ?? ?? ?? ?? ?? ??? ?? ??? ?? ????.
     """
@@ -1911,11 +2072,16 @@ async def shop_page(request: Request, qr_code_id: str, category: str = Query(def
         else "/catalog?view=spaces"
     )
     conn.close()
+    # 작업 2: QR에 포함된 숙박/공간 맥락을 제품 상세페이지까지 전달
+    analytics_query = _analytics_query_string(stay_id, location, checkin_day)
+    target_url = (
+        f"/shop/{qr_code_id}/product/{entry_product['id']}"
+        f"?return_to={_encode_return_to(showroom_path)}"
+    )
+    if analytics_query:
+        target_url = f"{target_url}&{analytics_query}"
     return RedirectResponse(
-        url=(
-            f"/shop/{qr_code_id}/product/{entry_product['id']}"
-            f"?return_to={_encode_return_to(showroom_path)}"
-        ),
+        url=target_url,
         status_code=303,
     )
 
@@ -1926,6 +2092,9 @@ async def product_detail(
     qr_code_id: str,
     product_id: int,
     return_to: str = Query(default=""),
+    stay_id: str = Query(default=""),
+    location: str = Query(default=""),
+    checkin_day: Optional[int] = Query(default=None),
 ):
     """?? ?? ?? ?? ???"""
     public_content_version = get_public_content_version()
@@ -2035,7 +2204,11 @@ async def product_detail(
     product["category_icon"] = PRODUCT_ICONS.get(product.get("product_category"), "✦")
     conn.close()
 
+    # 작업 2: 상세페이지의 현재 URL과 템플릿 컨텍스트에 분석 맥락을 보관
+    analytics_query = _analytics_query_string(stay_id, location, checkin_day)
     current_url = f"/shop/{qr_code_id}/product/{product_id}?return_to={_encode_return_to(return_to)}"
+    if analytics_query:
+        current_url = f"{current_url}&{analytics_query}"
     context = {
         "request": request,
         "product": product,
@@ -2057,6 +2230,11 @@ async def product_detail(
         "customer_logged_in": bool(_customer_id_from_request(request)),
         "customer_login_url": _customer_login_url(current_url),
         "public_content_version": public_content_version,
+        "analytics_context": {
+            "stay_id": stay_id or "",
+            "location": location or product.get("room_category") or "",
+            "checkin_day": checkin_day,
+        },
     }
 
     try:

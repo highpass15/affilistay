@@ -1224,6 +1224,15 @@
         const PENDING_CART_KEY = "affilistay_pending_cart";
         const CUSTOMER_LOGGED_IN = {{ customer_logged_in|default(false)|tojson }};
         const CUSTOMER_LOGIN_URL = {{ customer_login_url|default("/customer/login?return_url=%2Fcatalog")|tojson }};
+        // 작업 3: QR 상세페이지 분석 컨텍스트와 체류/스크롤 추적 상태
+        const ANALYTICS_CONTEXT = {{ analytics_context|default({})|tojson }};
+        const ANALYTICS_PRODUCT_ID = {{ product.id }};
+        const analyticsEnterTime = Date.now();
+        const analyticsVisitKey = `affilistay_product_visit_${ANALYTICS_PRODUCT_ID}`;
+        const analyticsIsReturnVisit = localStorage.getItem(analyticsVisitKey) === "1";
+        localStorage.setItem(analyticsVisitKey, "1");
+        const analyticsSentScrollDepths = new Set();
+        let analyticsPageViewSent = false;
         const heroCarousel = document.getElementById("hero-carousel");
         const heroTrack = document.getElementById("hero-track");
         const heroDots = Array.from(document.querySelectorAll(".hero-dot"));
@@ -1331,6 +1340,81 @@
         function updateCartPayloadCount() {
             const badgeSource = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
             return badgeSource.length;
+        }
+
+        // 작업 3: /api/track 공통 전송 헬퍼
+        function analyticsDeviceType() {
+            const width = window.innerWidth || document.documentElement.clientWidth || 0;
+            if (width <= 767) return "mobile";
+            if (width <= 1024) return "tablet";
+            return "desktop";
+        }
+
+        function analyticsDurationSeconds() {
+            return Math.max(0, Math.round((Date.now() - analyticsEnterTime) / 1000));
+        }
+
+        function analyticsScrollDepth() {
+            const doc = document.documentElement;
+            const scrollable = Math.max(doc.scrollHeight - window.innerHeight, 1);
+            const depth = Math.round((window.scrollY / scrollable) * 100);
+            return Math.max(0, Math.min(100, depth));
+        }
+
+        function analyticsPayload(eventType, extra = {}) {
+            return {
+                event_type: eventType,
+                product_id: ANALYTICS_PRODUCT_ID,
+                stay_id: ANALYTICS_CONTEXT.stay_id || "",
+                location: ANALYTICS_CONTEXT.location || "",
+                checkin_day: ANALYTICS_CONTEXT.checkin_day ?? null,
+                duration_seconds: analyticsDurationSeconds(),
+                scroll_depth: analyticsScrollDepth(),
+                is_return_visit: analyticsIsReturnVisit,
+                is_purchased: false,
+                device_type: analyticsDeviceType(),
+                browser_language: navigator.language || "",
+                ...extra
+            };
+        }
+
+        function trackAnalyticsEvent(eventType, extra = {}, preferBeacon = false) {
+            const payload = analyticsPayload(eventType, extra);
+            const body = JSON.stringify(payload);
+            if (preferBeacon && navigator.sendBeacon) {
+                const blob = new Blob([body], { type: "application/json" });
+                navigator.sendBeacon("/api/track", blob);
+                return;
+            }
+            fetch("/api/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body,
+                keepalive: preferBeacon
+            }).catch((error) => console.warn("analytics track failed", error));
+        }
+
+        function trackScrollMilestones() {
+            const depth = analyticsScrollDepth();
+            [25, 50, 75, 100].forEach((milestone) => {
+                if (depth >= milestone && !analyticsSentScrollDepths.has(milestone)) {
+                    analyticsSentScrollDepths.add(milestone);
+                    trackAnalyticsEvent("scroll", { scroll_depth: milestone });
+                }
+            });
+        }
+
+        function flushAnalyticsPageView() {
+            if (analyticsPageViewSent) return;
+            analyticsPageViewSent = true;
+            trackAnalyticsEvent(
+                "page_view",
+                {
+                    duration_seconds: analyticsDurationSeconds(),
+                    scroll_depth: analyticsScrollDepth()
+                },
+                true
+            );
         }
 
         function readCart() {
@@ -1497,6 +1581,12 @@
         }
 
         function addToCart() {
+            // 작업 3: 장바구니 클릭 의향 이벤트 기록
+            trackAnalyticsEvent("cart", {
+                duration_seconds: analyticsDurationSeconds(),
+                scroll_depth: analyticsScrollDepth()
+            });
+
             const optionGroups = document.querySelectorAll(".option-values");
             if (optionGroups.length > 0 && Object.keys(selectedOptions).length < optionGroups.length) {
                 alert("옵션을 먼저 선택해주세요.");
@@ -1551,11 +1641,28 @@
 
         bindWishlistButtons();
         syncWishlistButtons();
+        window.addEventListener("scroll", trackScrollMilestones, { passive: true });
+        window.addEventListener("pagehide", flushAnalyticsPageView);
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") {
+                flushAnalyticsPageView();
+            }
+        });
+        document.getElementById("buy-submit")?.addEventListener("click", () => {
+            // 작업 3: 바로 구매 클릭을 구매 의향 이벤트로 기록
+            trackAnalyticsEvent("purchase", {
+                is_purchased: true,
+                duration_seconds: analyticsDurationSeconds(),
+                scroll_depth: analyticsScrollDepth()
+            }, true);
+            flushAnalyticsPageView();
+        });
 
         window.addEventListener("load", () => {
             ensureDefaultOptions();
             updateBuyLink();
             updateCartPayloadCount();
+            trackScrollMilestones();
             bindWishlistButtons();
             if (CUSTOMER_LOGGED_IN) {
                 try {

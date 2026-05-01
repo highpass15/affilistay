@@ -243,6 +243,24 @@ def init_db():
             duration_seconds INTEGER DEFAULT 0
         )
         """)
+        # 작업 1: QR 쇼룸 행동/공간/구매 맥락 분석 이벤트 테이블
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS analytics_events (
+            id SERIAL PRIMARY KEY,
+            event_type TEXT,
+            product_id INTEGER,
+            stay_id TEXT,
+            location TEXT,
+            checkin_day INTEGER,
+            duration_seconds INTEGER,
+            scroll_depth INTEGER,
+            is_return_visit BOOLEAN,
+            is_purchased BOOLEAN,
+            device_type TEXT,
+            browser_language TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS site_meta (
             meta_key TEXT PRIMARY KEY,
@@ -419,6 +437,24 @@ def init_db():
             duration_seconds INTEGER DEFAULT 0
         )
         """)
+        # 작업 1: QR 쇼룸 행동/공간/구매 맥락 분석 이벤트 테이블
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS analytics_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT,
+            product_id INTEGER,
+            stay_id TEXT,
+            location TEXT,
+            checkin_day INTEGER,
+            duration_seconds INTEGER,
+            scroll_depth INTEGER,
+            is_return_visit BOOLEAN,
+            is_purchased BOOLEAN,
+            device_type TEXT,
+            browser_language TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS site_meta (
             meta_key TEXT PRIMARY KEY,
@@ -482,6 +518,7 @@ def init_db():
             "CREATE TABLE IF NOT EXISTS wishlist_events (id SERIAL PRIMARY KEY, customer_id INTEGER, product_id INTEGER, qr_code_id TEXT, host_id INTEGER, wishlist_payload TEXT, purchased BOOLEAN DEFAULT FALSE, reminder_status TEXT DEFAULT 'PENDING', reminder_channel TEXT, reminder_sent_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(customer_id, product_id))",
             "CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, rating INTEGER, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS product_inquiries (id SERIAL PRIMARY KEY, product_id INTEGER, customer_name TEXT, type TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS analytics_events (id SERIAL PRIMARY KEY, event_type TEXT, product_id INTEGER, stay_id TEXT, location TEXT, checkin_day INTEGER, duration_seconds INTEGER, scroll_depth INTEGER, is_return_visit BOOLEAN, is_purchased BOOLEAN, device_type TEXT, browser_language TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS site_meta (meta_key TEXT PRIMARY KEY, meta_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         ]
         for sql in migrations:
@@ -516,6 +553,7 @@ def init_db():
             'CREATE TABLE IF NOT EXISTS product_options (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, name TEXT NOT NULL, "values" TEXT NOT NULL)',
             "CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, rating INTEGER DEFAULT 5, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS product_inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER, customer_name TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS analytics_events (id INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT, product_id INTEGER, stay_id TEXT, location TEXT, checkin_day INTEGER, duration_seconds INTEGER, scroll_depth INTEGER, is_return_visit BOOLEAN, is_purchased BOOLEAN, device_type TEXT, browser_language TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS site_meta (meta_key TEXT PRIMARY KEY, meta_value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         ]
         for sql in sqlite_migrations:
