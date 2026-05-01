@@ -1597,8 +1597,6 @@ async def catalog_page(
 
 @app.get("/wishlist", response_class=HTMLResponse)
 async def wishlist_page(request: Request):
-    if not _customer_id_from_request(request):
-        return RedirectResponse(url=_customer_login_url("/wishlist"), status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="wishlist.html",

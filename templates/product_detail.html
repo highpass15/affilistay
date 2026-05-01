@@ -210,8 +210,10 @@
         }
 
         .hero-wish-button.is-liked {
-            background: rgba(34, 31, 26, 0.96);
+            border-color: rgba(230, 93, 88, 0.24);
+            background: #e65d58;
             color: white;
+            box-shadow: 0 14px 30px rgba(230, 93, 88, 0.24);
         }
 
         .hero-wish-button:active {
@@ -1341,6 +1343,10 @@
             localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
         }
 
+        function wishlistItemId(item) {
+            return String(item?.id ?? item?.product_id ?? "");
+        }
+
         function wishlistPayloadFromButton(button) {
             return {
                 product_id: Number(button.dataset.productId || 0),
@@ -1380,7 +1386,7 @@
         }
 
         function syncWishlistButtons() {
-            const ids = new Set(readWishlist().map((item) => String(item.id)));
+            const ids = new Set(readWishlist().map(wishlistItemId));
             document.querySelectorAll("[data-wishlist-toggle]").forEach((button) => {
                 const liked = ids.has(String(button.dataset.productId));
                 button.classList.toggle("is-liked", liked);
@@ -1401,7 +1407,7 @@
                     const payload = wishlistPayloadFromButton(button);
                     const id = String(button.dataset.productId);
                     const items = readWishlist();
-                    const existingIndex = items.findIndex((item) => String(item.id) === id);
+                    const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
                     if (existingIndex >= 0) {
                         items.splice(existingIndex, 1);
                         if (!CUSTOMER_LOGGED_IN) {
@@ -1410,6 +1416,7 @@
                     } else {
                         items.unshift({
                             id,
+                            product_id: payload.product_id,
                             name: payload.product_name,
                             brand: payload.brand_name,
                             price: payload.price,
@@ -1496,9 +1503,10 @@
                     if (pending && Number(pending.product_id) === {{ product.id }}) {
                         const items = readWishlist();
                         const id = String(pending.product_id);
-                        if (!items.some((item) => String(item.id) === id)) {
+                        if (!items.some((item) => wishlistItemId(item) === id)) {
                             items.unshift({
                                 id,
+                                product_id: pending.product_id,
                                 name: pending.product_name || "",
                                 brand: pending.brand_name || "",
                                 price: Number(pending.price || 0),

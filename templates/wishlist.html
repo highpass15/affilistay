@@ -135,51 +135,69 @@
         }
         .grid {
             display: grid;
-            gap: 0.9rem;
+            gap: 0.65rem;
         }
+        .summary {
+            display: none;
+            margin: 0.15rem 0 0.8rem;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+        .summary.is-visible { display: block; }
         .wish-card {
             display: grid;
-            grid-template-columns: 112px minmax(0, 1fr);
-            gap: 0.9rem;
+            grid-template-columns: 78px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 0.8rem;
             border: 1px solid var(--line);
-            border-radius: 1.25rem;
+            border-radius: 1.05rem;
             background: rgba(255,255,255,0.84);
-            padding: 0.75rem;
-            box-shadow: 0 12px 28px rgba(18,16,12,0.05);
+            padding: 0.62rem;
+            box-shadow: 0 10px 22px rgba(18,16,12,0.045);
         }
         .wish-card img {
-            width: 112px;
-            height: 112px;
-            border-radius: 1rem;
+            width: 78px;
+            height: 78px;
+            border-radius: 0.85rem;
             object-fit: cover;
             background: #eee6dc;
         }
         .brand {
             color: var(--soft);
-            font-size: 0.72rem;
+            font-size: 0.66rem;
             font-weight: 800;
             letter-spacing: 0.12em;
             text-transform: uppercase;
         }
         .name {
-            margin-top: 0.35rem;
-            font-size: 1.05rem;
+            margin-top: 0.2rem;
+            font-size: 0.98rem;
             font-weight: 800;
             line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         .price {
-            margin-top: 0.6rem;
-            font-size: 1.2rem;
+            margin-top: 0.32rem;
+            font-size: 1.02rem;
             font-weight: 800;
         }
         .remove {
-            margin-top: 0.7rem;
+            display: inline-flex;
+            width: 2.6rem;
+            height: 2.6rem;
+            align-items: center;
+            justify-content: center;
             border: 0;
             border-radius: 999px;
-            background: #f0e8dc;
-            color: #5f554c;
-            padding: 0.48rem 0.8rem;
-            font-weight: 700;
+            background: #e65d58;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 900;
+            box-shadow: 0 10px 22px rgba(230,93,88,0.2);
         }
         .bottom-tabbar {
             position: fixed;
@@ -249,6 +267,7 @@
             <button class="pill">담은순</button>
             <button class="pill active">전체</button>
         </div>
+        <p id="wishlist-summary" class="summary"></p>
         <section id="wishlist-list" class="grid"></section>
         <section id="wishlist-empty" class="empty">
             <div>
@@ -275,6 +294,7 @@
         };
         const writeWishlist = (items) => localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
         const formatPrice = (value) => `${Number(value || 0).toLocaleString('ko-KR')}원`;
+        const wishlistItemId = (item) => String(item?.id ?? item?.product_id ?? '');
         const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
         }[char]));
@@ -289,27 +309,33 @@
             const items = readWishlist();
             const list = document.getElementById('wishlist-list');
             const empty = document.getElementById('wishlist-empty');
+            const summary = document.getElementById('wishlist-summary');
             list.innerHTML = '';
             empty.style.display = items.length ? 'none' : 'grid';
+            summary.textContent = items.length
+                ? `총 ${items.length}개 상품을 담아두었어요. 최근 담은 상품부터 순서대로 보여드릴게요.`
+                : '';
+            summary.classList.toggle('is-visible', items.length > 0);
             items.forEach((item) => {
                 const card = document.createElement('article');
                 card.className = 'wish-card';
                 const safeUrl = item.url || '/catalog';
                 const safeImage = item.image || '/static/product.png';
+                const itemId = wishlistItemId(item);
                 card.innerHTML = `
                     <a href="${escapeHtml(safeUrl)}"><img src="${escapeHtml(safeImage)}" alt=""></a>
                     <div>
                         <div class="brand">${escapeHtml(item.brand || 'AFFILISTAY')}</div>
                         <a href="${escapeHtml(safeUrl)}"><div class="name">${escapeHtml(item.name || '쇼룸 상품')}</div></a>
                         <div class="price">${formatPrice(item.price)}</div>
-                        <button class="remove" type="button" data-remove="${escapeHtml(item.id)}">하트 해제</button>
                     </div>
+                    <button class="remove" type="button" data-remove="${escapeHtml(itemId)}" aria-label="찜 해제">♥</button>
                 `;
                 list.appendChild(card);
             });
             list.querySelectorAll('[data-remove]').forEach((button) => {
                 button.addEventListener('click', () => {
-                    writeWishlist(readWishlist().filter((item) => String(item.id) !== String(button.dataset.remove)));
+                    writeWishlist(readWishlist().filter((item) => wishlistItemId(item) !== String(button.dataset.remove)));
                     render();
                     updateCount();
                 });
