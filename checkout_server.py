@@ -376,7 +376,7 @@ async def customer_login_process(
         if partner:
             role = str(partner.get("role") or "").upper()
             if partner.get("is_master") or role in {"HOST", "BRAND"}:
-                response = RedirectResponse(url=_partner_admin_url(partner), status_code=303)
+                response = RedirectResponse(url="/partner", status_code=303)
                 response.set_cookie(key="partner_id", value=str(partner.get("id")), httponly=True)
                 response.set_cookie(key="partner_role", value=str(partner.get("role") or ""), httponly=True)
                 response.set_cookie(key="partner_is_master", value="1" if partner.get("is_master") else "0", httponly=True)
@@ -699,7 +699,7 @@ async def run_wishlist_reminders(request: Request):
 async def partner_entrance(request: Request):
     partner = _partner_from_request(request)
     if partner:
-        return RedirectResponse(url=_partner_admin_url(partner), status_code=303)
+        return RedirectResponse(url="/partner", status_code=303)
     return RedirectResponse(url=_customer_login_url("/partner"), status_code=303)
 
 
@@ -719,6 +719,32 @@ async def partner_console(request: Request):
     if not partner:
         return RedirectResponse(url=_customer_login_url("/partner"), status_code=303)
 
+    role = str(partner.get("role") or "").upper()
+    is_master = bool(partner.get("is_master"))
+    role_label = "관리자" if is_master else {"HOST": "호스트", "BRAND": "입점업체"}.get(role, "파트너")
+    return templates.TemplateResponse(
+        request=request,
+        name="partner_console.html",
+        context={
+            "request": request,
+            "partner": partner,
+            "role": role,
+            "role_label": role_label,
+            "is_master": is_master,
+            "admin_url": "/partner/admin",
+            "customer_logged_in": bool(_customer_id_from_request(request)),
+            "customer_login_url": _customer_login_url("/partner"),
+            "customer_logout_url": "/customer/logout?return_url=%2Fpartner",
+            "active_nav": "mypage",
+        },
+    )
+
+
+@app.get("/partner/admin")
+async def partner_admin(request: Request):
+    partner = _partner_from_request(request)
+    if not partner:
+        return RedirectResponse(url=_customer_login_url("/partner"), status_code=303)
     return RedirectResponse(url=_partner_admin_url(partner), status_code=303)
 
 @app.post("/api/portone/verify")
