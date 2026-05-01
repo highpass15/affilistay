@@ -97,7 +97,7 @@
             position: absolute;
             right: 0.9rem;
             bottom: 0.9rem;
-            z-index: 5;
+            z-index: 30;
             cursor: pointer;
             display: inline-flex;
             width: 3.1rem;
@@ -276,6 +276,7 @@
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
+                    event.stopImmediatePropagation();
                     const payload = payloadFromButton(button);
                     const id = String(button.dataset.productId);
                     const items = readWishlist();

@@ -194,7 +194,7 @@
             position: absolute;
             top: 0.75rem;
             right: 0.75rem;
-            z-index: 5;
+            z-index: 30;
             cursor: pointer;
             display: inline-flex;
             height: 2.55rem;
@@ -614,41 +614,52 @@
                 updateWishlistCount();
             };
 
+            const toggleWishlistButton = (button) => {
+                const payload = wishlistPayloadFromButton(button);
+                const id = String(button.dataset.productId);
+                const items = readWishlist();
+                const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
+                if (existingIndex >= 0) {
+                    items.splice(existingIndex, 1);
+                    if (!CUSTOMER_LOGGED_IN) {
+                        localStorage.removeItem(PENDING_WISHLIST_KEY);
+                    }
+                } else {
+                    items.unshift({
+                        id,
+                        product_id: payload.product_id,
+                        name: payload.product_name,
+                        brand: payload.brand_name,
+                        price: payload.price,
+                        url: payload.url,
+                        image: payload.image
+                    });
+                    if (CUSTOMER_LOGGED_IN) {
+                        syncWishlistToServer(payload);
+                    } else {
+                        localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
+                    }
+                }
+                writeWishlist(items);
+                syncWishlistButtons();
+            };
+
+            let wishlistCaptureBound = false;
             const bindWishlistButtons = () => {
+                if (!wishlistCaptureBound) {
+                    wishlistCaptureBound = true;
+                    document.addEventListener('click', (event) => {
+                        const button = event.target.closest('[data-wishlist-toggle]');
+                        if (!button) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+                        toggleWishlistButton(button);
+                    }, true);
+                }
                 document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
                     if (button.dataset.wishlistBound === 'true') return;
                     button.dataset.wishlistBound = 'true';
-                    button.addEventListener('click', (event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        const payload = wishlistPayloadFromButton(button);
-                        const id = String(button.dataset.productId);
-                        const items = readWishlist();
-                        const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
-                        if (existingIndex >= 0) {
-                            items.splice(existingIndex, 1);
-                            if (!CUSTOMER_LOGGED_IN) {
-                                localStorage.removeItem(PENDING_WISHLIST_KEY);
-                            }
-                        } else {
-                            items.unshift({
-                                id,
-                                product_id: payload.product_id,
-                                name: payload.product_name,
-                                brand: payload.brand_name,
-                                price: payload.price,
-                                url: payload.url,
-                                image: payload.image
-                            });
-                            if (CUSTOMER_LOGGED_IN) {
-                                syncWishlistToServer(payload);
-                            } else {
-                                localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
-                            }
-                        }
-                        writeWishlist(items);
-                        syncWishlistButtons();
-                    });
                 });
             };
 

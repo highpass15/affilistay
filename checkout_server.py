@@ -42,6 +42,17 @@ class WishlistPayload(BaseModel):
     url: Optional[str] = None
     image: Optional[str] = None
 
+class CartPayload(BaseModel):
+    product_id: int
+    qr_code_id: Optional[str] = None
+    product_name: Optional[str] = None
+    brand_name: Optional[str] = None
+    price: Optional[int] = None
+    url: Optional[str] = None
+    image: Optional[str] = None
+    options: Optional[Dict[str, str]] = None
+    quantity: int = 1
+
 app = FastAPI(title="AffiliStay Showroom Platform")
 
 @app.on_event("startup")
@@ -73,6 +84,20 @@ def run_migrations():
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE(customer_id, product_id)
+                    )
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS cart_items (
+                        id SERIAL PRIMARY KEY,
+                        customer_id INTEGER NOT NULL,
+                        product_id INTEGER NOT NULL,
+                        qr_code_id TEXT,
+                        cart_signature TEXT DEFAULT '',
+                        quantity INTEGER DEFAULT 1,
+                        cart_payload TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(customer_id, product_id, cart_signature)
                     )
                 """)
             conn.commit()
@@ -108,6 +133,20 @@ def run_migrations():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(customer_id, product_id)
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS cart_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER NOT NULL,
+                    product_id INTEGER NOT NULL,
+                    qr_code_id TEXT,
+                    cart_signature TEXT DEFAULT '',
+                    quantity INTEGER DEFAULT 1,
+                    cart_payload TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(customer_id, product_id, cart_signature)
                 )
                 """,
             ]:
@@ -180,6 +219,20 @@ def force_migrate():
                         UNIQUE(customer_id, product_id)
                     )
                 """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS cart_items (
+                        id SERIAL PRIMARY KEY,
+                        customer_id INTEGER NOT NULL,
+                        product_id INTEGER NOT NULL,
+                        qr_code_id TEXT,
+                        cart_signature TEXT DEFAULT '',
+                        quantity INTEGER DEFAULT 1,
+                        cart_payload TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(customer_id, product_id, cart_signature)
+                    )
+                """)
             conn.commit()
             return {"status": "success", "msg": "pg migrated"}
         else:
@@ -205,6 +258,20 @@ def force_migrate():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(customer_id, product_id)
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS cart_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER NOT NULL,
+                    product_id INTEGER NOT NULL,
+                    qr_code_id TEXT,
+                    cart_signature TEXT DEFAULT '',
+                    quantity INTEGER DEFAULT 1,
+                    cart_payload TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(customer_id, product_id, cart_signature)
                 )
                 """,
             ]:
@@ -484,6 +551,15 @@ async def customer_logout(return_url: str = Query(default="/catalog")):
     response.delete_cookie("customer_id")
     return response
 
+
+def _cart_signature(options):
+    return json.dumps(options or {}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _payload_dict(payload):
+    return payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+
+
 @app.post("/api/wishlist")
 async def save_wishlist_item(request: Request, payload: WishlistPayload):
     customer_id = _customer_id_from_request(request)
@@ -546,6 +622,154 @@ async def save_wishlist_item(request: Request, payload: WishlistPayload):
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (customer_id, payload.product_id, qr_code_id, host_id, payload_json),
+            )
+        conn.commit()
+        return {"status": "success"}
+    except Exception as exc:
+        conn.rollback()
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
+    finally:
+        conn.close()
+
+
+@app.get("/api/cart")
+async def list_cart_items(request: Request):
+    customer_id = _customer_id_from_request(request)
+    if not customer_id:
+        return JSONResponse(content={"status": "login_required", "login_url": _customer_login_url("/cart")}, status_code=401)
+
+    conn = get_db_connection()
+    try:
+        rows = _fetch_all(
+            conn,
+            """
+            SELECT cart_payload, quantity
+            FROM cart_items
+            WHERE customer_id = %s
+            ORDER BY updated_at DESC, id DESC
+            """,
+            """
+            SELECT cart_payload, quantity
+            FROM cart_items
+            WHERE customer_id = ?
+            ORDER BY updated_at DESC, id DESC
+            """,
+            (customer_id,),
+        )
+        items = []
+        for row in rows:
+            try:
+                item = json.loads(row.get("cart_payload") or "{}")
+            except Exception:
+                item = {}
+            if not item:
+                continue
+            item["quantity"] = int(row.get("quantity") or item.get("quantity") or 1)
+            items.append(item)
+        return {"status": "success", "items": items}
+    finally:
+        conn.close()
+
+
+@app.post("/api/cart")
+async def save_cart_item(request: Request, payload: CartPayload):
+    customer_id = _customer_id_from_request(request)
+    if not customer_id:
+        return JSONResponse(
+            content={"status": "login_required", "login_url": _customer_login_url(payload.url or "/catalog")},
+            status_code=401,
+        )
+
+    conn = get_db_connection()
+    try:
+        product = _fetch_one(
+            conn,
+            "SELECT id, owner_id, qr_code_id, product_name, brand_name, price FROM products WHERE id = %s",
+            "SELECT id, owner_id, qr_code_id, product_name, brand_name, price FROM products WHERE id = ?",
+            (payload.product_id,),
+        )
+        if not product:
+            return JSONResponse(content={"status": "error", "message": "product_not_found"}, status_code=404)
+
+        quantity = max(1, int(payload.quantity or 1))
+        qr_code_id = payload.qr_code_id or product.get("qr_code_id")
+        item = _payload_dict(payload)
+        item.update({
+            "id": payload.product_id,
+            "product_id": payload.product_id,
+            "qr_code_id": qr_code_id,
+            "name": payload.product_name or product.get("product_name") or "",
+            "product_name": payload.product_name or product.get("product_name") or "",
+            "brand": payload.brand_name or product.get("brand_name") or "",
+            "brand_name": payload.brand_name or product.get("brand_name") or "",
+            "price": int(payload.price or product.get("price") or 0),
+            "quantity": quantity,
+            "options": payload.options or {},
+        })
+        signature = _cart_signature(item["options"])
+        payload_json = json.dumps(item, ensure_ascii=False)
+
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO cart_items (
+                        customer_id, product_id, qr_code_id, cart_signature, quantity, cart_payload, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (customer_id, product_id, cart_signature)
+                    DO UPDATE SET
+                        qr_code_id = EXCLUDED.qr_code_id,
+                        quantity = EXCLUDED.quantity,
+                        cart_payload = EXCLUDED.cart_payload,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (customer_id, payload.product_id, qr_code_id, signature, quantity, payload_json),
+                )
+        else:
+            conn.execute(
+                """
+                INSERT INTO cart_items (
+                    customer_id, product_id, qr_code_id, cart_signature, quantity, cart_payload, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(customer_id, product_id, cart_signature)
+                DO UPDATE SET
+                    qr_code_id = excluded.qr_code_id,
+                    quantity = excluded.quantity,
+                    cart_payload = excluded.cart_payload,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (customer_id, payload.product_id, qr_code_id, signature, quantity, payload_json),
+            )
+        conn.commit()
+        return {"status": "success", "item": item}
+    except Exception as exc:
+        conn.rollback()
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
+    finally:
+        conn.close()
+
+
+@app.post("/api/cart/remove")
+async def remove_cart_item(request: Request, payload: CartPayload):
+    customer_id = _customer_id_from_request(request)
+    if not customer_id:
+        return JSONResponse(content={"status": "login_required"}, status_code=401)
+
+    conn = get_db_connection()
+    try:
+        signature = _cart_signature(payload.options or {})
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM cart_items WHERE customer_id = %s AND product_id = %s AND cart_signature = %s",
+                    (customer_id, payload.product_id, signature),
+                )
+        else:
+            conn.execute(
+                "DELETE FROM cart_items WHERE customer_id = ? AND product_id = ? AND cart_signature = ?",
+                (customer_id, payload.product_id, signature),
             )
         conn.commit()
         return {"status": "success"}
@@ -1858,6 +2082,9 @@ async def product_detail(
 async def view_cart(request: Request, qr_code_id: str, return_to: str = Query(default="")):
     """장바구니 페이지 (클라이언트의 localStorage 기반으로 렌더링)"""
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
+    cart_return_url = f"/shop/{qr_code_id}/cart?return_to={_encode_return_to(return_to)}"
+    if not _customer_id_from_request(request):
+        return RedirectResponse(url=_customer_login_url(cart_return_url), status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="cart.html",
@@ -1865,6 +2092,8 @@ async def view_cart(request: Request, qr_code_id: str, return_to: str = Query(de
             "qr_code_id": qr_code_id,
             "return_to": return_to,
             "return_to_encoded": _encode_return_to(return_to),
+            "customer_logged_in": True,
+            "customer_login_url": _customer_login_url(cart_return_url),
         }
     )
 
@@ -2312,6 +2541,11 @@ async def paypal_return_cart(
                     if row[0] and row[0] not in fcm_tokens:
                         fcm_tokens.append(row[0])
                     _mark_wishlist_purchased(conn, row[1], row[2])
+                    if row[1] and row[2]:
+                        cur.execute(
+                            "DELETE FROM cart_items WHERE customer_id = %s AND product_id = %s",
+                            (row[1], row[2]),
+                        )
         else:
             conn.execute(f'''
                 UPDATE orders SET payment_status = 'PAID', currency = ?, exchange_rate = ?
@@ -2322,6 +2556,11 @@ async def paypal_return_cart(
                 if row[0] and row[0] not in fcm_tokens:
                     fcm_tokens.append(row[0])
                 _mark_wishlist_purchased(conn, row[1], row[2])
+                if row[1] and row[2]:
+                    conn.execute(
+                        "DELETE FROM cart_items WHERE customer_id = ? AND product_id = ?",
+                        (row[1], row[2]),
+                    )
         
         conn.commit()
     except Exception as e:
