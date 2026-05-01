@@ -194,11 +194,11 @@
             position: absolute;
             top: 0.75rem;
             right: 0.75rem;
-            z-index: 30;
+            z-index: 40;
             cursor: pointer;
             display: inline-flex;
-            height: 2.55rem;
-            width: 2.55rem;
+            height: 2.95rem;
+            width: 2.95rem;
             align-items: center;
             justify-content: center;
             border-radius: 999px;
@@ -207,9 +207,11 @@
             color: #2d2924;
             box-shadow: 0 10px 24px rgba(18, 16, 12, 0.14);
             backdrop-filter: blur(10px);
-            font-size: 1.15rem;
+            font-size: 1.32rem;
             line-height: 1;
             pointer-events: auto;
+            touch-action: manipulation;
+            user-select: none;
             transition: transform 160ms ease, background 160ms ease, color 160ms ease;
         }
         .wish-button.is-liked {
@@ -217,6 +219,27 @@
             background: #e65d58;
             color: #fff;
             box-shadow: 0 12px 28px rgba(230, 93, 88, 0.24);
+        }
+        .wishlist-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(5.2rem + env(safe-area-inset-bottom));
+            z-index: 90;
+            transform: translate(-50%, 0.5rem);
+            border-radius: 999px;
+            background: rgba(34, 31, 26, 0.92);
+            color: #fffdf8;
+            padding: 0.78rem 1.05rem;
+            font-size: 0.86rem;
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 18px 40px rgba(34,31,26,0.22);
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+        .wishlist-toast.is-visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
         }
         .wish-button:active {
             transform: scale(0.94);
@@ -545,6 +568,7 @@
             </a>
         </div>
     </nav>
+    <div class="wishlist-toast" data-wishlist-toast role="status" aria-live="polite"></div>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -557,6 +581,7 @@
             const PENDING_WISHLIST_KEY = 'affilistay_pending_wishlist';
             const CUSTOMER_LOGGED_IN = {{ customer_logged_in|default(false)|tojson }};
             const CUSTOMER_LOGIN_URL = {{ customer_login_url|default("/customer/login?return_url=%2Fcatalog")|tojson }};
+            let wishlistToastTimer = null;
 
             const readWishlist = () => {
                 try {
@@ -564,6 +589,17 @@
                 } catch (error) {
                     return [];
                 }
+            };
+
+            const showWishlistToast = (message) => {
+                const toast = document.querySelector('[data-wishlist-toast]');
+                if (!toast) return;
+                toast.textContent = message;
+                toast.classList.add('is-visible');
+                window.clearTimeout(wishlistToastTimer);
+                wishlistToastTimer = window.setTimeout(() => {
+                    toast.classList.remove('is-visible');
+                }, 1400);
             };
 
             const writeWishlist = (items) => {
@@ -619,8 +655,10 @@
                 const id = String(button.dataset.productId);
                 const items = readWishlist();
                 const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
+                let nextMessage = "";
                 if (existingIndex >= 0) {
                     items.splice(existingIndex, 1);
+                    nextMessage = "찜목록에서 뺐어요.";
                     if (!CUSTOMER_LOGGED_IN) {
                         localStorage.removeItem(PENDING_WISHLIST_KEY);
                     }
@@ -634,6 +672,7 @@
                         url: payload.url,
                         image: payload.image
                     });
+                    nextMessage = `${payload.product_name || "상품"}을 찜목록에 담았어요.`;
                     if (CUSTOMER_LOGGED_IN) {
                         syncWishlistToServer(payload);
                     } else {
@@ -642,24 +681,38 @@
                 }
                 writeWishlist(items);
                 syncWishlistButtons();
+                showWishlistToast(nextMessage);
             };
 
             let wishlistCaptureBound = false;
+            const handleWishlistActivation = (event) => {
+                const button = event.target.closest('[data-wishlist-toggle]');
+                if (!button) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation?.();
+
+                const now = Date.now();
+                const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
+                if (now - lastActivatedAt < 360) return;
+                button.dataset.wishlistActivatedAt = String(now);
+                toggleWishlistButton(button);
+            };
+
             const bindWishlistButtons = () => {
                 if (!wishlistCaptureBound) {
                     wishlistCaptureBound = true;
-                    document.addEventListener('click', (event) => {
-                        const button = event.target.closest('[data-wishlist-toggle]');
-                        if (!button) return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.stopImmediatePropagation();
-                        toggleWishlistButton(button);
-                    }, true);
+                    document.addEventListener('click', handleWishlistActivation, true);
+                    document.addEventListener('pointerup', handleWishlistActivation, true);
                 }
                 document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
                     if (button.dataset.wishlistBound === 'true') return;
                     button.dataset.wishlistBound = 'true';
+                    button.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            handleWishlistActivation(event);
+                        }
+                    });
                 });
             };
 

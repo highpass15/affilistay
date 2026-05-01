@@ -125,6 +125,22 @@ st.markdown(
         color: var(--affili-ink) !important;
         border-bottom-color: var(--affili-ink) !important;
     }
+    div[data-testid="stTabs"] button[role="tab"] * {
+        color: var(--affili-muted) !important;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] * {
+        color: var(--affili-ink) !important;
+    }
+    div[data-testid="stForm"] label,
+    div[data-testid="stForm"] p,
+    div[data-testid="stForm"] span,
+    div[data-testid="stVerticalBlockBorderWrapper"] label,
+    div[data-testid="stVerticalBlockBorderWrapper"] p,
+    div[data-testid="stVerticalBlockBorderWrapper"] span,
+    div[role="radiogroup"] label,
+    div[role="radiogroup"] span {
+        color: var(--affili-ink) !important;
+    }
     .affili-login-note {
         color: var(--affili-muted);
         font-size: 0.96rem;
@@ -168,10 +184,11 @@ st.markdown(
         letter-spacing: -0.02em;
     }
     .section-card {
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid rgba(34,31,26,0.08);
         border-radius: 24px;
         padding: 1rem;
-        background: rgba(255,255,255,0.02);
+        background: rgba(255,253,250,0.82);
+        color: var(--affili-ink);
     }
     .section-title {
         font-size: 1rem;
@@ -179,33 +196,36 @@ st.markdown(
         margin-bottom: 0.25rem;
     }
     .section-copy {
-        color: rgba(250,250,250,0.65);
+        color: var(--affili-muted);
         font-size: 0.92rem;
         margin-bottom: 0.85rem;
     }
     .guide-card {
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid rgba(34,31,26,0.08);
         border-radius: 24px;
         padding: 1rem 1.05rem;
-        background: rgba(255,255,255,0.025);
+        background: rgba(255,253,250,0.84);
+        color: var(--affili-ink);
         margin-bottom: 0.9rem;
+        box-shadow: 0 14px 34px rgba(34,31,26,0.045);
     }
     .guide-kicker {
         font-size: 0.72rem;
         font-weight: 800;
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(255,255,255,0.62);
+        color: var(--affili-accent);
         margin-bottom: 0.45rem;
     }
     .guide-title {
         font-size: 1.08rem;
         font-weight: 800;
         margin-bottom: 0.35rem;
+        color: var(--affili-ink);
     }
     .guide-copy {
         font-size: 0.92rem;
-        color: rgba(250,250,250,0.72);
+        color: var(--affili-muted);
         line-height: 1.6;
     }
     .guide-list {
@@ -216,8 +236,8 @@ st.markdown(
     .guide-step {
         border-radius: 18px;
         padding: 0.8rem 0.9rem;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.07);
+        background: rgba(255,255,255,0.72);
+        border: 1px solid var(--affili-line);
     }
     .guide-step strong {
         display: block;
@@ -228,7 +248,7 @@ st.markdown(
         display: block;
         font-size: 0.84rem;
         line-height: 1.55;
-        color: rgba(250,250,250,0.72);
+        color: var(--affili-muted);
     }
     @media (max-width: 900px) {
         .host-hero-grid {
