@@ -9,6 +9,8 @@ import httpx
 import time
 import json
 import sqlite3
+import hashlib
+import hmac
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -121,6 +123,33 @@ def run_migrations():
 
 # 클라우드 어드민 주소를 고정하여 즉시 연결되도록 합니다.
 ADMIN_URL = "https://affilistay-admin.onrender.com/"
+
+
+def _login_bridge_secret():
+    return os.getenv("AFFILISTAY_LOGIN_SECRET") or os.getenv("SECRET_KEY") or "affilistay-local-login-bridge"
+
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _partner_login_token(partner: dict) -> str:
+    payload = {
+        "host_id": int(partner.get("id")),
+        "username": partner.get("username") or "",
+        "name": partner.get("name") or partner.get("username") or "",
+        "role": partner.get("role") or "HOST",
+        "is_master": bool(partner.get("is_master")),
+        "exp": int(time.time()) + 300,
+    }
+    body = _b64url_encode(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    signature = hmac.new(_login_bridge_secret().encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest()
+    return f"{body}.{_b64url_encode(signature)}"
+
+
+def _partner_admin_url(partner: dict) -> str:
+    separator = "&" if "?" in ADMIN_URL else "?"
+    return f"{ADMIN_URL}{separator}login_token={quote(_partner_login_token(partner), safe='')}"
 
 @app.get("/api/force-migrate")
 def force_migrate():
@@ -347,7 +376,7 @@ async def customer_login_process(
         if partner:
             role = str(partner.get("role") or "").upper()
             if partner.get("is_master") or role in {"HOST", "BRAND"}:
-                response = RedirectResponse(url=ADMIN_URL, status_code=303)
+                response = RedirectResponse(url=_partner_admin_url(partner), status_code=303)
                 response.set_cookie(key="partner_id", value=str(partner.get("id")), httponly=True)
                 response.set_cookie(key="partner_role", value=str(partner.get("role") or ""), httponly=True)
                 response.set_cookie(key="partner_is_master", value="1" if partner.get("is_master") else "0", httponly=True)
@@ -667,8 +696,30 @@ async def run_wishlist_reminders(request: Request):
         conn.close()
 
 @app.get("/partner-entrance")
-async def partner_entrance():
-    return RedirectResponse(url=ADMIN_URL, status_code=303)
+async def partner_entrance(request: Request):
+    partner = _partner_from_request(request)
+    if partner:
+        return RedirectResponse(url=_partner_admin_url(partner), status_code=303)
+    return RedirectResponse(url=_customer_login_url("/partner"), status_code=303)
+
+
+@app.get("/partner/logout")
+async def partner_logout(return_url: str = Query(default="/")):
+    safe_return_url = _safe_return_to(return_url, "/")
+    response = RedirectResponse(url=safe_return_url, status_code=303)
+    response.delete_cookie("partner_id")
+    response.delete_cookie("partner_role")
+    response.delete_cookie("partner_is_master")
+    return response
+
+
+@app.get("/partner", response_class=HTMLResponse)
+async def partner_console(request: Request):
+    partner = _partner_from_request(request)
+    if not partner:
+        return RedirectResponse(url=_customer_login_url("/partner"), status_code=303)
+
+    return RedirectResponse(url=_partner_admin_url(partner), status_code=303)
 
 @app.post("/api/portone/verify")
 async def verify_portone_payment(request: Request):
@@ -904,6 +955,35 @@ def _customer_id_from_request(request: Request):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _partner_from_request(request: Request):
+    value = request.cookies.get("partner_id")
+    if not value:
+        return None
+    try:
+        partner_id = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    conn = get_db_connection()
+    try:
+        return _fetch_one(
+            conn,
+            """
+            SELECT id, username, email, name, role, is_master
+            FROM hosts
+            WHERE id = %s
+            """,
+            """
+            SELECT id, username, email, name, role, is_master
+            FROM hosts
+            WHERE id = ?
+            """,
+            (partner_id,),
+        )
+    finally:
+        conn.close()
 
 
 def _mark_wishlist_purchased(conn, customer_id, product_id):

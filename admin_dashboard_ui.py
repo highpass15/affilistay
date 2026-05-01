@@ -4,6 +4,10 @@ import re
 import pandas as pd
 import uuid
 import qrcode
+import base64
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 from io import BytesIO
 import database
@@ -65,17 +69,80 @@ VENUE_IMAGE_KEYS = [f"image{i}" for i in range(1, 6)]
 st.markdown(
     """
     <style>
+    :root {
+        --affili-ink: #221f1a;
+        --affili-muted: #7d7368;
+        --affili-paper: #f7f3ec;
+        --affili-card: #fffdfa;
+        --affili-line: #e4ddd2;
+        --affili-accent: #b9a58f;
+    }
+    .stApp {
+        background: radial-gradient(circle at top, rgba(255,255,255,0.92), rgba(247,243,236,0.96) 38%, #f4efe7 100%) !important;
+        color: var(--affili-ink) !important;
+    }
+    [data-testid="stHeader"] {
+        background: rgba(247,243,236,0.82) !important;
+        backdrop-filter: blur(18px);
+    }
+    [data-testid="stSidebar"] {
+        background: #fffdfa !important;
+        border-right: 1px solid var(--affili-line);
+    }
+    [data-testid="stSidebar"] * {
+        color: var(--affili-ink) !important;
+    }
+    h1, h2, h3, h4, h5, h6, p, label, span {
+        letter-spacing: 0 !important;
+    }
+    div[data-testid="stForm"], div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-color: var(--affili-line) !important;
+        background: rgba(255,253,250,0.72) !important;
+        box-shadow: 0 18px 46px rgba(34,31,26,0.06);
+    }
+    input, textarea, [data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div {
+        background: #fffdf9 !important;
+        border-color: var(--affili-line) !important;
+        color: var(--affili-ink) !important;
+    }
+    input::placeholder, textarea::placeholder {
+        color: #b8ad9f !important;
+    }
+    .stButton > button, .stFormSubmitButton > button {
+        border-radius: 16px !important;
+        border: 1px solid var(--affili-line) !important;
+        background: #fffdfa !important;
+        color: var(--affili-ink) !important;
+        font-weight: 800 !important;
+    }
+    .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"] {
+        background: var(--affili-ink) !important;
+        border-color: var(--affili-ink) !important;
+        color: #fffdf8 !important;
+        box-shadow: 0 16px 36px rgba(34,31,26,0.18);
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        color: var(--affili-ink) !important;
+        border-bottom-color: var(--affili-ink) !important;
+    }
+    .affili-login-note {
+        color: var(--affili-muted);
+        font-size: 0.96rem;
+        line-height: 1.65;
+        margin: 0.4rem 0 1.4rem;
+        text-align: center;
+    }
     div[data-testid="stTabs"] button[role="tab"] {
         border-radius: 999px;
         padding: 0.6rem 0.95rem;
         font-weight: 700;
     }
     .host-hero {
-        background: linear-gradient(135deg, rgba(255,88,88,0.92), rgba(255,154,84,0.92));
+        background: linear-gradient(135deg, rgba(34,31,26,0.96), rgba(117,104,88,0.92));
         border-radius: 28px;
-        color: white;
+        color: #fffdf8;
         padding: 1.4rem 1.5rem;
-        box-shadow: 0 20px 40px rgba(255, 100, 88, 0.18);
+        box-shadow: 0 20px 40px rgba(34, 31, 26, 0.16);
         margin-bottom: 1rem;
     }
     .host-hero-grid {
@@ -546,6 +613,90 @@ def reset_signup_phone_verification():
     st.session_state["signup_verification_target"] = ""
     st.session_state["signup_verification_code"] = ""
 
+
+def _login_bridge_secret():
+    return os.getenv("AFFILISTAY_LOGIN_SECRET") or os.getenv("SECRET_KEY") or "affilistay-local-login-bridge"
+
+
+def _b64url_decode(value):
+    return base64.urlsafe_b64decode((value + "=" * (-len(value) % 4)).encode("ascii"))
+
+
+def _query_param(name):
+    try:
+        value = st.query_params.get(name)
+    except Exception:
+        try:
+            value = st.experimental_get_query_params().get(name)
+        except Exception:
+            value = None
+    if isinstance(value, list):
+        return value[0] if value else ""
+    return value or ""
+
+
+def _clear_login_token_param():
+    try:
+        if "login_token" in st.query_params:
+            del st.query_params["login_token"]
+    except Exception:
+        try:
+            st.experimental_set_query_params()
+        except Exception:
+            pass
+
+
+def verify_partner_login_token(token):
+    if not token or "." not in token:
+        return None
+    try:
+        body, signature = token.split(".", 1)
+        expected = hmac.new(_login_bridge_secret().encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest()
+        received = _b64url_decode(signature)
+        if not hmac.compare_digest(expected, received):
+            return None
+        payload = json.loads(_b64url_decode(body).decode("utf-8"))
+        if int(payload.get("exp", 0)) < int(time.time()):
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def consume_partner_login_token():
+    payload = verify_partner_login_token(_query_param("login_token"))
+    if not payload:
+        return False
+
+    conn = database.get_db_connection()
+    try:
+        cursor = conn.cursor()
+        q = ('SELECT id,username,name,is_master,role FROM hosts WHERE id=%s AND username=%s'
+             if database.DATABASE_URL else
+             'SELECT id,username,name,is_master,role FROM hosts WHERE id=? AND username=?')
+        cursor.execute(q, (int(payload.get("host_id")), payload.get("username")))
+        user = cursor.fetchone()
+    except Exception:
+        user = None
+    finally:
+        conn.close()
+
+    if not user:
+        _clear_login_token_param()
+        return False
+
+    st.session_state.update({
+        "authenticated": True,
+        "host_id": user[0],
+        "username": user[1],
+        "name": user[2],
+        "is_master": bool(user[3]),
+        "role": user[4],
+        "auth_mode": "login",
+    })
+    _clear_login_token_param()
+    return True
+
 # ─────────────────────────────────────────
 # 인증 시스템
 # ─────────────────────────────────────────
@@ -554,12 +705,19 @@ def check_auth():
         if key not in st.session_state:
             st.session_state[key] = default
 
+    if consume_partner_login_token():
+        st.rerun()
+
     if st.session_state['authenticated']:
         return True
 
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
         st.image("static/affilistay-logo.png", width=220)
+        st.markdown(
+            '<div class="affili-login-note">메인 쇼룸에서 로그인한 파트너 계정은 같은 인증으로 바로 이어집니다.</div>',
+            unsafe_allow_html=True,
+        )
 
         if st.session_state['auth_mode'] == 'login':
             st.markdown("#### 로그인")
