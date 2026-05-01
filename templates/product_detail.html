@@ -1000,8 +1000,7 @@
                 {% if same_showroom_products %}
                 <section class="recommend-section">
                     <div class="recommend-header">
-                        <div class="recommend-title">이 숙소 안에서 함께 보는 다른 제품</div>
-                        <div class="recommend-copy">같은 공간 맥락에서 함께 배치된 제품을 먼저 보여드릴게요. 객실 무드가 가장 덜 끊기는 흐름입니다.</div>
+                        <div class="recommend-title">해당 숙소내 다른 제품</div>
                     </div>
                     <div class="recommend-rail">
                         {% for item in same_showroom_products %}
@@ -1027,41 +1026,10 @@
                 </section>
                 {% endif %}
 
-                {% if host_curated_products %}
-                <section class="recommend-section">
-                    <div class="recommend-header">
-                        <div class="recommend-title">같은 호스트가 다른 공간에서 고른 제품</div>
-                        <div class="recommend-copy">지금 보는 제품이 마음에 들었다면, 같은 호스트가 다른 방과 동선에서 어떻게 이어 붙였는지도 같이 확인해보세요.</div>
-                    </div>
-                    <div class="recommend-rail">
-                        {% for item in host_curated_products %}
-                        <a href="{{ item.detail_path }}" class="rec-card">
-                            <div class="rec-thumb">
-                                <img src="{% if item.primary_image %}data:image/jpeg;base64,{{ item.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ item.product_name }}">
-                            </div>
-                            <div class="rec-body">
-                                <div class="rec-meta">
-                                    <span class="rec-pill">{{ item.room_icon }} {{ item.room_label }}</span>
-                                    <span class="rec-pill">{{ item.category_icon }} {{ item.category_label }}</span>
-                                </div>
-                                <div>
-                                    <div class="rec-brand">{{ item.brand_name }}</div>
-                                    <div class="rec-name">{{ item.product_name }}</div>
-                                </div>
-                                <div class="rec-host">{{ item.host_name }}</div>
-                                <div class="rec-price">{{ "{:,}".format(item.price) }}원</div>
-                            </div>
-                        </a>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
                 {% if similar_products %}
                 <section class="recommend-section">
                     <div class="recommend-header">
-                        <div class="recommend-title">비슷한 감도의 제품 추천</div>
-                        <div class="recommend-copy">무드만 비슷한 막연한 추천이 아니라, 같은 카테고리와 공간 맥락, 가격대까지 함께 고려해서 가까운 제품을 아래에 모았습니다.</div>
+                        <div class="recommend-title">해당 상품과 유사한 제품</div>
                     </div>
                     <div class="recommend-rail">
                         {% for item in similar_products %}
