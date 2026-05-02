@@ -206,13 +206,15 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             pointer-events: auto;
+            touch-action: manipulation;
+            user-select: none;
             transition: transform 180ms ease, background 180ms ease, color 180ms ease;
         }
 
         .hero-wish-button.is-liked {
-            border-color: rgba(230, 93, 88, 0.24);
-            background: #e65d58;
-            color: white;
+            border-color: rgba(230, 93, 88, 0.42);
+            background: rgba(255, 253, 249, 0.96);
+            color: #e65d58;
             box-shadow: 0 14px 30px rgba(230, 93, 88, 0.24);
         }
 
@@ -997,35 +999,6 @@
             {% endif %}
 
             <section class="recommend-wrap">
-                {% if same_showroom_products %}
-                <section class="recommend-section">
-                    <div class="recommend-header">
-                        <div class="recommend-title">해당 숙소내 다른 제품</div>
-                    </div>
-                    <div class="recommend-rail">
-                        {% for item in same_showroom_products %}
-                        <a href="{{ item.detail_path }}" class="rec-card">
-                            <div class="rec-thumb">
-                                <img src="{% if item.primary_image %}data:image/jpeg;base64,{{ item.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ item.product_name }}">
-                            </div>
-                            <div class="rec-body">
-                                <div class="rec-meta">
-                                    <span class="rec-pill">{{ item.room_icon }} {{ item.room_label }}</span>
-                                    <span class="rec-pill">{{ item.category_icon }} {{ item.category_label }}</span>
-                                </div>
-                                <div>
-                                    <div class="rec-brand">{{ item.brand_name }}</div>
-                                    <div class="rec-name">{{ item.product_name }}</div>
-                                </div>
-                                <div class="rec-host">{{ item.host_name }}{% if item.host_location %} · {{ item.host_location }}{% endif %}</div>
-                                <div class="rec-price">{{ "{:,}".format(item.price) }}원</div>
-                            </div>
-                        </a>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
                 {% if similar_products %}
                 <section class="recommend-section">
                     <div class="recommend-header">
@@ -1044,6 +1017,35 @@
                                     {% if item.discount_rate > 0 %}
                                     <span class="rec-pill">{{ item.discount_rate }}% 할인</span>
                                     {% endif %}
+                                </div>
+                                <div>
+                                    <div class="rec-brand">{{ item.brand_name }}</div>
+                                    <div class="rec-name">{{ item.product_name }}</div>
+                                </div>
+                                <div class="rec-host">{{ item.host_name }}{% if item.host_location %} · {{ item.host_location }}{% endif %}</div>
+                                <div class="rec-price">{{ "{:,}".format(item.price) }}원</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if same_showroom_products %}
+                <section class="recommend-section">
+                    <div class="recommend-header">
+                        <div class="recommend-title">해당 숙소내 다른 제품</div>
+                    </div>
+                    <div class="recommend-rail">
+                        {% for item in same_showroom_products %}
+                        <a href="{{ item.detail_path }}" class="rec-card">
+                            <div class="rec-thumb">
+                                <img src="{% if item.primary_image %}data:image/jpeg;base64,{{ item.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ item.product_name }}">
+                            </div>
+                            <div class="rec-body">
+                                <div class="rec-meta">
+                                    <span class="rec-pill">{{ item.room_icon }} {{ item.room_label }}</span>
+                                    <span class="rec-pill">{{ item.category_icon }} {{ item.category_label }}</span>
                                 </div>
                                 <div>
                                     <div class="rec-brand">{{ item.brand_name }}</div>
@@ -1179,6 +1181,7 @@
         </div>
     </nav>
 
+    <script src="/static/customer-nav.js"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -1489,43 +1492,69 @@
             updateWishlistBadge();
         }
 
+        function toggleWishlistButton(button) {
+            const payload = wishlistPayloadFromButton(button);
+            const id = String(button.dataset.productId);
+            if (!payload.product_id || !id) return;
+
+            const items = readWishlist();
+            const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
+            if (existingIndex >= 0) {
+                items.splice(existingIndex, 1);
+                if (!CUSTOMER_LOGGED_IN) {
+                    localStorage.removeItem(PENDING_WISHLIST_KEY);
+                }
+            } else {
+                items.unshift({
+                    id,
+                    product_id: payload.product_id,
+                    name: payload.product_name,
+                    brand: payload.brand_name,
+                    price: payload.price,
+                    url: payload.url,
+                    image: payload.image
+                });
+                if (CUSTOMER_LOGGED_IN) {
+                    syncWishlistToServer(payload);
+                } else {
+                    localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
+                }
+            }
+
+            writeWishlist(items);
+            syncWishlistButtons();
+        }
+
+        let wishlistCaptureBound = false;
+        function handleWishlistActivation(event) {
+            const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+            const button = target?.closest?.("[data-wishlist-toggle]");
+            if (!button) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation?.();
+
+            const now = Date.now();
+            const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
+            if (now - lastActivatedAt < 360) return;
+            button.dataset.wishlistActivatedAt = String(now);
+            toggleWishlistButton(button);
+        }
+
         function bindWishlistButtons() {
+            if (!wishlistCaptureBound) {
+                wishlistCaptureBound = true;
+                document.addEventListener("pointerup", handleWishlistActivation, true);
+                document.addEventListener("click", handleWishlistActivation, true);
+                document.addEventListener("touchend", handleWishlistActivation, true);
+            }
             document.querySelectorAll("[data-wishlist-toggle]").forEach((button) => {
                 if (button.dataset.wishlistBound === "true") return;
                 button.dataset.wishlistBound = "true";
-                button.addEventListener("click", (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-
-                    const payload = wishlistPayloadFromButton(button);
-                    const id = String(button.dataset.productId);
-                    const items = readWishlist();
-                    const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
-                    if (existingIndex >= 0) {
-                        items.splice(existingIndex, 1);
-                        if (!CUSTOMER_LOGGED_IN) {
-                            localStorage.removeItem(PENDING_WISHLIST_KEY);
-                        }
-                    } else {
-                        items.unshift({
-                            id,
-                            product_id: payload.product_id,
-                            name: payload.product_name,
-                            brand: payload.brand_name,
-                            price: payload.price,
-                            url: payload.url,
-                            image: payload.image
-                        });
-                        if (CUSTOMER_LOGGED_IN) {
-                            syncWishlistToServer(payload);
-                        } else {
-                            localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
-                        }
+                button.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        handleWishlistActivation(event);
                     }
-
-                    writeWishlist(items);
-                    syncWishlistButtons();
                 });
             });
         }

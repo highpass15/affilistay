@@ -216,6 +216,7 @@
             <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
         </div>
     </nav>
+    <script src="/static/customer-nav.js"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -272,38 +273,57 @@
                 });
                 updateCount();
             };
-            document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
-                button.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    const payload = payloadFromButton(button);
-                    const id = String(button.dataset.productId);
-                    const items = readWishlist();
-                    const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
-                    if (existingIndex >= 0) {
-                        items.splice(existingIndex, 1);
-                        if (!CUSTOMER_LOGGED_IN) {
-                            localStorage.removeItem(PENDING_WISHLIST_KEY);
-                        }
-                    } else {
-                        items.unshift({
-                            id,
-                            product_id: payload.product_id,
-                            name: payload.product_name,
-                            brand: payload.brand_name,
-                            price: payload.price,
-                            url: payload.url,
-                            image: payload.image
-                        });
-                        if (CUSTOMER_LOGGED_IN) {
-                            syncToServer(payload);
-                        } else {
-                            localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
-                        }
+            const toggleButton = (button) => {
+                const payload = payloadFromButton(button);
+                const id = String(button.dataset.productId);
+                if (!payload.product_id || !id) return;
+                const items = readWishlist();
+                const existingIndex = items.findIndex((item) => wishlistItemId(item) === id);
+                if (existingIndex >= 0) {
+                    items.splice(existingIndex, 1);
+                    if (!CUSTOMER_LOGGED_IN) {
+                        localStorage.removeItem(PENDING_WISHLIST_KEY);
                     }
-                    writeWishlist(items);
-                    syncButtons();
+                } else {
+                    items.unshift({
+                        id,
+                        product_id: payload.product_id,
+                        name: payload.product_name,
+                        brand: payload.brand_name,
+                        price: payload.price,
+                        url: payload.url,
+                        image: payload.image
+                    });
+                    if (CUSTOMER_LOGGED_IN) {
+                        syncToServer(payload);
+                    } else {
+                        localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
+                    }
+                }
+                writeWishlist(items);
+                syncButtons();
+            };
+            const handleActivation = (event) => {
+                const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+                const button = target?.closest?.('[data-wishlist-toggle]');
+                if (!button) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation?.();
+                const now = Date.now();
+                const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
+                if (now - lastActivatedAt < 360) return;
+                button.dataset.wishlistActivatedAt = String(now);
+                toggleButton(button);
+            };
+            document.addEventListener('pointerup', handleActivation, true);
+            document.addEventListener('click', handleActivation, true);
+            document.addEventListener('touchend', handleActivation, true);
+            document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
+                button.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        handleActivation(event);
+                    }
                 });
             });
             if (CUSTOMER_LOGGED_IN) {

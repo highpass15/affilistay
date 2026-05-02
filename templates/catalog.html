@@ -569,6 +569,7 @@
         </div>
     </nav>
     <div class="wishlist-toast" data-wishlist-toast role="status" aria-live="polite"></div>
+    <script src="/static/customer-nav.js"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -686,7 +687,8 @@
 
             let wishlistCaptureBound = false;
             const handleWishlistActivation = (event) => {
-                const button = event.target.closest('[data-wishlist-toggle]');
+                const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+                const button = target?.closest?.('[data-wishlist-toggle]');
                 if (!button) return;
                 event.preventDefault();
                 event.stopPropagation();

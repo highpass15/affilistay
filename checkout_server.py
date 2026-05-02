@@ -1697,13 +1697,20 @@ def _build_product_recommendations(conn, product):
             -int(item.get("id") or 0),
         )
 
+    similar_source = _unique_products(similar_candidates + same_owner_products)
     similar_products = [
-        item for item in similar_candidates
+        item for item in similar_source
         if item.get("product_category") == current_category or item.get("room_category") == current_room
     ]
     if len(similar_products) < 6:
-        similar_products = _unique_products(similar_products + similar_candidates)
-    similar_products = sorted(similar_products, key=recommendation_score)[:6]
+        similar_products = _unique_products(similar_products + similar_source)
+    similar_products = sorted(similar_products, key=recommendation_score)
+    same_showroom_ids = {item.get("id") for item in same_showroom_products}
+    distinct_similar_products = [
+        item for item in similar_products
+        if item.get("id") not in same_showroom_ids
+    ]
+    similar_products = (distinct_similar_products or similar_products)[:6]
 
     return {
         "same_showroom_products": same_showroom_products,
