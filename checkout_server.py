@@ -80,7 +80,11 @@ def run_migrations():
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT")
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_age_group TEXT")
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_gender TEXT")
                 cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS age_group TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS gender TEXT")
                 cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS kakao_opt_in BOOLEAN DEFAULT FALSE")
                 cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS push_opt_in BOOLEAN DEFAULT FALSE")
                 cur.execute("""
@@ -148,8 +152,12 @@ def run_migrations():
                 pass
             for sql in [
                 "ALTER TABLE customers ADD COLUMN fcm_token TEXT",
+                "ALTER TABLE customers ADD COLUMN age_group TEXT",
+                "ALTER TABLE customers ADD COLUMN gender TEXT",
                 "ALTER TABLE customers ADD COLUMN kakao_opt_in BOOLEAN DEFAULT FALSE",
                 "ALTER TABLE customers ADD COLUMN push_opt_in BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE orders ADD COLUMN customer_age_group TEXT",
+                "ALTER TABLE orders ADD COLUMN customer_gender TEXT",
                 """
                 CREATE TABLE IF NOT EXISTS wishlist_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,7 +257,11 @@ def force_migrate():
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fcm_token TEXT")
                 cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id TEXT")
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_age_group TEXT")
+                cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_gender TEXT")
                 cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS fcm_token TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS age_group TEXT")
+                cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS gender TEXT")
                 cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS kakao_opt_in BOOLEAN DEFAULT FALSE")
                 cur.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS push_opt_in BOOLEAN DEFAULT FALSE")
                 cur.execute("""
@@ -309,6 +321,10 @@ def force_migrate():
                 "ALTER TABLE orders ADD COLUMN fcm_token TEXT",
                 "ALTER TABLE orders ADD COLUMN session_id TEXT",
                 "ALTER TABLE customers ADD COLUMN fcm_token TEXT",
+                "ALTER TABLE customers ADD COLUMN age_group TEXT",
+                "ALTER TABLE customers ADD COLUMN gender TEXT",
+                "ALTER TABLE orders ADD COLUMN customer_age_group TEXT",
+                "ALTER TABLE orders ADD COLUMN customer_gender TEXT",
                 "ALTER TABLE customers ADD COLUMN kakao_opt_in BOOLEAN DEFAULT FALSE",
                 "ALTER TABLE customers ADD COLUMN push_opt_in BOOLEAN DEFAULT FALSE",
                 """
@@ -1139,6 +1155,8 @@ async def verify_portone_payment(request: Request):
         
         # 클라이언트가 쿠키로 보낸 customer_id 확인 (없으면 비회원)
         customer_id = request.cookies.get("customer_id")
+        customer_age_group = _clean_age_group(data.get("customer_age_group", "")) if customer_id else ""
+        customer_gender = _clean_gender(data.get("customer_gender", "")) if customer_id else ""
         
         order_ids = []
         for item in items:
@@ -1161,23 +1179,24 @@ async def verify_portone_payment(request: Request):
                 if _is_pg():
                     cursor.execute("""
                         INSERT INTO orders (
-                            product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note,
+                            product_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note,
                             total_amount, payment_method, imp_uid, payment_status
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'PAID')
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PAID')
                         RETURNING id
-                    """, (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, payment_method, imp_uid))
+                    """, (p_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, real_price, payment_method, imp_uid))
                     order_id = cursor.fetchone()[0]
                 else:
                     cursor.execute("""
                         INSERT INTO orders (
-                            product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note,
+                            product_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note,
                             total_amount, payment_method, imp_uid, payment_status
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PAID')
-                    """, (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, payment_method, imp_uid))
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PAID')
+                    """, (p_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, real_price, payment_method, imp_uid))
                     order_id = cursor.lastrowid
                 order_ids.append(order_id)
                 _mark_wishlist_purchased(conn, customer_id, p_id)
 
+        _save_customer_purchase_profile(conn, customer_id, customer_age_group, customer_gender)
         conn.commit()
         conn.close()
 
@@ -1359,6 +1378,53 @@ def _customer_id_from_request(request: Request):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+AGE_GROUP_OPTIONS = {"10s", "20s", "30s", "40s", "50s", "60s_plus", "unknown"}
+GENDER_OPTIONS = {"female", "male", "other", "unknown"}
+
+
+def _clean_age_group(value: str = ""):
+    value = (value or "").strip()
+    return value if value in AGE_GROUP_OPTIONS else ""
+
+
+def _clean_gender(value: str = ""):
+    value = (value or "").strip()
+    return value if value in GENDER_OPTIONS else ""
+
+
+def _save_customer_purchase_profile(conn, customer_id, age_group="", gender=""):
+    if not customer_id:
+        return
+    age_group = _clean_age_group(age_group)
+    gender = _clean_gender(gender)
+    if not age_group and not gender:
+        return
+    try:
+        if _is_pg():
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE customers
+                    SET age_group = COALESCE(NULLIF(%s, ''), age_group),
+                        gender = COALESCE(NULLIF(%s, ''), gender)
+                    WHERE id = %s
+                    """,
+                    (age_group, gender, customer_id),
+                )
+        else:
+            conn.execute(
+                """
+                UPDATE customers
+                SET age_group = COALESCE(NULLIF(?, ''), age_group),
+                    gender = COALESCE(NULLIF(?, ''), gender)
+                WHERE id = ?
+                """,
+                (age_group, gender, customer_id),
+            )
+    except Exception as exc:
+        print(f"[Customer Purchase Profile Save Error] {exc}")
 
 
 def _partner_from_request(request: Request):
@@ -2296,6 +2362,7 @@ async def order_form(
     """주문서 작성 페이지"""
     conn = get_db_connection()
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/product/{product_id}")
+    customer_id = _customer_id_from_request(request)
 
     product = _fetch_one(
         conn,
@@ -2331,6 +2398,7 @@ async def order_form(
             "cross_sell_products": cross_sell_products,
             "return_to": return_to,
             "return_to_encoded": _encode_return_to(return_to),
+            "customer_logged_in": bool(customer_id),
         }
     )
 
@@ -2351,11 +2419,15 @@ async def process_order(
     fcm_token: str = Form(default=""),
     session_id: str = Form(default=""),
     return_to: str = Form(default=""),
+    customer_age_group: str = Form(default=""),
+    customer_gender: str = Form(default=""),
 ):
     """주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
     conn = get_db_connection()
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}")
     customer_id = _customer_id_from_request(request)
+    customer_age_group = _clean_age_group(customer_age_group) if customer_id else ""
+    customer_gender = _clean_gender(customer_gender) if customer_id else ""
 
     if _is_pg():
         with conn.cursor() as cur:
@@ -2364,10 +2436,11 @@ async def process_order(
             if product:
                 try:
                     cur.execute('''
-                        INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                    ''', (product[0], customer_id, customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
+                        INSERT INTO orders (product_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                    ''', (product[0], customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, product[1], selected_options, fcm_token, session_id))
                     order_id = cur.fetchone()[0]
+                    _save_customer_purchase_profile(conn, customer_id, customer_age_group, customer_gender)
                 except Exception as e:
                     import traceback
                     return HTMLResponse(content=f"<h1>DB Insert Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
@@ -2376,10 +2449,11 @@ async def process_order(
         if product:
             try:
                 cursor = conn.execute('''
-                    INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (product['id'], customer_id, customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options, fcm_token, session_id))
+                    INSERT INTO orders (product_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (product['id'], customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, product['price'], selected_options, fcm_token, session_id))
                 order_id = cursor.lastrowid
+                _save_customer_purchase_profile(conn, customer_id, customer_age_group, customer_gender)
             except Exception as e:
                 import traceback
                 return HTMLResponse(content=f"<h1>DB Insert Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
@@ -2473,6 +2547,7 @@ async def order_cart_form(request: Request, qr_code_id: str, return_to: str = Qu
     """장바구니 다중 상품 주문서 작성 페이지"""
     conn = get_db_connection()
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/cart")
+    customer_id = _customer_id_from_request(request)
     cross_sell_products = _fetch_all(
         conn,
         "SELECT p.*, h.name as host_name FROM products p JOIN hosts h ON p.owner_id = h.id ORDER BY RANDOM() LIMIT 4",
@@ -2490,6 +2565,7 @@ async def order_cart_form(request: Request, qr_code_id: str, return_to: str = Qu
             "return_to_encoded": _encode_return_to(return_to),
             "product": {"price": 0, "product_name": "장바구니 상품"}, # JS에서 덮어씀
             "cross_sell_products": cross_sell_products,
+            "customer_logged_in": bool(customer_id),
         }
     )
 
@@ -2505,10 +2581,14 @@ async def process_cart_order(
     fcm_token: str = Form(default=""),
     session_id: str = Form(default=""),
     return_to: str = Form(default=""),
+    customer_age_group: str = Form(default=""),
+    customer_gender: str = Form(default=""),
 ):
     """장바구니 다중 상품 주문 처리 → PayPal 결제 링크 생성 → 리다이렉트"""
     return_to = _safe_return_to(return_to, f"/shop/{qr_code_id}/cart")
     customer_id = _customer_id_from_request(request)
+    customer_age_group = _clean_age_group(customer_age_group) if customer_id else ""
+    customer_gender = _clean_gender(customer_gender) if customer_id else ""
     
     try:
         items = json.loads(items_json)
@@ -2543,17 +2623,18 @@ async def process_cart_order(
                 if _is_pg():
                     with conn.cursor() as cur:
                         cur.execute('''
-                            INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                        ''', (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
+                            INSERT INTO orders (product_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                        ''', (p_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
                         order_ids.append(cur.fetchone()[0])
                 else:
                     cursor = conn.execute('''
-                        INSERT INTO orders (product_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (p_id, customer_id, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
+                        INSERT INTO orders (product_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, total_amount, selected_options, fcm_token, session_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (p_id, customer_id, customer_age_group, customer_gender, customer_name, phone_number, shipping_address, delivery_note, real_price, options_str, fcm_token, session_id))
                     order_ids.append(cursor.lastrowid)
 
+        _save_customer_purchase_profile(conn, customer_id, customer_age_group, customer_gender)
         conn.commit()
     except Exception as e:
         import traceback

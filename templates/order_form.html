@@ -287,6 +287,18 @@
         }
 
         /* ── 제출 버튼 ── */
+        .purchase-profile-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        @media (max-width: 540px) {
+            .purchase-profile-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .submit-section {
             margin-top: 8px;
         }
@@ -513,6 +525,32 @@
                 </label>
                 <input type="text" name="shipping_address" id="shipping_address" 
                        class="form-input" placeholder="도로명 주소 또는 지번 주소" required>
+            </div>
+            {% if customer_logged_in %}
+            <div class="form-group">
+                <label class="form-label">구매자 분석 정보</label>
+                <p class="form-hint">선택 입력값은 개인정보가 아닌 집계형 인사이트로만 활용됩니다.</p>
+                <div class="purchase-profile-grid">
+                    <select name="customer_age_group" class="form-input" aria-label="연령대">
+                        <option value="">연령대 선택</option>
+                        <option value="10s">10대</option>
+                        <option value="20s">20대</option>
+                        <option value="30s">30대</option>
+                        <option value="40s">40대</option>
+                        <option value="50s">50대</option>
+                        <option value="60s_plus">60대 이상</option>
+                        <option value="unknown">선택 안 함</option>
+                    </select>
+                    <select name="customer_gender" class="form-input" aria-label="성별">
+                        <option value="">성별 선택</option>
+                        <option value="female">여성</option>
+                        <option value="male">남성</option>
+                        <option value="other">기타</option>
+                        <option value="unknown">선택 안 함</option>
+                    </select>
+                </div>
+            </div>
+            {% endif %}
             <div class="form-section-title" style="margin-top: 32px;">결제 수단</div>
             <div class="payment-methods-grid">
                 <label class="pm-card">
@@ -718,7 +756,9 @@
                         customer_name: document.querySelector('input[name="customer_name"]').value,
                         phone_number: document.querySelector('input[name="phone_number"]').value,
                         shipping_address: document.querySelector('input[name="shipping_address"]').value,
-                        delivery_note: document.querySelector('textarea[name="delivery_note"]').value
+                        delivery_note: document.querySelector('textarea[name="delivery_note"]').value,
+                        customer_age_group: document.querySelector('[name="customer_age_group"]')?.value || '',
+                        customer_gender: document.querySelector('[name="customer_gender"]')?.value || ''
                     })
                 });
                 
