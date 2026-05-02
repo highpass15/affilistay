@@ -159,9 +159,9 @@ st.markdown(
         font-weight: 700;
     }
     .host-hero {
-        background: linear-gradient(135deg, rgba(34,31,26,0.96), rgba(117,104,88,0.92));
+        background: linear-gradient(135deg, rgba(255,253,250,0.96), rgba(235,226,214,0.94));
         border-radius: 28px;
-        color: #fffdf8;
+        color: var(--affili-ink);
         padding: 1.4rem 1.5rem;
         box-shadow: 0 20px 40px rgba(34, 31, 26, 0.16);
         margin-bottom: 1rem;
@@ -173,8 +173,8 @@ st.markdown(
         margin-top: 1rem;
     }
     .host-chip {
-        border: 1px solid rgba(255,255,255,0.24);
-        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(34,31,26,0.12);
+        background: rgba(255,255,255,0.58);
         border-radius: 18px;
         padding: 0.95rem 1rem;
     }
@@ -187,6 +187,31 @@ st.markdown(
         font-size: 1.7rem;
         font-weight: 800;
         letter-spacing: -0.02em;
+    }
+    [data-testid="stMetric"] {
+        background: rgba(255,253,250,0.72);
+        border: 1px solid var(--affili-line);
+        border-radius: 18px;
+        padding: 0.9rem 1rem;
+        box-shadow: 0 14px 32px rgba(34,31,26,0.045);
+    }
+    [data-testid="stMetric"] * {
+        color: var(--affili-ink) !important;
+    }
+    [data-testid="stDataFrame"] * {
+        color: var(--affili-ink) !important;
+    }
+    .insight-note {
+        border: 1px solid var(--affili-line);
+        border-radius: 18px;
+        background: rgba(255,253,250,0.78);
+        color: var(--affili-ink);
+        padding: 0.9rem 1rem;
+        line-height: 1.55;
+        margin: 0.4rem 0 0.8rem;
+    }
+    .insight-note strong {
+        color: var(--affili-ink);
     }
     .section-card {
         border: 1px solid rgba(34,31,26,0.08);
@@ -420,7 +445,7 @@ def load_analytics_events(start_date, end_date, host_id=None, is_master=False):
             ae.id, ae.event_type, ae.product_id, ae.stay_id, ae.location, ae.checkin_day,
             ae.duration_seconds, ae.scroll_depth, ae.is_return_visit, ae.is_purchased,
             ae.device_type, ae.browser_language, ae.timestamp,
-            p.product_name, p.brand_name, p.owner_id, h.name AS host_name,
+            p.product_name, p.brand_name, p.owner_id, p.product_category, p.room_category, h.name AS host_name,
             hv.location AS venue_location
         FROM analytics_events ae
         LEFT JOIN products p ON ae.product_id = p.id
@@ -455,7 +480,7 @@ def load_purchase_orders(start_date, end_date, host_id=None, is_master=False):
             o.id, o.product_id, o.customer_id, o.total_amount, o.created_at,
             COALESCE(o.customer_age_group, c.age_group) AS customer_age_group,
             COALESCE(o.customer_gender, c.gender) AS customer_gender,
-            p.product_name, p.brand_name, p.owner_id,
+            p.product_name, p.brand_name, p.owner_id, p.product_category, p.room_category,
             h.name AS host_name,
             hv.location AS venue_location
         FROM orders o
@@ -465,6 +490,44 @@ def load_purchase_orders(start_date, end_date, host_id=None, is_master=False):
         LEFT JOIN customers c ON o.customer_id = c.id
         WHERE {' AND '.join(where)}
         ORDER BY o.created_at DESC
+    """
+    try:
+        df = pd.read_sql_query(query, conn, params=tuple(params))
+    except Exception:
+        df = pd.DataFrame()
+    finally:
+        conn.close()
+    return df
+
+
+def load_wishlist_events(start_date, end_date, host_id=None, is_master=False):
+    conn = database.get_db_connection()
+    end_exclusive = pd.Timestamp(end_date) + pd.Timedelta(days=1)
+    params = [
+        pd.Timestamp(start_date).strftime("%Y-%m-%d 00:00:00"),
+        end_exclusive.strftime("%Y-%m-%d 00:00:00"),
+    ]
+    where = ["w.created_at >= %s", "w.created_at < %s"] if database.DATABASE_URL else ["w.created_at >= ?", "w.created_at < ?"]
+    if not is_master and host_id:
+        where.append("p.owner_id = %s" if database.DATABASE_URL else "p.owner_id = ?")
+        params.append(host_id)
+
+    query = f"""
+        SELECT
+            w.id, w.customer_id, w.product_id, w.qr_code_id, w.host_id, w.purchased,
+            w.reminder_status, w.created_at, w.updated_at,
+            COALESCE(c.age_group, '') AS customer_age_group,
+            COALESCE(c.gender, '') AS customer_gender,
+            p.product_name, p.brand_name, p.owner_id, p.product_category, p.room_category,
+            h.name AS host_name,
+            hv.location AS venue_location
+        FROM wishlist_events w
+        LEFT JOIN products p ON w.product_id = p.id
+        LEFT JOIN hosts h ON p.owner_id = h.id
+        LEFT JOIN host_venues hv ON h.id = hv.host_id
+        LEFT JOIN customers c ON w.customer_id = c.id
+        WHERE {' AND '.join(where)}
+        ORDER BY w.created_at DESC
     """
     try:
         df = pd.read_sql_query(query, conn, params=tuple(params))
@@ -523,18 +586,20 @@ def render_insight_bar(series, order=None, height=280, x_title="", y_title="건�
     if alt:
         chart = (
             alt.Chart(data)
-            .mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5, color="#7fc3f3")
+            .mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5, color="#b9a58f")
             .encode(
                 x=alt.X(
                     "항목:N",
                     sort=None,
                     title=x_title,
-                    axis=alt.Axis(labelAngle=0, labelLimit=120, labelOverlap=False),
+                    axis=alt.Axis(labelAngle=0, labelLimit=160, labelOverlap=False),
                 ),
                 y=alt.Y("건수:Q", title=y_title, axis=alt.Axis(tickMinStep=1)),
                 tooltip=["항목:N", "건수:Q"],
             )
-            .properties(height=height)
+            .properties(height=height, background="#fffdfa")
+            .configure_axis(labelColor="#221f1a", titleColor="#5f554c", gridColor="#ece4d9")
+            .configure_view(strokeWidth=0)
         )
         st.altair_chart(chart, use_container_width=True)
     else:
@@ -552,10 +617,94 @@ def normalize_analytics_location(value):
     }.get(location, location or "미분류")
 
 
+def normalize_product_category(value):
+    category = str(value or "").strip()
+    return PROD_CAT_LABEL_MAP.get(category, category or "미분류")
+
+
+def normalize_room_category(value):
+    room = str(value or "").strip()
+    return ROOM_LABEL_MAP.get(room, normalize_analytics_location(room))
+
+
+def safe_rate(numerator, denominator):
+    return round((numerator / denominator * 100), 1) if denominator else 0.0
+
+
+def render_insight_rate_bar(df, category_col, value_col, height=280, x_title="", y_title="비율(%)"):
+    if df.empty:
+        st.info("표시할 데이터가 없습니다.")
+        return
+    chart_data = df[[category_col, value_col]].copy()
+    chart_data[category_col] = chart_data[category_col].astype(str)
+    chart_data[value_col] = pd.to_numeric(chart_data[value_col], errors="coerce").fillna(0)
+    if alt:
+        chart = (
+            alt.Chart(chart_data)
+            .mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5, color="#b9a58f")
+            .encode(
+                x=alt.X(f"{category_col}:N", sort=None, title=x_title, axis=alt.Axis(labelAngle=0, labelLimit=160, labelOverlap=False)),
+                y=alt.Y(f"{value_col}:Q", title=y_title),
+                tooltip=[category_col, alt.Tooltip(f"{value_col}:Q", format=".1f")],
+            )
+            .properties(height=height, background="#fffdfa")
+            .configure_axis(labelColor="#221f1a", titleColor="#5f554c", gridColor="#ece4d9")
+            .configure_view(strokeWidth=0)
+        )
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.bar_chart(chart_data.set_index(category_col), height=height)
+
+
+def demographic_rate_table(wishlist_df, orders_df, group_col, ordered_labels=None):
+    labels = pd.concat(
+        [
+            wishlist_df[group_col] if group_col in wishlist_df else pd.Series(dtype="object"),
+            orders_df[group_col] if group_col in orders_df else pd.Series(dtype="object"),
+        ],
+        ignore_index=True,
+    ).dropna().astype(str).unique().tolist()
+    if ordered_labels:
+        labels = [label for label in ordered_labels if label in labels] + sorted([label for label in labels if label not in ordered_labels])
+    else:
+        labels = sorted(labels)
+
+    total_wishlist = len(wishlist_df)
+    total_orders = len(orders_df)
+    rows = []
+    for label in labels:
+        wishlist_group = wishlist_df[wishlist_df[group_col].astype(str) == label] if group_col in wishlist_df else pd.DataFrame()
+        order_group = orders_df[orders_df[group_col].astype(str) == label] if group_col in orders_df else pd.DataFrame()
+        wishlist_count = len(wishlist_group)
+        purchase_count = len(order_group)
+        purchased_wishlist_count = int(wishlist_group["purchased_bool"].sum()) if "purchased_bool" in wishlist_group else 0
+        rows.append({
+            "항목": label,
+            "찜 수": wishlist_count,
+            "구매 수": purchase_count,
+            "찜 비중(%)": safe_rate(wishlist_count, total_wishlist),
+            "구매 비중(%)": safe_rate(purchase_count, total_orders),
+            "찜 후 구매율(%)": safe_rate(purchased_wishlist_count, wishlist_count),
+        })
+    return pd.DataFrame(rows)
+
+
+def dataframe_to_excel_bytes(sheets):
+    buffer = BytesIO()
+    invalid_sheet_chars = set('[]:*?/\\')
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        for sheet_name, df in sheets.items():
+            safe_name = "".join("_" if char in invalid_sheet_chars else char for char in str(sheet_name))[:31] or "Sheet"
+            export_df = df.copy() if isinstance(df, pd.DataFrame) else pd.DataFrame(df)
+            export_df.to_excel(writer, sheet_name=safe_name, index=False)
+    buffer.seek(0)
+    return buffer
+
+
 def render_insights_dashboard(host_id, is_master):
     # 작업 4: 관리자/호스트/입점업체 공통 인사이트 탭
     st.subheader("📊 쇼룸 인사이트")
-    st.caption("QR 상세페이지에서 수집한 체류, 스크롤, 장바구니, 구매 의향 데이터를 제품/공간/방문 맥락별로 봅니다.")
+    st.caption("QR 상세페이지에서 수집한 조회, 재방문, 찜, 장바구니, 구매 데이터를 입점업체 관점의 전환 신호로 정리합니다.")
 
     today = pd.Timestamp.now().date()
     default_start = today - pd.Timedelta(days=30)
@@ -573,24 +722,29 @@ def render_insights_dashboard(host_id, is_master):
 
     events = load_analytics_events(start_date, end_date, host_id=host_id, is_master=is_master)
     purchase_orders = load_purchase_orders(start_date, end_date, host_id=host_id, is_master=is_master)
-    if events.empty and purchase_orders.empty:
+    wishlist_events = load_wishlist_events(start_date, end_date, host_id=host_id, is_master=is_master)
+    if events.empty and purchase_orders.empty and wishlist_events.empty:
         with f2:
             st.selectbox("숙소 선택", ["전체 숙소"], disabled=True)
         with f3:
-            st.selectbox("제품 선택", ["전체 제품"], disabled=True)
+            st.selectbox("입점업체 선택", ["전체 입점업체"], disabled=True)
         with f4:
             st.selectbox("숙소 위치", ["전체 위치"], disabled=True)
-        st.info("아직 수집된 인사이트 데이터가 없습니다. QR 상세페이지 방문과 구매가 쌓이면 여기에 표시됩니다.")
+        st.info("아직 수집된 인사이트 데이터가 없습니다. QR 상세페이지 방문, 찜, 구매가 쌓이면 여기에 표시됩니다.")
         return
 
     event_columns = [
         "event_type", "product_id", "location", "checkin_day", "duration_seconds", "scroll_depth",
         "is_return_visit", "is_purchased", "device_type", "browser_language", "timestamp",
-        "product_name", "host_name", "venue_location",
+        "product_name", "brand_name", "host_name", "venue_location", "product_category", "room_category",
     ]
     order_columns = [
-        "product_id", "product_name", "host_name", "venue_location", "customer_age_group",
-        "customer_gender", "created_at",
+        "product_id", "product_name", "brand_name", "host_name", "venue_location", "product_category",
+        "room_category", "customer_age_group", "customer_gender", "created_at",
+    ]
+    wishlist_columns = [
+        "product_id", "product_name", "brand_name", "host_name", "venue_location", "product_category",
+        "room_category", "customer_age_group", "customer_gender", "purchased", "created_at",
     ]
     for column in event_columns:
         if column not in events.columns:
@@ -598,6 +752,9 @@ def render_insights_dashboard(host_id, is_master):
     for column in order_columns:
         if column not in purchase_orders.columns:
             purchase_orders[column] = pd.Series(dtype="object")
+    for column in wishlist_columns:
+        if column not in wishlist_events.columns:
+            wishlist_events[column] = pd.Series(dtype="object")
 
     events["timestamp"] = pd.to_datetime(events["timestamp"], errors="coerce")
     events["duration_seconds"] = pd.to_numeric(events["duration_seconds"], errors="coerce")
@@ -606,45 +763,87 @@ def render_insights_dashboard(host_id, is_master):
     events["is_purchase_bool"] = events["is_purchased"].apply(analytics_truthy)
     events["location_label"] = events["location"].apply(normalize_analytics_location)
     events["product_name"] = events["product_name"].fillna("미등록 제품")
+    events["brand_name"] = events["brand_name"].fillna("브랜드 미입력")
     events["host_name"] = events["host_name"].fillna("미분류 숙소")
     events["venue_location_label"] = events["venue_location"].apply(lambda value: clean_insight_label(value, "위치 미입력"))
+    events["product_category_label"] = events["product_category"].apply(normalize_product_category)
+    events["room_category_label"] = events["room_category"].apply(normalize_room_category)
 
     purchase_orders["created_at"] = pd.to_datetime(purchase_orders["created_at"], errors="coerce")
     purchase_orders["product_name"] = purchase_orders["product_name"].fillna("미등록 제품")
+    purchase_orders["brand_name"] = purchase_orders["brand_name"].fillna("브랜드 미입력")
     purchase_orders["host_name"] = purchase_orders["host_name"].fillna("미분류 숙소")
     purchase_orders["venue_location_label"] = purchase_orders["venue_location"].apply(lambda value: clean_insight_label(value, "위치 미입력"))
+    purchase_orders["product_category_label"] = purchase_orders["product_category"].apply(normalize_product_category)
+    purchase_orders["room_category_label"] = purchase_orders["room_category"].apply(normalize_room_category)
     purchase_orders["age_group_label"] = purchase_orders["customer_age_group"].apply(normalize_age_group)
     purchase_orders["gender_label"] = purchase_orders["customer_gender"].apply(normalize_gender)
 
-    host_values = pd.concat([events["host_name"], purchase_orders["host_name"]], ignore_index=True).dropna()
+    wishlist_events["created_at"] = pd.to_datetime(wishlist_events["created_at"], errors="coerce")
+    wishlist_events["product_name"] = wishlist_events["product_name"].fillna("미등록 제품")
+    wishlist_events["brand_name"] = wishlist_events["brand_name"].fillna("브랜드 미입력")
+    wishlist_events["host_name"] = wishlist_events["host_name"].fillna("미분류 숙소")
+    wishlist_events["venue_location_label"] = wishlist_events["venue_location"].apply(lambda value: clean_insight_label(value, "위치 미입력"))
+    wishlist_events["product_category_label"] = wishlist_events["product_category"].apply(normalize_product_category)
+    wishlist_events["room_category_label"] = wishlist_events["room_category"].apply(normalize_room_category)
+    wishlist_events["age_group_label"] = wishlist_events["customer_age_group"].apply(normalize_age_group)
+    wishlist_events["gender_label"] = wishlist_events["customer_gender"].apply(normalize_gender)
+    wishlist_events["purchased_bool"] = wishlist_events["purchased"].apply(analytics_truthy)
+
+    host_values = pd.concat([events["host_name"], purchase_orders["host_name"], wishlist_events["host_name"]], ignore_index=True).dropna()
     with f2:
         host_options = ["전체 숙소"] + sorted(host_values.unique().tolist())
         selected_host = st.selectbox("숙소 선택", host_options, key=f"insight_host_{host_id}_{is_master}")
 
     filtered = events.copy()
     filtered_orders = purchase_orders.copy()
+    filtered_wishlist = wishlist_events.copy()
     if selected_host != "전체 숙소":
         filtered = filtered[filtered["host_name"] == selected_host]
         filtered_orders = filtered_orders[filtered_orders["host_name"] == selected_host]
+        filtered_wishlist = filtered_wishlist[filtered_wishlist["host_name"] == selected_host]
 
-    product_values = pd.concat([filtered["product_name"], filtered_orders["product_name"]], ignore_index=True).dropna()
+    brand_values = pd.concat([filtered["brand_name"], filtered_orders["brand_name"], filtered_wishlist["brand_name"]], ignore_index=True).dropna()
     with f3:
-        product_options = ["전체 제품"] + sorted(product_values.unique().tolist())
-        selected_product = st.selectbox("제품 선택", product_options, key=f"insight_product_{host_id}_{is_master}")
+        brand_options = ["전체 입점업체"] + sorted(brand_values.unique().tolist())
+        selected_brand = st.selectbox("입점업체 선택", brand_options, key=f"insight_brand_{host_id}_{is_master}")
 
-    venue_values = pd.concat([filtered["venue_location_label"], filtered_orders["venue_location_label"]], ignore_index=True).dropna()
+    if selected_brand != "전체 입점업체":
+        filtered = filtered[filtered["brand_name"] == selected_brand]
+        filtered_orders = filtered_orders[filtered_orders["brand_name"] == selected_brand]
+        filtered_wishlist = filtered_wishlist[filtered_wishlist["brand_name"] == selected_brand]
+
+    venue_values = pd.concat([filtered["venue_location_label"], filtered_orders["venue_location_label"], filtered_wishlist["venue_location_label"]], ignore_index=True).dropna()
     with f4:
         venue_options = ["전체 위치"] + sorted(venue_values.unique().tolist())
         selected_venue = st.selectbox("숙소 위치", venue_options, key=f"insight_venue_{host_id}_{is_master}")
 
-    if selected_product != "전체 제품":
-        filtered = filtered[filtered["product_name"] == selected_product]
-        filtered_orders = filtered_orders[filtered_orders["product_name"] == selected_product]
     if selected_venue != "전체 위치":
         filtered = filtered[filtered["venue_location_label"] == selected_venue]
         filtered_orders = filtered_orders[filtered_orders["venue_location_label"] == selected_venue]
+        filtered_wishlist = filtered_wishlist[filtered_wishlist["venue_location_label"] == selected_venue]
 
-    if filtered.empty and filtered_orders.empty:
+    f5, f6 = st.columns(2)
+    product_values = pd.concat([filtered["product_name"], filtered_orders["product_name"], filtered_wishlist["product_name"]], ignore_index=True).dropna()
+    with f5:
+        product_options = ["전체 제품"] + sorted(product_values.unique().tolist())
+        selected_product = st.selectbox("제품 선택", product_options, key=f"insight_product_{host_id}_{is_master}")
+
+    category_values = pd.concat([filtered["product_category_label"], filtered_orders["product_category_label"], filtered_wishlist["product_category_label"]], ignore_index=True).dropna()
+    with f6:
+        category_options = ["전체 카테고리"] + sorted(category_values.unique().tolist())
+        selected_category = st.selectbox("제품 카테고리", category_options, key=f"insight_category_{host_id}_{is_master}")
+
+    if selected_product != "전체 제품":
+        filtered = filtered[filtered["product_name"] == selected_product]
+        filtered_orders = filtered_orders[filtered_orders["product_name"] == selected_product]
+        filtered_wishlist = filtered_wishlist[filtered_wishlist["product_name"] == selected_product]
+    if selected_category != "전체 카테고리":
+        filtered = filtered[filtered["product_category_label"] == selected_category]
+        filtered_orders = filtered_orders[filtered_orders["product_category_label"] == selected_category]
+        filtered_wishlist = filtered_wishlist[filtered_wishlist["product_category_label"] == selected_category]
+
+    if filtered.empty and filtered_orders.empty and filtered_wishlist.empty:
         st.info("선택한 조건에 맞는 데이터가 없습니다.")
         return
 
@@ -652,35 +851,57 @@ def render_insights_dashboard(host_id, is_master):
     cart_events = filtered[filtered["event_type"] == "cart"]
     purchase_events = filtered[(filtered["event_type"] == "purchase") | (filtered["is_purchase_bool"])]
     purchase_count = len(purchase_events) + len(filtered_orders)
+    returning_views = page_views[page_views["is_return_bool"]]
+    returning_product_ids = set(returning_views["product_id"].dropna().astype(str))
+    returning_purchase_events = purchase_events[purchase_events["is_return_bool"]]
+    returning_orders = filtered_orders[filtered_orders["product_id"].astype(str).isin(returning_product_ids)] if returning_product_ids else filtered_orders.iloc[0:0]
+    return_purchase_count = len(returning_purchase_events) + len(returning_orders)
 
-    c1, c2, c3, c4 = st.columns(4)
     total_views = len(page_views)
+    c1, c2, c3 = st.columns(3)
     c1.metric("제품 조회", f"{total_views:,}회")
     c2.metric("평균 체류", f"{analytics_int_mean(page_views['duration_seconds']):,}초")
-    c3.metric("장바구니율", f"{(len(cart_events) / total_views * 100) if total_views else 0:.1f}%")
-    c4.metric("구매 전환율", f"{(purchase_count / total_views * 100) if total_views else 0:.1f}%")
+    c3.metric("찜 전환율", f"{safe_rate(len(filtered_wishlist), total_views):.1f}%")
+    c4, c5, c6 = st.columns(3)
+    c4.metric("장바구니율", f"{safe_rate(len(cart_events), total_views):.1f}%")
+    c5.metric("구매 전환율", f"{safe_rate(purchase_count, total_views):.1f}%")
+    c6.metric("재방문 후 구매율", f"{safe_rate(return_purchase_count, len(returning_views)):.1f}%")
 
     st.markdown("#### 제품별 통계")
-    product_names = sorted(pd.concat([filtered["product_name"], filtered_orders["product_name"]], ignore_index=True).dropna().unique().tolist())
+    product_names = sorted(pd.concat([filtered["product_name"], filtered_orders["product_name"], filtered_wishlist["product_name"]], ignore_index=True).dropna().unique().tolist())
     rows = []
     for product_name in product_names:
         group = filtered[filtered["product_name"] == product_name]
         order_group = filtered_orders[filtered_orders["product_name"] == product_name]
+        wishlist_group = filtered_wishlist[filtered_wishlist["product_name"] == product_name]
         product_views = group[group["event_type"] == "page_view"]
         product_carts = group[group["event_type"] == "cart"]
         product_purchases = group[(group["event_type"] == "purchase") | (group["is_purchase_bool"])]
         views = len(product_views)
         total_product_purchases = len(product_purchases) + len(order_group)
+        interest_count = len(wishlist_group) + len(product_carts)
         rows.append({
+            "입점업체": (pd.concat([group["brand_name"], order_group["brand_name"], wishlist_group["brand_name"]], ignore_index=True).dropna().iloc[0]
+                     if not pd.concat([group["brand_name"], order_group["brand_name"], wishlist_group["brand_name"]], ignore_index=True).dropna().empty else "브랜드 미입력"),
             "제품명": product_name,
             "조회수": views,
+            "찜 수": len(wishlist_group),
+            "장바구니 수": len(product_carts),
+            "구매수": total_product_purchases,
             "평균 체류시간(초)": analytics_int_mean(product_views["duration_seconds"]),
             "평균 스크롤 깊이(%)": analytics_int_mean(group["scroll_depth"]),
-            "장바구니율": f"{(len(product_carts) / views * 100) if views else 0:.1f}%",
-            "구매 전환율": f"{(total_product_purchases / views * 100) if views else 0:.1f}%",
-            "구매수": total_product_purchases,
+            "찜 전환율(%)": safe_rate(len(wishlist_group), views),
+            "장바구니율(%)": safe_rate(len(product_carts), views),
+            "구매 전환율(%)": safe_rate(total_product_purchases, views),
+            "관심 후 구매율(%)": safe_rate(total_product_purchases, interest_count),
+            "재방문 조회수": int(product_views["is_return_bool"].sum()) if "is_return_bool" in product_views else 0,
         })
-    st.dataframe(pd.DataFrame(rows).sort_values(["조회수", "구매수"], ascending=False), use_container_width=True, hide_index=True)
+    product_stats_df = pd.DataFrame(rows)
+    if not product_stats_df.empty:
+        product_stats_df = product_stats_df.sort_values(["조회수", "구매수"], ascending=False)
+        st.dataframe(product_stats_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("제품별 통계를 만들 데이터가 아직 없습니다.")
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
@@ -693,6 +914,30 @@ def render_insights_dashboard(host_id, is_master):
         hourly = page_views.dropna(subset=["timestamp"]).assign(hour=lambda df: df["timestamp"].dt.hour.astype(str))
         hour_counts = hourly["hour"].value_counts().reindex([str(hour) for hour in range(24)], fill_value=0)
         render_insight_bar(hour_counts, height=280, x_title="시간대")
+
+    revisit_col1, revisit_col2 = st.columns(2)
+    with revisit_col1:
+        st.markdown("#### 재방문 시간대")
+        returning_hourly = returning_views.dropna(subset=["timestamp"]).assign(hour=lambda df: df["timestamp"].dt.hour.astype(str))
+        returning_hour_counts = returning_hourly["hour"].value_counts().reindex([str(hour) for hour in range(24)], fill_value=0)
+        render_insight_bar(returning_hour_counts, height=260, x_title="시간대")
+
+    with revisit_col2:
+        st.markdown("#### 구매 전환율 높은 시간대")
+        view_hour_counts = hourly["hour"].value_counts().reindex([str(hour) for hour in range(24)], fill_value=0) if not page_views.empty else pd.Series(0, index=[str(hour) for hour in range(24)])
+        order_hours = filtered_orders.dropna(subset=["created_at"]).assign(hour=lambda df: df["created_at"].dt.hour.astype(str))
+        purchase_event_hours = purchase_events.dropna(subset=["timestamp"]).assign(hour=lambda df: df["timestamp"].dt.hour.astype(str))
+        purchase_hour_counts = (
+            order_hours["hour"].value_counts().reindex([str(hour) for hour in range(24)], fill_value=0)
+            + purchase_event_hours["hour"].value_counts().reindex([str(hour) for hour in range(24)], fill_value=0)
+        )
+        hourly_conversion_df = pd.DataFrame({
+            "시간대": [f"{hour}시" for hour in range(24)],
+            "조회수": view_hour_counts.values,
+            "구매수": purchase_hour_counts.values,
+        })
+        hourly_conversion_df["구매 전환율(%)"] = hourly_conversion_df.apply(lambda row: safe_rate(row["구매수"], row["조회수"]), axis=1)
+        render_insight_rate_bar(hourly_conversion_df, "시간대", "구매 전환율(%)", height=260, x_title="시간대")
 
     venue_col1, venue_col2 = st.columns(2)
     with venue_col1:
@@ -735,19 +980,137 @@ def render_insights_dashboard(host_id, is_master):
         if not checkin.empty:
             st.metric("평균 체크인 일차", f"{checkin.mean():.1f}일차")
 
-    st.markdown("#### 구매 고객 맥락")
-    if filtered_orders.empty:
-        st.info("로그인 후 구매 데이터가 쌓이면 연령대와 성별 분포가 표시됩니다.")
+    st.markdown("#### 연령대/성별별 찜·구매 비율")
+    age_order = ["10대", "20대", "30대", "40대", "50대", "60대 이상", "선택 안 함", "미입력"]
+    gender_order = ["여성", "남성", "기타", "선택 안 함", "미입력"]
+    age_rate_df = demographic_rate_table(filtered_wishlist, filtered_orders, "age_group_label", age_order)
+    gender_rate_df = demographic_rate_table(filtered_wishlist, filtered_orders, "gender_label", gender_order)
+    demographic_col1, demographic_col2 = st.columns(2)
+    with demographic_col1:
+        st.markdown("##### 연령대")
+        if age_rate_df.empty:
+            st.info("연령대 데이터가 아직 없습니다.")
+        else:
+            st.dataframe(age_rate_df, use_container_width=True, hide_index=True)
+            render_insight_rate_bar(age_rate_df, "항목", "찜 후 구매율(%)", height=220)
+    with demographic_col2:
+        st.markdown("##### 성별")
+        if gender_rate_df.empty:
+            st.info("성별 데이터가 아직 없습니다.")
+        else:
+            st.dataframe(gender_rate_df, use_container_width=True, hide_index=True)
+            render_insight_rate_bar(gender_rate_df, "항목", "찜 후 구매율(%)", height=220)
+
+    st.markdown("#### 입점업체 액션 신호")
+    category_stats_df = pd.DataFrame()
+    if not product_stats_df.empty:
+        no_purchase_interest = product_stats_df[(product_stats_df["찜 수"] + product_stats_df["장바구니 수"] > 0) & (product_stats_df["구매수"] == 0)]
+        best_hour_row = hourly_conversion_df.sort_values(["구매 전환율(%)", "구매수"], ascending=False).head(1)
+        category_rows = []
+        category_names = sorted(pd.concat([filtered["product_category_label"], filtered_orders["product_category_label"], filtered_wishlist["product_category_label"]], ignore_index=True).dropna().unique().tolist())
+        for category in category_names:
+            category_views = len(page_views[page_views["product_category_label"] == category])
+            category_wishlist = len(filtered_wishlist[filtered_wishlist["product_category_label"] == category])
+            category_orders = len(filtered_orders[filtered_orders["product_category_label"] == category])
+            category_rows.append({
+                "카테고리": category,
+                "조회수": category_views,
+                "찜 수": category_wishlist,
+                "구매수": category_orders,
+                "구매 전환율(%)": safe_rate(category_orders, category_views),
+            })
+        category_stats_df = pd.DataFrame(category_rows).sort_values(["구매 전환율(%)", "조회수"], ascending=False) if category_rows else pd.DataFrame()
+
+        signal_rows = []
+        if not no_purchase_interest.empty:
+            row = no_purchase_interest.sort_values(["찜 수", "장바구니 수", "조회수"], ascending=False).iloc[0]
+            signal_rows.append({
+                "신호": "관심은 높은데 구매가 없는 제품",
+                "대상": row["제품명"],
+                "해석": f"찜 {int(row['찜 수'])}회, 장바구니 {int(row['장바구니 수'])}회지만 구매가 아직 없습니다.",
+                "제안": "상세 설명, 배송/가격 안내, 첫 화면 이미지 순서를 먼저 손보세요.",
+            })
+        if not best_hour_row.empty and best_hour_row.iloc[0]["구매 전환율(%)"] > 0:
+            row = best_hour_row.iloc[0]
+            signal_rows.append({
+                "신호": "구매 전환율이 높은 시간대",
+                "대상": row["시간대"],
+                "해석": f"해당 시간대 전환율 {row['구매 전환율(%)']:.1f}%입니다.",
+                "제안": "이 시간대에 쿠폰, 리마인드, 카카오 알림 테스트를 우선 배치해 보세요.",
+            })
+        if not category_stats_df.empty:
+            row = category_stats_df.iloc[0]
+            signal_rows.append({
+                "신호": "가장 반응 좋은 카테고리",
+                "대상": row["카테고리"],
+                "해석": f"조회 {int(row['조회수'])}회 대비 구매 전환율 {row['구매 전환율(%)']:.1f}%입니다.",
+                "제안": "유사 제품 확장이나 같은 공간 내 추가 큐레이션 후보로 보세요.",
+            })
+        recommendation_df = pd.DataFrame(signal_rows)
+        if recommendation_df.empty:
+            st.markdown("<div class='insight-note'>아직 액션 신호를 만들 만큼 데이터가 충분하지 않습니다.</div>", unsafe_allow_html=True)
+        else:
+            st.dataframe(recommendation_df, use_container_width=True, hide_index=True)
     else:
-        demographic_col1, demographic_col2 = st.columns(2)
-        with demographic_col1:
-            st.markdown("##### 연령대")
-            age_counts = filtered_orders["age_group_label"].value_counts()
-            render_insight_bar(age_counts, order=["10대", "20대", "30대", "40대", "50대", "60대 이상", "선택 안 함", "미입력"])
-        with demographic_col2:
-            st.markdown("##### 성별")
-            gender_counts = filtered_orders["gender_label"].value_counts()
-            render_insight_bar(gender_counts, order=["여성", "남성", "기타", "선택 안 함", "미입력"])
+        recommendation_df = pd.DataFrame()
+        st.markdown("<div class='insight-note'>제품별 조회 데이터가 쌓이면 입점업체 액션 신호를 자동으로 정리합니다.</div>", unsafe_allow_html=True)
+
+    st.markdown("#### 카테고리별 기회")
+    if category_stats_df.empty:
+        st.info("카테고리별로 비교할 데이터가 아직 없습니다.")
+    else:
+        st.dataframe(category_stats_df, use_container_width=True, hide_index=True)
+
+    venue_summary_df = pd.DataFrame({
+        "숙소 위치": sorted(pd.concat([page_views["venue_location_label"], filtered_orders["venue_location_label"], filtered_wishlist["venue_location_label"]], ignore_index=True).dropna().unique().tolist())
+    })
+    if not venue_summary_df.empty:
+        venue_summary_df["조회수"] = venue_summary_df["숙소 위치"].apply(lambda value: len(page_views[page_views["venue_location_label"] == value]))
+        venue_summary_df["찜 수"] = venue_summary_df["숙소 위치"].apply(lambda value: len(filtered_wishlist[filtered_wishlist["venue_location_label"] == value]))
+        venue_summary_df["구매수"] = venue_summary_df["숙소 위치"].apply(lambda value: len(filtered_orders[filtered_orders["venue_location_label"] == value]))
+        venue_summary_df["구매 전환율(%)"] = venue_summary_df.apply(lambda row: safe_rate(row["구매수"], row["조회수"]), axis=1)
+    else:
+        venue_summary_df = pd.DataFrame(columns=["숙소 위치", "조회수", "찜 수", "구매수", "구매 전환율(%)"])
+
+    summary_df = pd.DataFrame([
+        {"항목": "제품 조회", "값": total_views},
+        {"항목": "찜 수", "값": len(filtered_wishlist)},
+        {"항목": "장바구니 수", "값": len(cart_events)},
+        {"항목": "구매 수", "값": purchase_count},
+        {"항목": "찜 전환율(%)", "값": safe_rate(len(filtered_wishlist), total_views)},
+        {"항목": "장바구니율(%)", "값": safe_rate(len(cart_events), total_views)},
+        {"항목": "구매 전환율(%)", "값": safe_rate(purchase_count, total_views)},
+        {"항목": "재방문 후 구매율(%)", "값": safe_rate(return_purchase_count, len(returning_views))},
+    ])
+    export_events = filtered.copy()
+    export_orders = filtered_orders.copy()
+    export_wishlist = filtered_wishlist.copy()
+    for export_df in (export_events, export_orders, export_wishlist):
+        for column in export_df.columns:
+            if pd.api.types.is_datetime64_any_dtype(export_df[column]):
+                export_df[column] = export_df[column].dt.strftime("%Y-%m-%d %H:%M:%S")
+    sheets = {
+        "Summary": summary_df,
+        "Product Stats": product_stats_df,
+        "Hourly Conversion": hourly_conversion_df,
+        "Age Wishlist Purchase": age_rate_df,
+        "Gender Wishlist Purchase": gender_rate_df,
+        "Venue Stats": venue_summary_df,
+        "Category Stats": category_stats_df,
+        "Action Signals": recommendation_df,
+        "Raw Events": export_events,
+        "Raw Orders": export_orders,
+        "Raw Wishlist": export_wishlist,
+    }
+    file_brand = selected_brand if selected_brand != "전체 입점업체" else "all-brands"
+    file_date = pd.Timestamp.now().strftime("%Y%m%d")
+    st.download_button(
+        "📥 입점업체별 인사이트 엑셀 다운로드",
+        data=dataframe_to_excel_bytes(sheets),
+        file_name=f"affilistay_insights_{file_brand}_{file_date}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+    )
 
 
 def render_host_income_billboard(snapshot):

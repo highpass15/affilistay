@@ -11,3 +11,4 @@ pillow
 supabase
 anthropic
 python-dotenv
+openpyxl
