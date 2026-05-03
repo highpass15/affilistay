@@ -100,6 +100,24 @@ st.markdown(
     h1, h2, h3, h4, h5, h6, p, label, span {
         letter-spacing: 0 !important;
     }
+    [data-testid="stWidgetLabel"],
+    [data-testid="stWidgetLabel"] *,
+    [data-testid="stDateInput"] label,
+    [data-testid="stDateInput"] label *,
+    [data-testid="stSelectbox"] label,
+    [data-testid="stSelectbox"] label *,
+    [data-testid="stMultiSelect"] label,
+    [data-testid="stMultiSelect"] label *,
+    [data-testid="stNumberInput"] label,
+    [data-testid="stNumberInput"] label *,
+    [data-testid="stTextInput"] label,
+    [data-testid="stTextInput"] label *,
+    [data-testid="stTextArea"] label,
+    [data-testid="stTextArea"] label * {
+        color: var(--affili-ink) !important;
+        opacity: 1 !important;
+        font-weight: 800 !important;
+    }
     div[data-testid="stForm"], div[data-testid="stVerticalBlockBorderWrapper"] {
         border-color: var(--affili-line) !important;
         background: rgba(255,253,250,0.72) !important;
@@ -905,7 +923,7 @@ def render_insights_dashboard(host_id, is_master):
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
-        st.markdown("#### 위치별 스캔 현황")
+        st.markdown("#### 제품 위치별 스캔 현황")
         location_counts = page_views["location_label"].value_counts()
         render_insight_bar(location_counts, order=["침실", "거실", "욕실", "주방", "미분류"])
 
@@ -938,6 +956,32 @@ def render_insights_dashboard(host_id, is_master):
         })
         hourly_conversion_df["구매 전환율(%)"] = hourly_conversion_df.apply(lambda row: safe_rate(row["구매수"], row["조회수"]), axis=1)
         render_insight_rate_bar(hourly_conversion_df, "시간대", "구매 전환율(%)", height=260, x_title="시간대")
+
+    weekday_order = ["월", "화", "수", "목", "금", "토", "일"]
+    order_weekdays = filtered_orders.dropna(subset=["created_at"]).assign(
+        weekday=lambda df: df["created_at"].dt.dayofweek.map({0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"})
+    )
+    purchase_event_weekdays = purchase_events.dropna(subset=["timestamp"]).assign(
+        weekday=lambda df: df["timestamp"].dt.dayofweek.map({0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"})
+    )
+    weekday_purchase_counts = (
+        order_weekdays["weekday"].value_counts().reindex(weekday_order, fill_value=0)
+        + purchase_event_weekdays["weekday"].value_counts().reindex(weekday_order, fill_value=0)
+    )
+    weekday_purchase_df = weekday_purchase_counts.reset_index()
+    weekday_purchase_df.columns = ["요일", "구매수"]
+
+    weekday_purchase_col1, weekday_purchase_col2 = st.columns(2)
+    with weekday_purchase_col1:
+        st.markdown("#### 요일별 구매 현황")
+        render_insight_bar(weekday_purchase_counts, order=weekday_order, height=240, x_title="요일")
+    with weekday_purchase_col2:
+        st.markdown("#### 주중/주말 구매 현황")
+        weekday_purchase_type = pd.Series({
+            "주중": int(weekday_purchase_counts.reindex(["월", "화", "수", "목", "금"], fill_value=0).sum()),
+            "주말": int(weekday_purchase_counts.reindex(["토", "일"], fill_value=0).sum()),
+        })
+        render_insight_bar(weekday_purchase_type, order=["주중", "주말"], height=240)
 
     venue_col1, venue_col2 = st.columns(2)
     with venue_col1:
@@ -1093,6 +1137,7 @@ def render_insights_dashboard(host_id, is_master):
         "Summary": summary_df,
         "Product Stats": product_stats_df,
         "Hourly Conversion": hourly_conversion_df,
+        "Weekday Purchase": weekday_purchase_df,
         "Age Wishlist Purchase": age_rate_df,
         "Gender Wishlist Purchase": gender_rate_df,
         "Venue Stats": venue_summary_df,
