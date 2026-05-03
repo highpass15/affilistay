@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, Query
+from fastapi import BackgroundTasks, FastAPI, Request, Form, Query
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -1977,8 +1977,91 @@ async def health_check():
 # ─────────────────────────────────────────
 # 파트너 문의 API
 # ─────────────────────────────────────────
+def _compact_inquiry_text(payload: dict) -> str:
+    type_label = "호스트" if payload.get("inquiry_type") == "host" else "브랜드"
+    lines = [
+        f"[AFFILISTAY] 새 {type_label} 파트너 신청",
+        f"이름: {payload.get('name') or '-'}",
+        f"연락처: {payload.get('contact') or '-'}",
+        f"이메일: {payload.get('email') or '-'}",
+    ]
+    if payload.get("company_name"):
+        lines.append(f"업체명: {payload['company_name']}")
+    if payload.get("location"):
+        lines.append(f"주소: {payload['location']}")
+    if payload.get("platform"):
+        lines.append(f"플랫폼: {payload['platform']}")
+    if payload.get("platform_host_name"):
+        lines.append(f"플랫폼 호스트명: {payload['platform_host_name']}")
+    if payload.get("category"):
+        lines.append(f"카테고리: {payload['category']}")
+    if payload.get("message"):
+        lines.append(f"문의: {payload['message']}")
+    return "\n".join(lines)[:990]
+
+
+def _get_kakao_access_token() -> Optional[str]:
+    """Kakao '나에게 보내기'용 액세스 토큰을 환경변수에서 가져오거나 refresh token으로 갱신합니다."""
+    rest_api_key = os.getenv("KAKAO_REST_API_KEY")
+    refresh_token = os.getenv("KAKAO_REFRESH_TOKEN")
+    if rest_api_key and refresh_token:
+        try:
+            with httpx.Client(timeout=5) as client:
+                resp = client.post(
+                    "https://kauth.kakao.com/oauth/token",
+                    data={
+                        "grant_type": "refresh_token",
+                        "client_id": rest_api_key,
+                        "refresh_token": refresh_token,
+                    },
+                )
+                resp.raise_for_status()
+                token = resp.json().get("access_token")
+                if token:
+                    return token
+        except Exception as exc:
+            print(f"[Kakao Token Refresh Error] {exc}")
+    return os.getenv("KAKAO_ADMIN_ACCESS_TOKEN") or os.getenv("KAKAO_ACCESS_TOKEN")
+
+
+def _notify_inquiry_to_kakao(payload: dict):
+    """
+    파트너 신청 접수 알림.
+    개인 카카오톡 ID로 직접 발송하는 API는 제공되지 않아, 토큰 소유자의 '나와의 채팅'으로 보냅니다.
+    """
+    access_token = _get_kakao_access_token()
+    if not access_token:
+        print("[Kakao Notification Skipped] KAKAO_REST_API_KEY/KAKAO_REFRESH_TOKEN 또는 KAKAO_ADMIN_ACCESS_TOKEN이 없습니다.")
+        return
+
+    text = _compact_inquiry_text(payload)
+    template_object = {
+        "object_type": "text",
+        "text": text,
+        "link": {
+            "web_url": ADMIN_URL,
+            "mobile_web_url": ADMIN_URL,
+        },
+        "button_title": "관리자에서 확인",
+    }
+    try:
+        with httpx.Client(timeout=5) as client:
+            resp = client.post(
+                "https://kapi.kakao.com/v2/api/talk/memo/default/send",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+                },
+                data={"template_object": json.dumps(template_object, ensure_ascii=False)},
+            )
+            resp.raise_for_status()
+    except Exception as exc:
+        print(f"[Kakao Notification Error] {exc}")
+
+
 @app.post("/api/inquiry")
 async def receive_inquiry(
+    background_tasks: BackgroundTasks,
     inquiry_type: str = Form(...),
     name: str = Form(...),
     contact: str = Form(...),
@@ -1986,24 +2069,51 @@ async def receive_inquiry(
     company_name: str = Form(default=""),
     job_title: str = Form(default=""),
     location: str = Form(default=""),
+    location_detail: str = Form(default=""),
+    postcode: str = Form(default=""),
     platform: str = Form(default=""),
+    platform_host_name: str = Form(default=""),
     category: str = Form(default=""),
     message: str = Form(default="")
 ):
+    location_parts = [part.strip() for part in [location, location_detail] if part and part.strip()]
+    full_location = " ".join(location_parts)
+    if postcode:
+        full_location = f"{full_location} ({postcode.strip()})" if full_location else postcode.strip()
+
+    platform_parts = [part.strip() for part in [platform, f"호스트명: {platform_host_name}" if platform_host_name else ""] if part and part.strip()]
+    platform_summary = " / ".join(platform_parts)
+
     conn = get_db_connection()
     if _is_pg():
         with conn.cursor() as cur:
             cur.execute('''
                 INSERT INTO inquiries (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message))
+            ''', (inquiry_type, name, contact, email, company_name, job_title, full_location, platform_summary, category, message))
     else:
         conn.execute('''
             INSERT INTO inquiries (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (inquiry_type, name, contact, email, company_name, job_title, location, platform, category, message))
+        ''', (inquiry_type, name, contact, email, company_name, job_title, full_location, platform_summary, category, message))
     conn.commit()
     conn.close()
+    background_tasks.add_task(
+        _notify_inquiry_to_kakao,
+        {
+            "inquiry_type": inquiry_type,
+            "name": name,
+            "contact": contact,
+            "email": email,
+            "company_name": company_name,
+            "job_title": job_title,
+            "location": full_location,
+            "platform": platform,
+            "platform_host_name": platform_host_name,
+            "category": category,
+            "message": message,
+        },
+    )
     return {"status": "success", "message": "성공적으로 접수되었습니다."}
 
 

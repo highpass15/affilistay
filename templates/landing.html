@@ -13,6 +13,7 @@
     <meta property="og:type" content="website">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="//t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -585,15 +586,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
                     <button id="opt-host" class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
                         <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🏠</span>
-                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">숙박/공간 호스트</span>
-                    </button>
-                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
-                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🏢</span>
-                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">부티크 호텔</span>
-                    </button>
-                    <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
-                        <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">✨</span>
-                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">인테리어 디자이너</span>
+                        <span class="text-[14px] font-semibold text-gray-700 group-hover:text-black">숙박공간 호스트</span>
                     </button>
                     <button class="option-btn group flex items-center p-4 border border-gray-200 rounded-xl hover:border-black transition-all text-left bg-white" onclick="selectBusinessOption(this)">
                         <span class="w-11 h-11 flex items-center justify-center bg-[#F8F7F4] rounded-lg mr-4 text-xl group-hover:bg-black group-hover:text-white transition-colors">🔑</span>
@@ -633,19 +626,31 @@
                         <input type="email" name="email" required class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors" placeholder="example@email.com">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">숙박업소 위치</label>
-                        <input type="text" name="location" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors" placeholder="서울시 강남구">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">숙박업소 위치 *</label>
+                        <div class="grid grid-cols-[1fr_auto] gap-2">
+                            <input type="text" id="hostLocation" name="location" required class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors" placeholder="도로명 또는 지번 주소를 검색해 주세요">
+                            <button type="button" onclick="openHostAddressSearch()" class="px-4 py-3 rounded-lg bg-black text-white text-xs font-bold tracking-widest whitespace-nowrap hover:bg-gray-800 transition-colors">주소 검색</button>
+                        </div>
+                        <input type="hidden" id="hostPostcode" name="postcode">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">상세 주소</label>
+                        <input type="text" id="hostLocationDetail" name="location_detail" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors" placeholder="동/호수, 객실명, 건물명 등">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 mb-1">이용하시는 중개 플랫폼</label>
                         <input type="text" name="platform" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors" placeholder="에어비앤비, 야놀자 등">
                     </div>
                     <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">중개 플랫폼 내 호스트명 *</label>
+                        <input type="text" name="platform_host_name" required class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors" placeholder="예: 홍대 에어비앤비앤비, Stay Jangwoo">
+                    </div>
+                    <div>
                         <label class="block text-xs font-bold text-gray-700 mb-1">문의사항</label>
                         <textarea rows="3" name="message" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none" placeholder="어필리스테이에 문의할 부분을 자유롭게 남겨주세요."></textarea>
                     </div>
                     <div class="pt-6 flex justify-end">
-                        <button type="submit" class="bg-black text-white px-8 py-3.5 rounded-full text-[11px] font-bold tracking-[0.3em] uppercase hover:bg-gray-800 transition-colors shadow-lg">문의 접수하기</button>
+                        <button type="submit" class="bg-black text-white px-8 py-3.5 rounded-full text-[11px] font-bold tracking-[0.3em] uppercase hover:bg-gray-800 transition-colors shadow-lg">지금 신청하기</button>
                     </div>
                 </form>
             </div>
@@ -691,7 +696,7 @@
                         <textarea rows="3" name="message" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none" placeholder="어필리스테이에 문의할 부분을 자유롭게 남겨주세요."></textarea>
                     </div>
                     <div class="pt-6 flex justify-end">
-                        <button type="submit" class="bg-black text-white px-8 py-3.5 rounded-full text-[11px] font-bold tracking-[0.3em] uppercase hover:bg-gray-800 transition-colors shadow-lg">문의 접수하기</button>
+                        <button type="submit" class="bg-black text-white px-8 py-3.5 rounded-full text-[11px] font-bold tracking-[0.3em] uppercase hover:bg-gray-800 transition-colors shadow-lg">지금 신청하기</button>
                     </div>
                 </form>
             </div>
@@ -826,6 +831,37 @@
             document.getElementById('step2-brand').classList.add('hidden');
             document.getElementById('step2-host').classList.add('hidden');
             document.getElementById('step1').classList.remove('hidden');
+        }
+
+        function openHostAddressSearch() {
+            if (!window.kakao || !window.kakao.Postcode) {
+                alert('주소 검색 모듈을 불러오는 중입니다. 잠시 후 다시 눌러주세요.');
+                return;
+            }
+
+            new kakao.Postcode({
+                popupTitle: 'AFFILISTAY 숙박업소 주소 검색',
+                oncomplete: function(data) {
+                    const roadAddr = data.roadAddress || '';
+                    const jibunAddr = data.jibunAddress || '';
+                    let extraRoadAddr = '';
+
+                    if (data.bname && /[동로가]$/g.test(data.bname)) {
+                        extraRoadAddr += data.bname;
+                    }
+                    if (data.buildingName && data.apartment === 'Y') {
+                        extraRoadAddr += extraRoadAddr ? `, ${data.buildingName}` : data.buildingName;
+                    }
+
+                    const selectedAddr = data.userSelectedType === 'R' ? roadAddr : (jibunAddr || roadAddr);
+                    const extra = extraRoadAddr ? ` (${extraRoadAddr})` : '';
+                    document.getElementById('hostLocation').value = `${selectedAddr}${extra}`.trim();
+                    document.getElementById('hostPostcode').value = data.zonecode || '';
+                    document.getElementById('hostLocationDetail').focus();
+                }
+            }).open({
+                popupKey: 'affilistayHostAddress'
+            });
         }
 
         // 실제 서버 제출 처리
