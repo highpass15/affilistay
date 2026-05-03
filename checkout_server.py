@@ -1280,6 +1280,35 @@ def _catalog_gallery_map(conn):
     return gallery_map
 
 
+def _catalog_gallery_map_for_products(conn, product_ids):
+    ids = []
+    for product_id in product_ids or []:
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            continue
+        if product_id not in ids:
+            ids.append(product_id)
+    if not ids:
+        return {}
+
+    placeholders = ", ".join([_ph(None)] * len(ids))
+    query = (
+        "SELECT product_id, image_data, sort_order "
+        f"FROM product_images WHERE product_id IN ({placeholders}) "
+        "ORDER BY product_id, sort_order, id"
+    )
+    try:
+        rows = _fetch_all(conn, query, query, tuple(ids))
+    except Exception:
+        return {}
+
+    gallery_map = {}
+    for row in rows:
+        gallery_map.setdefault(row["product_id"], []).append(row["image_data"])
+    return gallery_map
+
+
 
 def _category_items(labels, icons, counts=None):
     counts = counts or {}
@@ -1674,8 +1703,6 @@ def _decorate_recommendation_products(products, image_map, gallery_map=None):
 
 
 def _build_product_recommendations(conn, product):
-    image_map = _catalog_image_map(conn)
-    gallery_map = _catalog_gallery_map(conn)
     owner_id = product.get("owner_id")
     product_id = product.get("id")
     current_room = product.get("room_category")
@@ -1702,23 +1729,6 @@ def _build_product_recommendations(conn, product):
         """,
         (owner_id, product_id),
     )
-    same_owner_products = _decorate_recommendation_products(same_owner_products, image_map, gallery_map)
-
-    same_showroom_products = same_owner_products
-    if current_room:
-        same_showroom_products = [item for item in same_owner_products if item.get("room_category") == current_room]
-        if len(same_showroom_products) < 4:
-            same_showroom_products = _unique_products(same_showroom_products + same_owner_products)
-    same_showroom_products = same_showroom_products[:6]
-
-    host_curated_products = [
-        item for item in same_owner_products
-        if item.get("room_category") != current_room or item.get("product_category") != current_category
-    ]
-    if not host_curated_products:
-        excluded = {item["id"] for item in same_showroom_products}
-        host_curated_products = [item for item in same_owner_products if item.get("id") not in excluded]
-    host_curated_products = host_curated_products[:6]
 
     similar_candidates = _fetch_all(
         conn,
@@ -1742,7 +1752,27 @@ def _build_product_recommendations(conn, product):
         """,
         (owner_id,),
     )
-    similar_candidates = _decorate_recommendation_products(similar_candidates, image_map, gallery_map)
+
+    recommendation_ids = [item.get("id") for item in same_owner_products + similar_candidates]
+    gallery_map = _catalog_gallery_map_for_products(conn, recommendation_ids)
+    same_owner_products = _decorate_recommendation_products(same_owner_products, {}, gallery_map)
+    similar_candidates = _decorate_recommendation_products(similar_candidates, {}, gallery_map)
+
+    same_showroom_products = same_owner_products
+    if current_room:
+        same_showroom_products = [item for item in same_owner_products if item.get("room_category") == current_room]
+        if len(same_showroom_products) < 4:
+            same_showroom_products = _unique_products(same_showroom_products + same_owner_products)
+    same_showroom_products = same_showroom_products[:6]
+
+    host_curated_products = [
+        item for item in same_owner_products
+        if item.get("room_category") != current_room or item.get("product_category") != current_category
+    ]
+    if not host_curated_products:
+        excluded = {item["id"] for item in same_showroom_products}
+        host_curated_products = [item for item in same_owner_products if item.get("id") not in excluded]
+    host_curated_products = host_curated_products[:6]
 
     def recommendation_score(item):
         category_match = item.get("product_category") == current_category

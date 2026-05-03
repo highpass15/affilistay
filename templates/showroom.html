@@ -233,7 +233,13 @@
                 try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]'); }
                 catch (error) { return []; }
             };
-            const writeWishlist = (items) => localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+            const writeWishlist = (items) => {
+                try {
+                    localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+                } catch (error) {
+                    console.warn('wishlist save failed', error);
+                }
+            };
             const updateCount = () => {
                 const count = readWishlist().length;
                 document.querySelectorAll('[data-wishlist-count]').forEach((badge) => {
@@ -312,13 +318,12 @@
                 event.stopImmediatePropagation?.();
                 const now = Date.now();
                 const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
-                if (now - lastActivatedAt < 360) return;
+                if (now - lastActivatedAt < 900) return;
                 button.dataset.wishlistActivatedAt = String(now);
                 toggleButton(button);
             };
             document.addEventListener('pointerup', handleActivation, true);
             document.addEventListener('click', handleActivation, true);
-            document.addEventListener('touchend', handleActivation, true);
             document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {
                 button.addEventListener('keydown', (event) => {
                     if (event.key === 'Enter' || event.key === ' ') {

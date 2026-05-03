@@ -604,7 +604,11 @@
             };
 
             const writeWishlist = (items) => {
-                localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+                try {
+                    localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+                } catch (error) {
+                    console.warn('wishlist save failed', error);
+                }
             };
 
             const wishlistPayloadFromButton = (button) => ({
@@ -696,7 +700,7 @@
 
                 const now = Date.now();
                 const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
-                if (now - lastActivatedAt < 360) return;
+                if (now - lastActivatedAt < 900) return;
                 button.dataset.wishlistActivatedAt = String(now);
                 toggleWishlistButton(button);
             };

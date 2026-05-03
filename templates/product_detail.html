@@ -1436,7 +1436,11 @@
         }
 
         function writeWishlist(items) {
-            localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+            try {
+                localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+            } catch (error) {
+                console.warn("wishlist save failed", error);
+            }
         }
 
         function wishlistItemId(item) {
@@ -1536,7 +1540,7 @@
 
             const now = Date.now();
             const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
-            if (now - lastActivatedAt < 360) return;
+            if (now - lastActivatedAt < 900) return;
             button.dataset.wishlistActivatedAt = String(now);
             toggleWishlistButton(button);
         }
@@ -1546,7 +1550,6 @@
                 wishlistCaptureBound = true;
                 document.addEventListener("pointerup", handleWishlistActivation, true);
                 document.addEventListener("click", handleWishlistActivation, true);
-                document.addEventListener("touchend", handleWishlistActivation, true);
             }
             document.querySelectorAll("[data-wishlist-toggle]").forEach((button) => {
                 if (button.dataset.wishlistBound === "true") return;
