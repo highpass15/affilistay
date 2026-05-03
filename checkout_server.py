@@ -671,12 +671,6 @@ def _payload_dict(payload):
 @app.post("/api/wishlist")
 async def save_wishlist_item(request: Request, background_tasks: BackgroundTasks, payload: WishlistPayload):
     customer_id = _customer_id_from_request(request)
-    if not customer_id:
-        return JSONResponse(
-            content={"status": "login_required", "login_url": _customer_login_url(payload.url or "/catalog")},
-            status_code=401,
-        )
-
     conn = get_db_connection()
     try:
         product = _fetch_one(
@@ -698,6 +692,24 @@ async def save_wishlist_item(request: Request, background_tasks: BackgroundTasks
 
         qr_code_id = payload.qr_code_id or product.get("qr_code_id")
         host_id = product.get("owner_id")
+        base_url = _public_base_url(request)
+        action_url = _absolute_url(
+            base_url,
+            payload.url or f"/shop/{qr_code_id}/product/{payload.product_id}",
+        )
+
+        # 비로그인 고객도 브라우저 찜목록에 바로 담을 수 있게 API는 성공으로 응답한다.
+        # 로그인 고객만 DB에 저장해 다음날 리마인드 후보로 관리한다.
+        if not customer_id:
+            background_tasks.add_task(
+                _notify_wishlist_added,
+                _payload_dict(payload),
+                product,
+                "비회원",
+                action_url,
+            )
+            return {"status": "success", "anonymous": True}
+
         payload_json = json.dumps(payload.dict(), ensure_ascii=False)
 
         if _is_pg():
@@ -740,11 +752,6 @@ async def save_wishlist_item(request: Request, background_tasks: BackgroundTasks
                 (customer_id, payload.product_id, qr_code_id, host_id, payload_json),
             )
         conn.commit()
-        base_url = _public_base_url(request)
-        action_url = _absolute_url(
-            base_url,
-            payload.url or f"/shop/{qr_code_id}/product/{payload.product_id}",
-        )
         background_tasks.add_task(
             _notify_wishlist_added,
             _payload_dict(payload),

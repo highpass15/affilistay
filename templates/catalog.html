@@ -215,9 +215,9 @@
             transition: transform 160ms ease, background 160ms ease, color 160ms ease;
         }
         .wish-button.is-liked {
-            border-color: rgba(230, 93, 88, 0.24);
-            background: #e65d58;
-            color: #fff;
+            border-color: rgba(230, 93, 88, 0.34);
+            background: rgba(255, 253, 249, 0.96);
+            color: #e65d58;
             box-shadow: 0 12px 28px rgba(230, 93, 88, 0.24);
         }
         .wishlist-toast {
@@ -622,7 +622,7 @@
             });
 
             const syncWishlistToServer = async (payload) => {
-                if (!CUSTOMER_LOGGED_IN || !payload.product_id) return;
+                if (!payload.product_id) return;
                 try {
                     await fetch('/api/wishlist', {
                         method: 'POST',
@@ -678,11 +678,8 @@
                         image: payload.image
                     });
                     nextMessage = `${payload.product_name || "상품"}을 찜목록에 담았어요.`;
-                    if (CUSTOMER_LOGGED_IN) {
-                        syncWishlistToServer(payload);
-                    } else {
-                        localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
-                    }
+                    syncWishlistToServer(payload);
+                    localStorage.removeItem(PENDING_WISHLIST_KEY);
                 }
                 writeWishlist(items);
                 syncWishlistButtons();
@@ -694,6 +691,8 @@
                 const target = event.target instanceof Element ? event.target : event.target?.parentElement;
                 const button = target?.closest?.('[data-wishlist-toggle]');
                 if (!button) return;
+                if (event.__affilistayWishlistHandled) return;
+                event.__affilistayWishlistHandled = true;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -708,6 +707,7 @@
             const bindWishlistButtons = () => {
                 if (!wishlistCaptureBound) {
                     wishlistCaptureBound = true;
+                    document.addEventListener('pointerdown', handleWishlistActivation, true);
                     document.addEventListener('click', handleWishlistActivation, true);
                     document.addEventListener('pointerup', handleWishlistActivation, true);
                 }

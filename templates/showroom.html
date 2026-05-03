@@ -115,9 +115,9 @@
             transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
         }
         .wish-button.is-liked {
-            border-color: rgba(230, 93, 88, 0.24);
-            background: #e65d58;
-            color: #fff;
+            border-color: rgba(230, 93, 88, 0.34);
+            background: rgba(255, 253, 249, 0.96);
+            color: #e65d58;
             box-shadow: 0 14px 30px rgba(230, 93, 88, 0.24);
         }
         .wish-button:active {
@@ -257,7 +257,7 @@
                 image: button.dataset.image || '/static/product.png'
             });
             const syncToServer = async (payload) => {
-                if (!CUSTOMER_LOGGED_IN || !payload.product_id) return;
+                if (!payload.product_id) return;
                 try {
                     await fetch('/api/wishlist', {
                         method: 'POST',
@@ -300,11 +300,8 @@
                         url: payload.url,
                         image: payload.image
                     });
-                    if (CUSTOMER_LOGGED_IN) {
-                        syncToServer(payload);
-                    } else {
-                        localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
-                    }
+                    syncToServer(payload);
+                    localStorage.removeItem(PENDING_WISHLIST_KEY);
                 }
                 writeWishlist(items);
                 syncButtons();
@@ -313,6 +310,8 @@
                 const target = event.target instanceof Element ? event.target : event.target?.parentElement;
                 const button = target?.closest?.('[data-wishlist-toggle]');
                 if (!button) return;
+                if (event.__affilistayWishlistHandled) return;
+                event.__affilistayWishlistHandled = true;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -322,6 +321,7 @@
                 button.dataset.wishlistActivatedAt = String(now);
                 toggleButton(button);
             };
+            document.addEventListener('pointerdown', handleActivation, true);
             document.addEventListener('pointerup', handleActivation, true);
             document.addEventListener('click', handleActivation, true);
             document.querySelectorAll('[data-wishlist-toggle]').forEach((button) => {

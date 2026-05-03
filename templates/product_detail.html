@@ -1460,7 +1460,7 @@
         }
 
         async function syncWishlistToServer(payload) {
-            if (!CUSTOMER_LOGGED_IN || !payload.product_id) return;
+            if (!payload.product_id) return;
             try {
                 await fetch("/api/wishlist", {
                     method: "POST",
@@ -1518,11 +1518,8 @@
                     url: payload.url,
                     image: payload.image
                 });
-                if (CUSTOMER_LOGGED_IN) {
-                    syncWishlistToServer(payload);
-                } else {
-                    localStorage.setItem(PENDING_WISHLIST_KEY, JSON.stringify(payload));
-                }
+                syncWishlistToServer(payload);
+                localStorage.removeItem(PENDING_WISHLIST_KEY);
             }
 
             writeWishlist(items);
@@ -1534,6 +1531,8 @@
             const target = event.target instanceof Element ? event.target : event.target?.parentElement;
             const button = target?.closest?.("[data-wishlist-toggle]");
             if (!button) return;
+            if (event.__affilistayWishlistHandled) return;
+            event.__affilistayWishlistHandled = true;
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation?.();
@@ -1548,6 +1547,7 @@
         function bindWishlistButtons() {
             if (!wishlistCaptureBound) {
                 wishlistCaptureBound = true;
+                document.addEventListener("pointerdown", handleWishlistActivation, true);
                 document.addEventListener("pointerup", handleWishlistActivation, true);
                 document.addEventListener("click", handleWishlistActivation, true);
             }
