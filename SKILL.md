@@ -11,6 +11,7 @@ This document serves as the master skill and memory context for the AffiliStay p
 ## 2. Infrastructure & Monetization Tools (MCP)
 - **Database (Core)**: The platform uses relational SQL databases (PostgreSQL on Render / SQLite locally) to store all core data (hosts, products, customers, orders).
 - **Firebase Integration**: Firebase is strictly used for Push Notifications (FCM) and specific realtime features where it excels, NOT for the core relational database.
+- **Owner Alerts**: Use Telegram Bot API via `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` for owner alerts on partner inquiries, signups, wishlist adds, paid purchases, and QR product registration.
 - **Payments (PayPal & PortOne)**: 
   - PayPal MCP is configured for overseas users. 
   - Iamport (PortOne) is implemented via frontend JS for domestic payments (KakaoPay, Toss, NaverPay, Credit Card). 

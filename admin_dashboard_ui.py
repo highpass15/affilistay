@@ -15,6 +15,7 @@ import os
 import time
 import httpx
 import fcm_service
+import notification_service
 
 try:
     import altair as alt
@@ -36,6 +37,7 @@ def initialize_platform():
 initialize_platform()
 
 CHECKOUT_BASE_URL = "https://affilistay-showroom.onrender.com"
+ADMIN_BASE_URL = os.getenv("ADMIN_BASE_URL", "https://affilistay-admin.onrender.com")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
@@ -1702,6 +1704,19 @@ def check_auth():
                             cursor.execute(venue_query, (new_host_id, venue_location, None))
 
                         conn.commit()
+                        notification_service.send_telegram_notification(
+                            "새 파트너 회원가입",
+                            [
+                                ("가입 유형", role_label),
+                                ("이름/업체명", full_name.strip()),
+                                ("아이디", new_username.strip()),
+                                ("연락처", formatted_phone),
+                                ("이메일", email.strip().lower()),
+                                ("주소", " ".join(piece for piece in [address_road, address_detail] if piece).strip()),
+                                ("가입 경로", signup_path),
+                            ],
+                            action_url=ADMIN_BASE_URL,
+                        )
                         reset_signup_phone_verification()
                         st.session_state["signup_address_results"] = []
                         st.session_state["signup_address_road"] = ""
@@ -1878,6 +1893,21 @@ def render_tab_qr(host_id, is_master):
                         replace_product_options(cursor, new_product_id, options_raw)
                         database.bump_public_content_version(conn_save)
                         conn_save.commit()
+                        notification_service.send_telegram_notification(
+                            "새 QR 상품 등록",
+                            [
+                                ("등록자", st.session_state.get("name")),
+                                ("역할", "MASTER" if is_master else st.session_state.get("role")),
+                                ("브랜드", brand_name),
+                                ("제품", product_name),
+                                ("배치 공간", room_label),
+                                ("카테고리", prod_cat_label),
+                                ("판매가", notification_service.format_krw(price)),
+                                ("정가", notification_service.format_krw(original_price or price)),
+                                ("QR URL", url),
+                            ],
+                            action_url=url,
+                        )
                         st.success(f"✅ '{product_name}' 등록이 완료됐어요. 쇼룸도 자동 반영을 시작합니다.")
                         qr_buffer = make_qr(url)
                         q1, q2 = st.columns([1, 2])

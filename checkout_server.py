@@ -19,6 +19,7 @@ from decimal import Decimal, InvalidOperation
 import fcm_service
 import base64
 from dotenv import load_dotenv
+from notification_service import format_krw, send_telegram_notification
 
 load_dotenv()
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
@@ -614,7 +615,11 @@ async def customer_login_process(
     return response
 
 @app.get("/customer/login/sns/{provider}")
-async def customer_sns_login(provider: str, return_url: str = Query(default="/")):
+async def customer_sns_login(
+    background_tasks: BackgroundTasks,
+    provider: str,
+    return_url: str = Query(default="/"),
+):
     """
     SNS ?? ??? (Mock)
     MVP ????? SNS ?? ?? ? ?? SNS ?? ???? ?? ??/??? ? ??? ??
@@ -636,6 +641,7 @@ async def customer_sns_login(provider: str, return_url: str = Query(default="/")
         else:
             customer_id = cursor.fetchone()[0]
         conn.commit()
+        background_tasks.add_task(_notify_customer_signup, provider, mock_email, customer_id, ADMIN_URL)
     else:
         customer_id = customer['id'] if isinstance(customer, sqlite3.Row) or os.environ.get('DATABASE_URL') else customer[0]
         
@@ -663,7 +669,7 @@ def _payload_dict(payload):
 
 
 @app.post("/api/wishlist")
-async def save_wishlist_item(request: Request, payload: WishlistPayload):
+async def save_wishlist_item(request: Request, background_tasks: BackgroundTasks, payload: WishlistPayload):
     customer_id = _customer_id_from_request(request)
     if not customer_id:
         return JSONResponse(
@@ -675,8 +681,16 @@ async def save_wishlist_item(request: Request, payload: WishlistPayload):
     try:
         product = _fetch_one(
             conn,
-            "SELECT id, owner_id, qr_code_id FROM products WHERE id = %s",
-            "SELECT id, owner_id, qr_code_id FROM products WHERE id = ?",
+            """
+            SELECT p.id, p.owner_id, p.qr_code_id, p.product_name, p.brand_name, p.price, h.name as host_name
+            FROM products p LEFT JOIN hosts h ON p.owner_id = h.id
+            WHERE p.id = %s
+            """,
+            """
+            SELECT p.id, p.owner_id, p.qr_code_id, p.product_name, p.brand_name, p.price, h.name as host_name
+            FROM products p LEFT JOIN hosts h ON p.owner_id = h.id
+            WHERE p.id = ?
+            """,
             (payload.product_id,),
         )
         if not product:
@@ -726,6 +740,18 @@ async def save_wishlist_item(request: Request, payload: WishlistPayload):
                 (customer_id, payload.product_id, qr_code_id, host_id, payload_json),
             )
         conn.commit()
+        base_url = _public_base_url(request)
+        action_url = _absolute_url(
+            base_url,
+            payload.url or f"/shop/{qr_code_id}/product/{payload.product_id}",
+        )
+        background_tasks.add_task(
+            _notify_wishlist_added,
+            _payload_dict(payload),
+            product,
+            customer_id,
+            action_url,
+        )
         return {"status": "success"}
     except Exception as exc:
         conn.rollback()
@@ -1366,6 +1392,19 @@ def _encode_return_to(path):
     return quote(path, safe="")
 
 
+def _public_base_url(request: Request):
+    base_url = str(request.base_url).rstrip("/")
+    return base_url.replace("http://", "https://") if "onrender.com" in base_url else base_url
+
+
+def _absolute_url(base_url, path):
+    if not path:
+        return base_url
+    if str(path).startswith(("http://", "https://")):
+        return str(path)
+    return f"{base_url}{path if str(path).startswith('/') else '/' + str(path)}"
+
+
 # 작업 2: QR URL에서 전달되는 숙박/공간 맥락을 상세페이지 링크로 이어 붙입니다.
 def _analytics_query_string(stay_id=None, location=None, checkin_day=None):
     params = []
@@ -1407,6 +1446,80 @@ def _customer_id_from_request(request: Request):
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _notify_customer_signup(provider, email, customer_id, action_url=None):
+    send_telegram_notification(
+        "새 고객 회원가입",
+        [
+            ("가입 방식", provider or "email"),
+            ("고객 ID", customer_id),
+            ("이메일", email),
+        ],
+        action_url=action_url or ADMIN_URL,
+    )
+
+
+def _notify_wishlist_added(payload_data, product_data, customer_id, action_url):
+    send_telegram_notification(
+        "찜목록 추가",
+        [
+            ("고객 ID", customer_id),
+            ("제품", product_data.get("product_name") or payload_data.get("product_name")),
+            ("브랜드", product_data.get("brand_name") or payload_data.get("brand_name")),
+            ("쇼룸 호스트", product_data.get("host_name")),
+            ("가격", format_krw(product_data.get("price") or payload_data.get("price"))),
+            ("상품 URL", action_url),
+        ],
+        action_url=action_url,
+    )
+
+
+def _notify_purchase_completed(order_data, action_url=None):
+    if not order_data:
+        return
+    send_telegram_notification(
+        "제품 구매 완료",
+        [
+            ("주문 ID", order_data.get("id")),
+            ("제품", order_data.get("product_name")),
+            ("브랜드", order_data.get("brand_name")),
+            ("쇼룸 호스트", order_data.get("host_name")),
+            ("고객명", order_data.get("customer_name")),
+            ("연락처", order_data.get("phone_number")),
+            ("결제 금액", format_krw(order_data.get("total_amount") or order_data.get("price"))),
+            ("연령대", order_data.get("customer_age_group")),
+            ("성별", order_data.get("customer_gender")),
+        ],
+        action_url=action_url or ADMIN_URL,
+    )
+
+
+def _fetch_order_notification_row(conn, order_id):
+    return _fetch_one(
+        conn,
+        """
+        SELECT o.id, o.customer_name, o.phone_number, o.total_amount,
+               o.customer_age_group, o.customer_gender,
+               p.product_name, p.brand_name, p.price, p.qr_code_id,
+               h.name as host_name
+        FROM orders o
+        JOIN products p ON o.product_id = p.id
+        LEFT JOIN hosts h ON p.owner_id = h.id
+        WHERE o.id = %s
+        """,
+        """
+        SELECT o.id, o.customer_name, o.phone_number, o.total_amount,
+               o.customer_age_group, o.customer_gender,
+               p.product_name, p.brand_name, p.price, p.qr_code_id,
+               h.name as host_name
+        FROM orders o
+        JOIN products p ON o.product_id = p.id
+        LEFT JOIN hosts h ON p.owner_id = h.id
+        WHERE o.id = ?
+        """,
+        (order_id,),
+    )
 
 
 AGE_GROUP_OPTIONS = {"10s", "20s", "30s", "40s", "50s", "60s_plus", "unknown"}
@@ -1977,86 +2090,24 @@ async def health_check():
 # ─────────────────────────────────────────
 # 파트너 문의 API
 # ─────────────────────────────────────────
-def _compact_inquiry_text(payload: dict) -> str:
+def _notify_inquiry_to_telegram(payload: dict):
     type_label = "호스트" if payload.get("inquiry_type") == "host" else "브랜드"
-    lines = [
-        f"[AFFILISTAY] 새 {type_label} 파트너 신청",
-        f"이름: {payload.get('name') or '-'}",
-        f"연락처: {payload.get('contact') or '-'}",
-        f"이메일: {payload.get('email') or '-'}",
-    ]
-    if payload.get("company_name"):
-        lines.append(f"업체명: {payload['company_name']}")
-    if payload.get("location"):
-        lines.append(f"주소: {payload['location']}")
-    if payload.get("platform"):
-        lines.append(f"플랫폼: {payload['platform']}")
-    if payload.get("platform_host_name"):
-        lines.append(f"플랫폼 호스트명: {payload['platform_host_name']}")
-    if payload.get("category"):
-        lines.append(f"카테고리: {payload['category']}")
-    if payload.get("message"):
-        lines.append(f"문의: {payload['message']}")
-    return "\n".join(lines)[:990]
-
-
-def _get_kakao_access_token() -> Optional[str]:
-    """Kakao '나에게 보내기'용 액세스 토큰을 환경변수에서 가져오거나 refresh token으로 갱신합니다."""
-    rest_api_key = os.getenv("KAKAO_REST_API_KEY")
-    refresh_token = os.getenv("KAKAO_REFRESH_TOKEN")
-    if rest_api_key and refresh_token:
-        try:
-            with httpx.Client(timeout=5) as client:
-                resp = client.post(
-                    "https://kauth.kakao.com/oauth/token",
-                    data={
-                        "grant_type": "refresh_token",
-                        "client_id": rest_api_key,
-                        "refresh_token": refresh_token,
-                    },
-                )
-                resp.raise_for_status()
-                token = resp.json().get("access_token")
-                if token:
-                    return token
-        except Exception as exc:
-            print(f"[Kakao Token Refresh Error] {exc}")
-    return os.getenv("KAKAO_ADMIN_ACCESS_TOKEN") or os.getenv("KAKAO_ACCESS_TOKEN")
-
-
-def _notify_inquiry_to_kakao(payload: dict):
-    """
-    파트너 신청 접수 알림.
-    개인 카카오톡 ID로 직접 발송하는 API는 제공되지 않아, 토큰 소유자의 '나와의 채팅'으로 보냅니다.
-    """
-    access_token = _get_kakao_access_token()
-    if not access_token:
-        print("[Kakao Notification Skipped] KAKAO_REST_API_KEY/KAKAO_REFRESH_TOKEN 또는 KAKAO_ADMIN_ACCESS_TOKEN이 없습니다.")
-        return
-
-    text = _compact_inquiry_text(payload)
-    template_object = {
-        "object_type": "text",
-        "text": text,
-        "link": {
-            "web_url": ADMIN_URL,
-            "mobile_web_url": ADMIN_URL,
-        },
-        "button_title": "관리자에서 확인",
-    }
-    try:
-        with httpx.Client(timeout=5) as client:
-            resp = client.post(
-                "https://kapi.kakao.com/v2/api/talk/memo/default/send",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-                },
-                data={"template_object": json.dumps(template_object, ensure_ascii=False)},
-            )
-            resp.raise_for_status()
-    except Exception as exc:
-        print(f"[Kakao Notification Error] {exc}")
+    send_telegram_notification(
+        f"새 {type_label} 파트너 신청",
+        [
+            ("이름", payload.get("name")),
+            ("연락처", payload.get("contact")),
+            ("이메일", payload.get("email")),
+            ("업체명", payload.get("company_name")),
+            ("직함", payload.get("job_title")),
+            ("주소", payload.get("location")),
+            ("플랫폼", payload.get("platform")),
+            ("플랫폼 호스트명", payload.get("platform_host_name")),
+            ("카테고리", payload.get("category")),
+            ("문의", payload.get("message")),
+        ],
+        action_url=ADMIN_URL,
+    )
 
 
 @app.post("/api/inquiry")
@@ -2099,7 +2150,7 @@ async def receive_inquiry(
     conn.commit()
     conn.close()
     background_tasks.add_task(
-        _notify_inquiry_to_kakao,
+        _notify_inquiry_to_telegram,
         {
             "inquiry_type": inquiry_type,
             "name": name,
@@ -2878,6 +2929,7 @@ async def process_cart_order(
 @app.get("/api/paypal/return_cart")
 async def paypal_return_cart(
     request: Request,
+    background_tasks: BackgroundTasks,
     token: str = Query(...), 
     PayerID: str = Query(None),
     order_ids: str = Query(...), # comma separated list
@@ -2930,6 +2982,7 @@ async def paypal_return_cart(
     # 3. DB 업데이트
     conn = get_db_connection()
     fcm_tokens = []
+    paid_orders = []
     
     order_id_list = [int(oid.strip()) for oid in order_ids.split(",") if oid.strip()]
     if not order_id_list:
@@ -2968,6 +3021,7 @@ async def paypal_return_cart(
                         (row[1], row[2]),
                     )
         
+        paid_orders = [_fetch_order_notification_row(conn, oid) for oid in order_id_list]
         conn.commit()
     except Exception as e:
         import traceback
@@ -2994,6 +3048,9 @@ async def paypal_return_cart(
             )
         except Exception as e:
             print("FCM Push error:", e)
+
+    for paid_order in paid_orders:
+        background_tasks.add_task(_notify_purchase_completed, paid_order, ADMIN_URL)
             
     # 6. 완료 페이지로 이동
     return RedirectResponse(url=f"/order-complete/{order_id_list[0]}?qr={qr_code_id}&clear_cart=true", status_code=303)
@@ -3001,6 +3058,7 @@ async def paypal_return_cart(
 @app.get("/api/paypal/return")
 async def paypal_return(
     request: Request,
+    background_tasks: BackgroundTasks,
     token: str = Query(...), 
     order_id: int = Query(...),
     qr_code_id: str = Query(...),
@@ -3054,6 +3112,7 @@ async def paypal_return(
     fcm_token = None
     paid_customer_id = None
     paid_product_id = None
+    paid_order = None
     if _is_pg():
         with conn.cursor() as cur:
             cur.execute('''
@@ -3076,6 +3135,7 @@ async def paypal_return(
             paid_customer_id = row[1]
             paid_product_id = row[2]
     _mark_wishlist_purchased(conn, paid_customer_id, paid_product_id)
+    paid_order = _fetch_order_notification_row(conn, order_id)
     
     conn.commit()
     conn.close()
@@ -3095,6 +3155,7 @@ async def paypal_return(
             )
         except Exception as e:
             print(f"FCM Push Error: {e}")
+    background_tasks.add_task(_notify_purchase_completed, paid_order, ADMIN_URL)
             
     # 6. 완료 페이지로 이동
     return RedirectResponse(url=f"/order-complete/{order_id}?qr={qr_code_id}", status_code=303)
