@@ -1,5 +1,5 @@
 from fastapi import BackgroundTasks, FastAPI, Request, Form, Query
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -69,6 +69,49 @@ class AnalyticsEventPayload(BaseModel):
     browser_language: Optional[str] = None
 
 app = FastAPI(title="AffiliStay Showroom Platform")
+
+
+@app.get("/media/products/{product_id}/primary")
+async def product_primary_image(product_id: int):
+    """찜목록/알림용 경량 이미지 URL. 브라우저 저장소에는 base64 원문 대신 이 경로만 저장한다."""
+    conn = get_db_connection()
+    try:
+        image_row = _fetch_one(
+            conn,
+            """
+            SELECT image_data
+            FROM product_images
+            WHERE product_id = %s AND image_data IS NOT NULL AND image_data != ''
+            ORDER BY sort_order ASC, id ASC
+            LIMIT 1
+            """,
+            """
+            SELECT image_data
+            FROM product_images
+            WHERE product_id = ? AND image_data IS NOT NULL AND image_data != ''
+            ORDER BY sort_order ASC, id ASC
+            LIMIT 1
+            """,
+            (product_id,),
+        )
+        if not image_row:
+            image_row = _fetch_one(
+                conn,
+                "SELECT image_url AS image_data FROM products WHERE id = %s",
+                "SELECT image_url AS image_data FROM products WHERE id = ?",
+                (product_id,),
+            )
+        image_data = _coerce_image_data(image_row.get("image_data") if image_row else None)
+        if not image_data:
+            return RedirectResponse(url="/static/product.png", status_code=302)
+
+        raw = base64.b64decode(image_data)
+        media_type = _guess_image_media_type(raw)
+        return Response(content=raw, media_type=media_type)
+    except Exception:
+        return RedirectResponse(url="/static/product.png", status_code=302)
+    finally:
+        conn.close()
 
 @app.on_event("startup")
 def run_migrations():
@@ -668,8 +711,41 @@ def _payload_dict(payload):
     return payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
 
 
+async def _wishlist_payload_from_request(request: Request) -> Optional[WishlistPayload]:
+    try:
+        raw = await request.json()
+    except Exception:
+        return None
+    if not isinstance(raw, dict):
+        return None
+
+    def _to_int(value, default=None):
+        try:
+            if value in (None, ""):
+                return default
+            return int(float(str(value).replace(",", "")))
+        except (TypeError, ValueError):
+            return default
+
+    product_id = _to_int(raw.get("product_id"), 0)
+    if not product_id:
+        return None
+    return WishlistPayload(
+        product_id=product_id,
+        qr_code_id=raw.get("qr_code_id") or None,
+        product_name=raw.get("product_name") or raw.get("name") or None,
+        brand_name=raw.get("brand_name") or raw.get("brand") or None,
+        price=_to_int(raw.get("price")),
+        url=raw.get("url") or None,
+        image=raw.get("image") if isinstance(raw.get("image"), str) and not str(raw.get("image")).startswith("data:image") else None,
+    )
+
+
 @app.post("/api/wishlist")
-async def save_wishlist_item(request: Request, background_tasks: BackgroundTasks, payload: WishlistPayload):
+async def save_wishlist_item(request: Request, background_tasks: BackgroundTasks):
+    payload = await _wishlist_payload_from_request(request)
+    if not payload:
+        return {"status": "ignored", "message": "invalid_wishlist_payload"}
     customer_id = _customer_id_from_request(request)
     conn = get_db_connection()
     try:
@@ -1650,6 +1726,16 @@ def _coerce_image_data(value):
     if value.startswith("data:image") and "," in value:
         value = value.split(",", 1)[1]
     return value or None
+
+
+def _guess_image_media_type(raw):
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if raw.startswith(b"RIFF") and raw[8:12] == b"WEBP":
+        return "image/webp"
+    if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
+        return "image/gif"
+    return "image/jpeg"
 
 
 def _coerce_int(value, default=0):

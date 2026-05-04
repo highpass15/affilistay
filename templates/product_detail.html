@@ -923,9 +923,10 @@
                 data-brand-name="{{ product.brand_name }}"
                 data-price="{{ product.price }}"
                 data-url="/shop/{{ qr_code_id }}/product/{{ product.id }}?return_to={{ return_to_encoded }}"
-                data-image="{% if gallery_images %}data:image/jpeg;base64,{{ gallery_images[0] }}{% elif product.image_url %}data:image/jpeg;base64,{{ product.image_url }}{% else %}/static/product.png{% endif %}"
+                data-image="/media/products/{{ product.id }}/primary"
                 aria-label="{{ product.product_name }} 찜하기"
                 aria-pressed="false"
+                onclick="return window.affilistayToggleWishlistFromButton ? window.affilistayToggleWishlistFromButton(this, event) : false;"
             >♡</button>
         </section>
 
@@ -1181,7 +1182,7 @@
         </div>
     </nav>
 
-    <script src="/static/customer-nav.js"></script>
+    <script src="/static/customer-nav.js?v=wishlist-20260504-3"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -1465,7 +1466,14 @@
                 await fetch("/api/wishlist", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        product_id: Number(payload.product_id || 0),
+                        qr_code_id: payload.qr_code_id || null,
+                        product_name: payload.product_name || null,
+                        brand_name: payload.brand_name || null,
+                        price: Number(payload.price || 0) || null,
+                        url: payload.url || window.location.pathname + window.location.search
+                    })
                 });
             } catch (error) {
                 console.warn("wishlist sync failed", error);
@@ -1539,7 +1547,7 @@
 
             const now = Date.now();
             const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
-            if (now - lastActivatedAt < 900) return;
+            if (now - lastActivatedAt < 1000) return;
             button.dataset.wishlistActivatedAt = String(now);
             toggleWishlistButton(button);
         }

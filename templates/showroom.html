@@ -165,9 +165,10 @@
                                 data-brand-name="{{ product.brand_name }}"
                                 data-price="{{ product.price }}"
                                 data-url="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}"
-                                data-image="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}"
+                                data-image="/media/products/{{ product.id }}/primary"
                                 aria-label="{{ product.product_name }} 찜하기"
                                 aria-pressed="false"
+                                onclick="return window.affilistayToggleWishlistFromButton ? window.affilistayToggleWishlistFromButton(this, event) : false;"
                             >♡</button>
                             <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block h-full" aria-label="{{ product.product_name }} 구매 화면으로 이동">
                                 <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
@@ -216,7 +217,7 @@
             <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
         </div>
     </nav>
-    <script src="/static/customer-nav.js"></script>
+    <script src="/static/customer-nav.js?v=wishlist-20260504-3"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -262,7 +263,14 @@
                     await fetch('/api/wishlist', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify({
+                            product_id: Number(payload.product_id || 0),
+                            qr_code_id: payload.qr_code_id || null,
+                            product_name: payload.product_name || null,
+                            brand_name: payload.brand_name || null,
+                            price: Number(payload.price || 0) || null,
+                            url: payload.url || window.location.pathname
+                        })
                     });
                 } catch (error) {
                     console.warn('wishlist sync failed', error);
@@ -317,7 +325,7 @@
                 event.stopImmediatePropagation?.();
                 const now = Date.now();
                 const lastActivatedAt = Number(button.dataset.wishlistActivatedAt || 0);
-                if (now - lastActivatedAt < 900) return;
+                if (now - lastActivatedAt < 1000) return;
                 button.dataset.wishlistActivatedAt = String(now);
                 toggleButton(button);
             };
