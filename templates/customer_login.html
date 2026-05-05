@@ -293,9 +293,14 @@
     <div class="logo">
         <img src="/static/affilistay-logo.png?v=2" alt="AFFILISTAY">
     </div>
+    {% set mode = auth_mode|default('login') %}
+    {% if mode == 'signup' %}
+    <p class="login-note">장바구니 저장을 위해 간단히 가입해 주세요. 가입 후 방금 본 상품으로 바로 돌아갑니다.</p>
+    {% else %}
     <p class="login-note">호스트, 입점업체, 관리자 계정은 기존 아이디와 비밀번호로 로그인하세요.</p>
+    {% endif %}
 
-    <form method="POST" action="/customer/login">
+    <form method="POST" action="{% if mode == 'signup' %}/customer/signup{% else %}/customer/login{% endif %}">
         <!-- Return URL to redirect back after login -->
         <input type="hidden" name="return_url" value="{{ return_url }}">
 
@@ -305,15 +310,22 @@
         
         <div class="input-group">
             <input type="text" name="identifier" placeholder="아이디" aria-label="아이디" autocomplete="username" inputmode="text" required>
-            <input type="password" name="password" placeholder="비밀번호" aria-label="비밀번호" autocomplete="current-password" required>
+            {% if mode == 'signup' %}
+            <input type="email" name="email" placeholder="이메일 선택 입력" aria-label="이메일 선택 입력" autocomplete="email" inputmode="email">
+            {% endif %}
+            <input type="password" name="password" placeholder="비밀번호" aria-label="비밀번호" autocomplete="{% if mode == 'signup' %}new-password{% else %}current-password{% endif %}" required>
         </div>
 
-        <button type="submit" class="btn-login">로그인</button>
+        <button type="submit" class="btn-login">{% if mode == 'signup' %}회원가입{% else %}로그인{% endif %}</button>
     </form>
 
     <div class="auth-links">
         <a href="#">비밀번호 재설정</a>
-        <a href="#">회원가입</a>
+        {% if mode == 'signup' %}
+        <a href="{{ login_url }}">로그인으로 돌아가기</a>
+        {% else %}
+        <a href="{{ signup_url }}">회원가입</a>
+        {% endif %}
     </div>
 
     <div class="sns-login-title">SNS계정으로 간편 로그인/회원가입</div>
@@ -331,6 +343,6 @@
     <a href="#" class="trouble-link">로그인에 문제가 있으신가요?</a>
 </div>
 
-<script src="/static/customer-nav.js?v=wishlist-20260504-3" defer></script>
+<script src="/static/customer-nav.js?v=wishlist-20260505-1" defer></script>
 </body>
 </html>

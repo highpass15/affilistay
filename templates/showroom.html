@@ -170,11 +170,11 @@
                                 aria-pressed="false"
                                 onclick="return window.affilistayToggleWishlistFromButton ? window.affilistayToggleWishlistFromButton(this, event) : false;"
                             >♡</button>
-                            <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block h-full" aria-label="{{ product.product_name }} 구매 화면으로 이동">
+                            <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block h-full" data-fast-nav aria-label="{{ product.product_name }} 구매 화면으로 이동">
                                 <img src="{% if product.primary_image %}data:image/jpeg;base64,{{ product.primary_image }}{% else %}/static/product.png{% endif %}" alt="{{ product.product_name }}" class="h-full w-full object-cover">
                             </a>
                         </div>
-                        <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block space-y-4 p-4 sm:p-5" aria-label="{{ product.product_name }} 구매 화면으로 이동">
+                        <a href="/shop/{{ product.qr_code_id }}/product/{{ product.id }}?return_to={{ current_url_encoded }}" class="block space-y-4 p-4 sm:p-5" data-fast-nav aria-label="{{ product.product_name }} 구매 화면으로 이동">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="rounded-full bg-[var(--soft-2)] px-3 py-1.5 text-xs font-medium text-stone-700">{{ product.room_icon }} {{ product.room_label }}</span>
                                 <span class="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-600">{{ product.category_icon }} {{ product.category_label }}</span>
@@ -217,7 +217,7 @@
             <a href="/mypage" class="bottom-tab"><span class="icon">♙</span><span>마이</span></a>
         </div>
     </nav>
-    <script src="/static/customer-nav.js?v=wishlist-20260504-3"></script>
+    <script src="/static/customer-nav.js?v=wishlist-20260505-1"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"

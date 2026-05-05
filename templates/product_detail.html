@@ -1155,6 +1155,7 @@
                 href="/shop/{{ qr_code_id }}/order/{{ product.id }}?return_to={{ return_to_encoded }}"
                 class="sticky-btn primary"
                 id="buy-submit"
+                data-fast-nav
                 data-base-href="/shop/{{ qr_code_id }}/order/{{ product.id }}?return_to={{ return_to_encoded }}"
             >바로 구매</a>
         </div>
@@ -1182,7 +1183,7 @@
         </div>
     </nav>
 
-    <script src="/static/customer-nav.js?v=wishlist-20260504-3"></script>
+    <script src="/static/customer-nav.js?v=wishlist-20260505-1"></script>
     <script
         src="/static/live-sync.js"
         data-live-version="{{ public_content_version }}"
@@ -1196,6 +1197,7 @@
         const PENDING_CART_KEY = "affilistay_pending_cart";
         const CUSTOMER_LOGGED_IN = {{ customer_logged_in|default(false)|tojson }};
         const CUSTOMER_LOGIN_URL = {{ customer_login_url|default("/customer/login?return_url=%2Fcatalog")|tojson }};
+        const CUSTOMER_SIGNUP_URL = {{ customer_signup_url|default("/customer/login?mode=signup&return_url=%2Fcatalog")|tojson }};
         // 작업 3: QR 상세페이지 분석 컨텍스트와 체류/스크롤 추적 상태
         const ANALYTICS_CONTEXT = {{ analytics_context|default({})|tojson }};
         const ANALYTICS_PRODUCT_ID = {{ product.id }};
@@ -1605,7 +1607,7 @@
 
             if (!CUSTOMER_LOGGED_IN) {
                 localStorage.setItem(PENDING_CART_KEY, JSON.stringify(payload));
-                window.location.href = CUSTOMER_LOGIN_URL;
+                window.location.assign(CUSTOMER_SIGNUP_URL);
                 return;
             }
 

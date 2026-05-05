@@ -14,6 +14,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="//t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <link rel="prefetch" href="/catalog?view=products&category=all&room=all">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -335,7 +336,7 @@
         </a>
         
         <div class="hidden lg:flex space-x-12 text-[10px] font-bold tracking-[0.4em] text-gray-400 uppercase">
-            <a href="/catalog?view=products&category=all&room=all" class="hover:text-black transition-colors">입점 제품 둘러보기</a>
+            <a href="/catalog?view=products&category=all&room=all" data-fast-nav class="hover:text-black transition-colors">입점 제품 둘러보기</a>
             <a href="#vision" class="hover:text-black transition-colors">비전</a>
             <a href="#experience" class="hover:text-black transition-colors">참여 방법</a>
             <a href="#partners" class="hover:text-black transition-colors">브랜드사</a>
@@ -369,7 +370,7 @@
                 <button onclick="openSignup()" class="hero-primary-btn">
                     지금 시작하기
                 </button>
-                <a href="/catalog?view=products&category=all&room=all" class="hero-secondary-btn">
+                <a href="/catalog?view=products&category=all&room=all" class="hero-secondary-btn" data-fast-nav>
                     입점 제품 둘러보기
                 </a>
             </div>
@@ -544,7 +545,7 @@
                 <span class="icon" aria-hidden="true">⌂</span>
                 <span>홈</span>
             </a>
-            <a href="/catalog?view=products&category=all&room=all" class="landing-tab">
+            <a href="/catalog?view=products&category=all&room=all" class="landing-tab" data-fast-nav>
                 <span class="icon" aria-hidden="true">▦</span>
                 <span>쇼핑</span>
             </a>
@@ -721,6 +722,7 @@
         </div>
     </div>
 
+    <script src="/static/customer-nav.js?v=wishlist-20260505-1"></script>
     <script>
         const reveals = document.querySelectorAll('.reveal');
         const observer = new IntersectionObserver((entries) => {

@@ -535,12 +535,16 @@ async def customer_login_page(
     request: Request,
     return_url: str = Query(default="/"),
     error: str = Query(default=""),
+    mode: str = Query(default="login"),
 ):
     """Customer login page."""
     safe_return_url = _safe_return_to(return_url, "/catalog")
+    auth_mode = "signup" if mode == "signup" else "login"
     error_messages = {
         "missing": "아이디와 비밀번호를 입력해 주세요.",
         "invalid": "아이디 또는 비밀번호가 올바르지 않습니다.",
+        "duplicate": "이미 가입된 아이디입니다. 로그인으로 이용해 주세요.",
+        "signup_missing": "아이디와 비밀번호를 입력해 주세요.",
     }
     return templates.TemplateResponse(
         request=request,
@@ -549,6 +553,9 @@ async def customer_login_page(
             "request": request,
             "return_url": safe_return_url,
             "error_message": error_messages.get(error, ""),
+            "auth_mode": auth_mode,
+            "signup_url": f"/customer/login?mode=signup&return_url={_encode_return_to(safe_return_url)}",
+            "login_url": f"/customer/login?return_url={_encode_return_to(safe_return_url)}",
         },
     )
 
@@ -630,13 +637,7 @@ async def customer_login_process(
             response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
             return response
 
-        if "@" not in login_id:
-            return RedirectResponse(
-                url=f"/customer/login?return_url={_encode_return_to(safe_return_url)}&error=invalid",
-                status_code=303,
-            )
-
-        customer_email = login_id
+        customer_email = login_id if "@" in login_id else f"{login_id}@affilistay.local"
         customer = _fetch_one(
             conn,
             "SELECT id FROM customers WHERE email = %s AND password = %s",
@@ -653,6 +654,71 @@ async def customer_login_process(
     finally:
         conn.close()
     
+    response = RedirectResponse(url=safe_return_url, status_code=303)
+    response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
+    return response
+
+@app.post("/customer/signup")
+async def customer_signup_process(
+    background_tasks: BackgroundTasks,
+    identifier: str = Form(default=""),
+    email: str = Form(default=""),
+    password: str = Form(...),
+    return_url: str = Form(default="/")
+):
+    """쇼룸 고객 회원가입 처리. 아이디 기반으로 빠르게 가입 후 원래 화면으로 돌려보낸다."""
+    login_id = (identifier or email or "").strip()
+    safe_return_url = _safe_return_to(return_url, "/catalog")
+    if not login_id or not password:
+        return RedirectResponse(
+            url=f"/customer/login?mode=signup&return_url={_encode_return_to(safe_return_url)}&error=signup_missing",
+            status_code=303,
+        )
+
+    customer_email = (email or "").strip()
+    if not customer_email:
+        customer_email = login_id if "@" in login_id else f"{login_id}@affilistay.local"
+
+    conn = get_db_connection()
+    try:
+        existing = _fetch_one(
+            conn,
+            "SELECT id FROM customers WHERE email = %s",
+            "SELECT id FROM customers WHERE email = ?",
+            (customer_email,),
+        )
+        if existing:
+            return RedirectResponse(
+                url=f"/customer/login?mode=signup&return_url={_encode_return_to(safe_return_url)}&error=duplicate",
+                status_code=303,
+            )
+
+        cursor = conn.cursor()
+        display_name = login_id.split("@")[0]
+        if _is_pg():
+            cursor.execute(
+                """
+                INSERT INTO customers (email, password, name, provider)
+                VALUES (%s, %s, %s, 'email')
+                RETURNING id
+                """,
+                (customer_email, password, display_name),
+            )
+            customer_id = cursor.fetchone()[0]
+        else:
+            cursor.execute(
+                """
+                INSERT INTO customers (email, password, name, provider)
+                VALUES (?, ?, ?, 'email')
+                """,
+                (customer_email, password, display_name),
+            )
+            customer_id = cursor.lastrowid
+        conn.commit()
+    finally:
+        conn.close()
+
+    background_tasks.add_task(_notify_customer_signup, "email", customer_email, customer_id, ADMIN_URL)
     response = RedirectResponse(url=safe_return_url, status_code=303)
     response.set_cookie(key="customer_id", value=str(customer_id), httponly=True)
     return response
@@ -1519,6 +1585,11 @@ def _row_value(row, key, index=0, default=None):
 def _customer_login_url(return_to="/catalog"):
     safe_return_to = _safe_return_to(return_to, "/catalog")
     return f"/customer/login?return_url={_encode_return_to(safe_return_to)}"
+
+
+def _customer_signup_url(return_to="/catalog"):
+    safe_return_to = _safe_return_to(return_to, "/catalog")
+    return f"/customer/login?mode=signup&return_url={_encode_return_to(safe_return_to)}"
 
 
 def _customer_id_from_request(request: Request):
@@ -2586,6 +2657,7 @@ async def product_detail(
         "current_url_encoded": _encode_return_to(current_url),
         "customer_logged_in": bool(_customer_id_from_request(request)),
         "customer_login_url": _customer_login_url(current_url),
+        "customer_signup_url": _customer_signup_url(current_url),
         "public_content_version": public_content_version,
         "analytics_context": {
             "stay_id": stay_id or "",

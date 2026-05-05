@@ -245,18 +245,23 @@
         }
     };
 
+    const FAST_NAV_SELECTOR = ".bottom-tabbar a[href], .landing-tabbar a[href], .af-bottom-tabbar a[href], .bottom-nav a[href], a[data-fast-nav], a[data-nav-link]";
+    const INSTANT_NAV_SELECTOR = ".bottom-tabbar a[href], .landing-tabbar a[href], .af-bottom-tabbar a[href], .bottom-nav a[href], a[data-fast-nav]";
+
     const navigate = (link) => {
         const href = link.getAttribute("href");
         if (!href || href.startsWith("#") || sameDestination(href)) return;
+        if (link.hasAttribute("download")) return;
         if (link.dataset.fastNavBusy === "true") return;
         link.dataset.fastNavBusy = "true";
         link.classList.add("is-active");
         window.location.assign(link.href);
     };
 
-    const handleFastNav = (event) => {
+    const handleFastNav = (event, instant = false) => {
         const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-        const link = target?.closest?.(".bottom-tabbar a[href], .landing-tabbar a[href], .af-bottom-tabbar a[href], .bottom-nav a[href]");
+        if (target?.closest?.("[data-wishlist-toggle]")) return;
+        const link = target?.closest?.(instant ? INSTANT_NAV_SELECTOR : FAST_NAV_SELECTOR);
         if (!link || link.target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
         event.stopPropagation();
@@ -267,11 +272,12 @@
     const bindFastNav = () => {
         if (window.__affilistayFastNavBound) return;
         window.__affilistayFastNavBound = true;
-        document.addEventListener("pointerup", handleFastNav, true);
-        document.addEventListener("click", handleFastNav, true);
+        document.addEventListener("pointerdown", (event) => handleFastNav(event, true), true);
+        document.addEventListener("pointerup", (event) => handleFastNav(event, false), true);
+        document.addEventListener("click", (event) => handleFastNav(event, false), true);
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Enter" && event.key !== " ") return;
-            handleFastNav(event);
+            handleFastNav(event, false);
         }, true);
     };
 
